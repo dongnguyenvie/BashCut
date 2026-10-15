@@ -44,8 +44,8 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
         ])
     }
     private var sessionDiscoveryTask: Task<Void, Never>?
-    /// Claude Code and Codex on this Mac that lack the kit; nil when none do or it was not checked yet.
-    var kitPrompt: AgentKitPrompt?
+    /// BashCut's kit as last checked for the setup card; nil when there is none or it was not checked yet.
+    var setupKit: AgentKit?
     var kitSettingUp = false
     @ObservationIgnored var kitPromptChecked: Date?
     /// What Claude Code and Codex reported last, and BashCut's kit version, for the setup card.

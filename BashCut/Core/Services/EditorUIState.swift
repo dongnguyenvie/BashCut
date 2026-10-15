@@ -61,8 +61,9 @@ public final class EditorUIState {
         didSet { if showInspector { rightTab = .inspector } }
     }
     /// The tab of the right column (P1-6). Inspector: the column sits beside the viewer and the timeline spans the
-    /// window under it. Agent: the column runs the full height, beside the timeline too.
-    public private(set) var rightTab: RightColumnTab = .inspector
+    /// window under it. Agent: the column runs the full height, beside the timeline too. A project opens on the Agent
+    /// tab; the tab picked later stays for the projects opened after it in the window.
+    public private(set) var rightTab: RightColumnTab = .agent
     /// The agent lives in its own window, so its tab only says so.
     public var agentPoppedOut = false
     @ObservationIgnored var agentPickedAt: Date?

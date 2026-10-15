@@ -68,6 +68,9 @@ extension ProjectDocument {
             }
             let continues = choice.isAgent && agents.canContinue(id)
             if !agents.isDetached { document.ui.showAgentDock = true }
+            // A tab an automation opens (a bench, a test) is not the user's pick: Last used stays the user's agent.
+            let lastUsed = document.settings.lastAgentRaw
+            defer { document.settings.lastAgentRaw = lastUsed }
             let session = try await {
                 if let provider = AgentProviders.provider(id) { return try await agents.startBuiltIn(provider) }
                 return try await agents.openPluginTerminal(id.rawValue)

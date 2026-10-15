@@ -81,4 +81,27 @@ import Testing
         #expect(AgentSetupChecklist.foldKey(kitVersion: nil) == "-")
         #expect(AgentSetupChecklist.foldKey(kitVersion: "0.5.0") != AgentSetupChecklist.foldKey(kitVersion: "0.4.0"))
     }
+
+    @Test("The card is about the agent the user picked when its CLI is found, else every CLI found")
+    func pickedAgent() {
+        let statuses: [AgentKitSetup.Target: Status] = [
+            .claude: Status(executable: found, installed: true, detail: "", outdated: true),
+            .codex: Status(executable: found, installed: false, detail: ""),
+        ]
+        // Claude picked: Codex's missing kit neither names the card nor holds the step back.
+        let claude = AgentSetupChecklist.statuses(statuses, pickedFrom: [.claude])
+        #expect(Array(claude.keys) == [.claude])
+        #expect(AgentSetupChecklist.skills(kitVersion: "0.4.0", statuses: claude) == .outdated)
+        // A shown Codex tab wins over the default agent.
+        #expect(Array(AgentSetupChecklist.statuses(statuses, pickedFrom: [.codex, .claude]).keys) == [.codex])
+        // A shell tab is skipped for the default agent.
+        #expect(Array(AgentSetupChecklist.statuses(statuses, pickedFrom: [.shell, .claude]).keys) == [.claude])
+        // A picked agent whose CLI is not on this Mac falls back to every CLI found.
+        let noCodex: [AgentKitSetup.Target: Status] = [
+            .claude: Status(executable: found, installed: true, detail: ""),
+            .codex: Status(executable: nil, installed: false, detail: ""),
+        ]
+        #expect(AgentSetupChecklist.statuses(noCodex, pickedFrom: [.codex]) == noCodex)
+        #expect(AgentSetupChecklist.statuses(statuses, pickedFrom: []) == statuses)
+    }
 }

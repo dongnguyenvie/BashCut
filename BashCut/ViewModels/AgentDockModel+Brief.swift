@@ -91,11 +91,11 @@ extension AgentDockModel {
         insertBrief(template.prompt())
     }
 
-    /// Puts a request in the open agent's input. With none open it opens the first chat agent; with no chat agent it
-    /// opens the New brief sheet with the request, whose Send starts the default agent.
+    /// Puts a request in the input of the agent or chat tab on show. With none on show it opens the New brief sheet
+    /// with the request, whose Send goes to the default agent's tab or starts it (Last used, else Claude Code) — never
+    /// a chat agent the user did not pick, nor a plain shell.
     func insertBrief(_ request: String) {
-        if !hasOpenAgent, let first = document.chatAgents.available.first { openChat(first.pluginID) }
-        if hasOpenAgent {
+        if chatPluginID != nil || current?.provider.isAgent == true {
             fillInput(request)
             if !isDetached { document.ui.showAgentDock = true }
         } else {
