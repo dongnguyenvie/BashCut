@@ -161,6 +161,8 @@ public enum UIAction: String, CaseIterable, Sendable {
     /// The Media panel's sources: footage, project media, shared assets, the selects store (P1-D8) and library clips
     /// (P2-H5), matching `MediaLibrarySource`.
     public static let mediaSources = ["footage", "project", "shared", "selects", "clips"]
+    /// The lists a library panel shows instead of its home view (`ui view --library-collection`).
+    public static let libraryCollections = ["recent", "favorites"]
     /// Settings sections, for `ui.view --settings-section`.
     public static let settingsSections = ["general", "agents", "plugins", "storage"]
     /// Knowledge window sections, for `ui.view --knowledge-section`.

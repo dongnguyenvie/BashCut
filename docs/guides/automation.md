@@ -578,8 +578,8 @@ Items come from four scopes; when the same ID is in several, the first wins, and
 
 | Scope | Where | Writable |
 |---|---|---|
-| `project` | `.bashcut/library/library.json`, `usage.json` and `files/` in the project folder; travels with the project | yes |
-| `user` | `~/Library/Application Support/BashCut/Library` (this Mac) | yes; agents need approval |
+| `project` | `.bashcut/library/library.json`, `usage.json`, `recent.json` and `files/` in the project folder; travels with the project | yes |
+| `user` | `~/Library/Application Support/BashCut/Library` (this Mac; `favorites.json` beside `usage.json`) | yes; agents need approval |
 | `plugin` | A pack in a plugin's `contributes.library` (#81), while the plugin is installed, trusted and on | no |
 | `built-in` | Shipped with BashCut | no |
 
@@ -593,6 +593,14 @@ project or on this Mac.
 
 - `bashcut library list [--panel text] [--kind sticker] [--tag food] [--scope user] [--created-by agent] [--pack X]
   [--query word]` lists items with their usage; `library get <id>` adds the earlier versions and the file path.
+- **Favorites and Recent (D5).** `bashcut library favorite <id> [--scope] [--off]` stars an item of any scope (built-in
+  and plugin ones too) or removes the star. Favorites are global: `scope:id` references in `favorites.json` in the user
+  library, so they follow you to every project and are not part of the project folder. **Recent** is per project: the
+  last 20 items placed or applied there (any scope, newest first) in `.bashcut/library/recent.json`, written wherever a
+  use is counted; the global use counts stay as they are. `library list` and `library get` mark each item
+  `favorite: true|false`; `library list --favorites` keeps the starred ones and `--recent` the project's recent ones, newest
+  first. Both files keep fields they do not know; removing an item drops it from them, and moving it between the project
+  and This Mac keeps its star and its place in Recent. Without a saved project nothing is recorded in Recent.
 - `bashcut library add --kind sticker --name Fire --params '{"emoji":"🔥"}' [--tags food,hot] [--pack Food]
   [--file f.png] [--scope project|user]` saves a new item (the ID comes from the name unless `--id` is given).
 - `bashcut library update <id> [--name] [--tags] [--params] [--file] …` saves a new version; the old one stays in
@@ -788,14 +796,18 @@ panel shows the kit in use and the saved kits (a click applies one); New Project
 Agents' `add`, `save-selection`, `update`, `analyze`, `remove` and `import-pack` in the `user` scope, and every `move`, wait for
 the user's approval, like exports; the project scope follows the normal edit rules.
 
-Each panel (Audio, Text, Stickers, Effects, Transitions, Filters) shows its items with search, pack, tag and scope
-filters, badges for agent-made and project or Mac items, plugin packs grouped under the plugin's name, **Add…** (and
+Each panel (Audio, Text, Stickers, Effects, Transitions, Filters) opens on a home view (Recent, Favorites, then one
+section per pack with two rows of tiles and **See all n ›**; the section headers fold) and shows its items with search,
+source chips (All, Mine, Packs with counts, and Online, which opens the plugin search; a search with no match offers
+it too), pack and tag filters, a star on each tile, badges for agent-made and project or Mac items, plugin packs grouped under the plugin's name, **Add…** (and
 drops) for files and packs, **Save selection as…**, **Search…** and **Generate…** when a plugin provides them for the
 panel's kinds (the sheet runs `library search`/`library generate`, previews each candidate and saves it with **Save**;
 `ui action open library-search|library-generate` opens it for the open panel and `ui respond run|save-<index>|close` answers
 it), and a context menu: Duplicate & Edit (`update --as`), Rename (`update --name`), Move (`move`), Show Source &
 License (`get`), Show in Finder and Remove (`remove`). `ui view --library-query X --library-pack P --library-tag T
---library-scope user` sets the open panel's search and filters (`libraryFilter` in the view state); the item sheet
+--library-scope user --library-source mine|packs|all --library-collection recent|favorites|all` sets the open panel's
+search and filters (`libraryFilter` in the view state; a filter leaves the home view for a list, `all` and an empty
+filter return to it); the item sheet
 is the `library-item` dialog (`ui respond save|cancel`).
 
 ## Media proxies

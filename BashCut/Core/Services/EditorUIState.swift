@@ -289,17 +289,24 @@ public struct TimelineReveal: Equatable, Sendable {
     public init(frame: Int) { self.frame = frame }
 }
 
-/// What a library panel shows: items matching the search, in one pack, with one tag, from one scope (nil: all).
+/// What a library panel shows: items matching the search, in one pack, with one tag, from one scope or source (nil: all).
 public struct LibraryPanelFilter: Equatable, Sendable {
     public var query = ""
     public var pack: String?
     public var tag: String?
     /// A `LibraryScope` raw value.
     public var scope: String?
+    /// A `LibrarySource` raw value (the chips under the search field); nil: all.
+    public var source: String?
+    /// "recent" or "favorites": a list shown instead of the home view; nil: the home view.
+    public var collection: String?
 
     public init() {}
 
-    public var isActive: Bool { !query.isEmpty || pack != nil || tag != nil || scope != nil }
+    /// Whether the panel lists matches instead of its home view.
+    public var isActive: Bool {
+        !query.isEmpty || pack != nil || tag != nil || scope != nil || source != nil || collection != nil
+    }
 }
 
 /// What the library item sheet saves, with the fields the user can change before saving.

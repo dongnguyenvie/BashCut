@@ -19,7 +19,8 @@ struct AgentInstructionsTests {
         // 37k since saved voices (#532: voice clone-add, voice use; listing and removing clones stay out).
         // 37.5k since generated pictures (#550: image generate, style, disclose, library brand-pose; the list stays
         // out).
-        #expect(text.count < 37_500)
+        // 38k since library favorite and library list --favorites|--recent (P1-9).
+        #expect(text.count < 38_000)
         for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
             #expect(text.contains(rule), "\(rule)")
         }

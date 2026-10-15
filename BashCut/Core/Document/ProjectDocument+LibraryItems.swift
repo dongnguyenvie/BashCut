@@ -163,11 +163,14 @@ extension ProjectDocument {
         return "\(action) from the library is not supported yet" + (file ?? "")
     }
 
-    /// Usage counts are best effort and written in the background: a failed write never fails the edit.
+    /// Usage counts and the project's Recent list are best effort and written in the background: a failed write never fails the edit.
     func recordLibraryUse(_ item: LibraryItem) {
         let catalog = libraryCatalog
         Task {
-            do { try await LibraryWorker.shared.run { try catalog.recordUse(item) } } catch {
+            do {
+                try await LibraryWorker.shared.run { try catalog.recordUse(item) }
+                libraryRevision += 1  // Recent changes
+            } catch {
                 DebugLog.write("library", "usage not saved: \(error)")
             }
         }
@@ -363,9 +366,11 @@ extension ProjectDocument {
             let item = try catalog.item(try arguments.string("id"), scope: Self.scope(arguments))
             guard case .object(var result) = item.json(usage: try catalog.usage()[item.reference], includeHistory: true)
             else { return .null }
+            result["favorite"] = .bool(try catalog.favorites().contains(item.reference))
             result["fileURL"] = catalog.fileURL(of: item).map { .string($0.path) } ?? .null
             return .object(result)
         }
+        handle("library.favorite") { document, arguments, _ in try await document.setLibraryFavoriteCommand(arguments) }
         handle("library.stats") { document, arguments, _ in
             let catalog = document.libraryCatalog
             let kinds = Self.filter(arguments).kinds
@@ -479,7 +484,7 @@ extension ProjectDocument {
         }
     }
 
-    private static func scope(_ arguments: CommandArguments) -> LibraryScope? {
+    static func scope(_ arguments: CommandArguments) -> LibraryScope? {
         arguments.optionalString("scope").flatMap(LibraryScope.init(rawValue:))
     }
 }

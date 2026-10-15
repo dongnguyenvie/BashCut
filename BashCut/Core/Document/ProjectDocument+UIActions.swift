@@ -364,6 +364,10 @@ extension ProjectDocument {
         if let pack = arguments.optionalString("libraryPack") { filter.pack = pack.isEmpty ? nil : pack }
         if let tag = arguments.optionalString("libraryTag") { filter.tag = tag.isEmpty ? nil : tag }
         if let scope = arguments.optionalString("libraryScope") { filter.scope = scope == "all" ? nil : scope }
+        if let source = arguments.optionalString("librarySource") { filter.source = source == "all" ? nil : source }
+        if let collection = arguments.optionalString("libraryCollection") {
+            filter.collection = collection == "all" ? nil : collection
+        }
         ui.libraryFilters[panel] = filter
     }
 
@@ -410,6 +414,7 @@ extension ProjectDocument {
         return .object([
             "query": .string(filter.query), "pack": filter.pack.map(JSONValue.string) ?? .null,
             "tag": filter.tag.map(JSONValue.string) ?? .null, "scope": .string(filter.scope ?? "all"),
+            "source": .string(filter.source ?? "all"), "collection": .string(filter.collection ?? "all"),
         ])
     }
 }

@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 237 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 238 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1803,7 +1803,7 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 - `in`: integer, ≥ 0. source: in frame
 - `out`: integer, ≥ 1. source: out frame (exclusive)
 
-### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--right-tab <rightTab>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>]`
+### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--right-tab <rightTab>] [--reveal <reveal>] [--inspector <inspector>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>] [--library-source <librarySource>] [--library-collection <libraryCollection>]`
 
 Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock, right column tab, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.
 
@@ -1828,6 +1828,8 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `libraryPack`: string. Pack the open library panel shows; empty shows all
 - `libraryTag`: string. Tag the open library panel shows; empty shows all
 - `libraryScope`: string, one of all, built-in, user, project, plugin. Scope the open library panel shows
+- `librarySource`: string, one of all, mine, packs. Source chip of the open library panel: mine (this project and this Mac), packs (built in and plugin) or all
+- `libraryCollection`: string, one of all, recent, favorites. List the open library panel shows instead of its home view: recent (this project), favorites (this Mac) or all
 
 ### `bashcut ui seek <frame>`
 
@@ -2169,7 +2171,7 @@ Propose a change to an agent kit skill: the line diff against the kit's SKILL.md
 
 ## library
 
-### `bashcut library list [--kind <kind>] [--panel <panel>] [--offset <offset>] [--limit <limit>] [--tag <tag>] [--scope <scope>] [--created-by <createdBy>] [--pack <pack>] [--query <query>]`
+### `bashcut library list [--kind <kind>] [--panel <panel>] [--offset <offset>] [--limit <limit>] [--tag <tag>] [--scope <scope>] [--created-by <createdBy>] [--pack <pack>] [--query <query>] [--favorites] [--recent]`
 
 List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transitions, Filters, Voice; from the open project, this Mac, plugins and built-in packs, with usage. Check here before making something new. With offset or limit, one page: {items, total, offset, limit, next} (next: the offset of the following page, null after the last); without them, every match as an array.
 
@@ -2183,6 +2185,17 @@ List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transiti
 - `createdBy`: string, one of user, agent, plugin, built-in. Only items made by
 - `pack`: string. Only items in this pack
 - `query`: string. Text to find in the id, name, pack or tags
+- `favorites`: boolean. Only favourites (starred on this Mac)
+- `recent`: boolean. Only the items placed or applied in this project, newest first (at most 20)
+
+### `bashcut library favorite <id> [--scope <scope>] [--off]`
+
+Star a library item of any scope (built-in and plugin ones too) so the panels list it under Favorites, or remove the star with off. Favorites are global: kept on this Mac and shown in every project. library list marks them with favorite: true.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_library_favorite`
+- `id`: string, required. Item ID, or scope:id to pick one scope
+- `scope`: string, one of built-in, user, project, plugin. Look only in this scope; without it project, user, plugin, then built-in
+- `off`: boolean. Remove the star
 
 ### `bashcut library get <id> [--scope <scope>]`
 

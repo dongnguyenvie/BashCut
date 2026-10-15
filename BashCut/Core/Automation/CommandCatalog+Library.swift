@@ -56,6 +56,16 @@ extension CommandCatalog {
                          + "redistribute, commercial, attribution…}; stored as given", cli: .option("license")),
     ]
 
+    /// What `ui view` sets in the open library panel besides the query, pack, tag and scope (P1-9).
+    static let libraryViewParameters: [CommandParameter] = [
+        CommandParameter("librarySource", .string, "Source chip of the open library panel: mine (this project and "
+                         + "this Mac), packs (built in and plugin) or all",
+                         choices: ["all"] + LibrarySource.allCases.map(\.rawValue), cli: .option("library-source")),
+        CommandParameter("libraryCollection", .string, "List the open library panel shows instead of its home "
+                         + "view: recent (this project), favorites (this Mac) or all",
+                         choices: ["all"] + UIAction.libraryCollections, cli: .option("library-collection")),
+    ]
+
     /// The provider, count and saving options of library search and library generate (#81).
     private static func libraryProviderParameters(limit: Int) -> [CommandParameter] {
         [
@@ -92,6 +102,18 @@ extension CommandCatalog {
                                  cli: .option("created-by")),
                 CommandParameter("pack", .string, "Only items in this pack", cli: .option("pack")),
                 CommandParameter("query", .string, "Text to find in the id, name, pack or tags", cli: .option("query")),
+                CommandParameter("favorites", .boolean, "Only favourites (starred on this Mac)", cli: .flag("favorites")),
+                CommandParameter("recent", .boolean, "Only the items placed or applied in this project, newest first (at most 20)",
+                                 cli: .flag("recent")),
+            ]),
+        CommandSpec(
+            "library.favorite", .edit,
+            "Star a library item of any scope (built-in and plugin ones too) so the panels list it under Favorites, or "
+                + "remove the star with off. Favorites are global: kept on this Mac and shown in every project. "
+                + "library list marks them with favorite: true.",
+            parameters: [
+                libraryID, libraryScope,
+                CommandParameter("off", .boolean, "Remove the star", cli: .flag("off")),
             ]),
         CommandSpec(
             "library.get", .read, "Read one library item, with its earlier versions and file paths.",

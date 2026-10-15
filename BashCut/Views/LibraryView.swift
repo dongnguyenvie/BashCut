@@ -55,17 +55,7 @@ struct LibraryView: View {
     }
     private var media: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Picker("Media source", selection: mediaSourceBinding) {
-                ForEach(MediaLibrarySource.allCases) { source in
-                    Text(LocalizedStringKey(source.title)).tag(source)
-                }
-            }
-            // A menu, not segments: five sources do not fit the 225pt panel, and a segmented control
-            // cannot shrink below its labels, so it pushed the panel past its neighbours (#484).
-            .pickerStyle(.menu)
-            // The panel is too narrow for an inline label; it stays the accessibility label.
-            .labelsHidden()
-            .frame(maxWidth: .infinity, alignment: .leading)
+            MediaSourceChips(document: document, selection: mediaSourceBinding, counts: mediaSourceCounts)
             if mediaSource == .selects {
                 SelectsListView(document: document)
             } else if mediaSource == .clips {
@@ -226,6 +216,12 @@ private extension LibraryView {
         Binding(get: { mediaSource }, set: { document.ui.mediaSource = $0.rawValue })
     }
 
+    var mediaSourceCounts: [MediaLibrarySource: Int] {
+        var counts: [MediaLibrarySource: Int] = [:]
+        for media in document.project.media where media["kind"] != .string("audio") { counts[source(for: media), default: 0] += 1 }
+        return counts
+    }
+
     var visibleMedia: [Media] {
         document.project.media.filter {
             $0["kind"] != .string("audio")
@@ -257,25 +253,6 @@ private extension LibraryView {
             return .footage
         }
         return .project
-    }
-}
-
-private enum MediaLibrarySource: String, CaseIterable, Identifiable {
-    case footage
-    case project
-    case shared
-    case selects
-    case clips
-
-    var id: Self { self }
-    var title: String {
-        switch self {
-        case .footage: "Footage"
-        case .project: "Project"
-        case .shared: "Shared"
-        case .selects: "Selects"
-        case .clips: "Clips"
-        }
     }
 }
 
