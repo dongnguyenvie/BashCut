@@ -7,11 +7,14 @@ struct AgentKitBanner: View {
     let prompt: AgentKitPrompt
     /// The full card shows the first time this kit version is seen; after that it takes one line (P1-8).
     @State private var collapsed: Bool
+    /// One line without its own background, inside the dock's setup steps.
+    private let compact: Bool
 
-    init(model: AgentDockModel, prompt: AgentKitPrompt) {
+    init(model: AgentDockModel, prompt: AgentKitPrompt, compact: Bool = false) {
         self.model = model
         self.prompt = prompt
-        _collapsed = State(initialValue: model.settings.agentKitPromptSeen == prompt.version)
+        self.compact = compact
+        _collapsed = State(initialValue: compact || model.settings.agentKitPromptSeen == prompt.version)
     }
 
     var body: some View {
@@ -37,7 +40,7 @@ struct AgentKitBanner: View {
                 .buttonStyle(.borderless).foregroundStyle(.secondary).disabled(model.kitSettingUp)
         }
         .font(.caption).lineLimit(1).padding(.horizontal, 10).padding(.vertical, 6)
-        .background(Color.cyan.opacity(0.08))
+        .background(compact ? Color.clear : Color.cyan.opacity(0.08))
         .help(detail)
     }
 

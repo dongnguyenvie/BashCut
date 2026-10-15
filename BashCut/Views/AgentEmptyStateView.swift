@@ -2,12 +2,21 @@ import BashCutAgent
 import SwiftUI
 
 /// The Agent tab before any agent runs (P1-8): one primary button for the default agent, an "Other agents" menu for
-/// the rest, and the one-line explainer.
+/// the rest, the one-line explainer, and quick starts for the project's state.
 struct AgentEmptyStateView: View {
     @Bindable var model: AgentDockModel
 
     var body: some View {
-        VStack(spacing: 12) {
+        ScrollView {
+            VStack(spacing: 16) {
+                start
+                BriefQuickStartView(model: model)
+            }.padding(12)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var start: some View {
+        VStack(spacing: 10) {
             Image(systemName: "terminal").font(.largeTitle).foregroundStyle(.cyan)
             Button(primaryTitle) { model.openDefault() }
                 .buttonStyle(.borderedProminent).controlSize(.large)
@@ -19,7 +28,7 @@ struct AgentEmptyStateView: View {
                 Label(model.sessionDiscoveryMessage, systemImage: "clock.arrow.circlepath")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }.frame(maxWidth: .infinity).padding(.top, 8)
     }
 
     private var defaultTitle: String {

@@ -19,8 +19,7 @@ struct ChatAgentPanel: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         if agent.entries.isEmpty {
-                            Text("Ask the agent to edit: it reads the timeline, makes undoable changes and checks the picture.")
-                                .font(.caption).foregroundStyle(.secondary).padding(.top, 12)
+                            BriefQuickStartView(model: document.agents).padding(.top, 4)
                         }
                         ForEach(agent.entries) { entry in
                             ChatEntryView(entry: entry, fps: document.project.fps).id(entry.id)
@@ -81,13 +80,18 @@ struct ChatAgentPanel: View {
             ZStack(alignment: .topLeading) {
                 ChatInputView(text: $agent.draft, placeholder: String(localized: "Message to the agent"), onKey: key)
                 if agent.draft.isEmpty {
-                    Text("Message, or / for commands. Shift+Enter for a new line.")
+                    Text("What should the agent do? Type / for templates and commands.")
                         .foregroundStyle(.tertiary).padding(.leading, 7).padding(.top, 4).allowsHitTesting(false)
                 }
             }
             .frame(minHeight: 54, maxHeight: 120).padding(4)
             .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.05)))
-            HStack {
+            HStack(spacing: 6) {
+                BriefTemplatesMenu(state: document.briefState) { insert($0) }
+                ViewThatFits(in: .horizontal) {
+                    composerChips(labels: true)
+                    composerChips(labels: false)
+                }
                 if !agent.error.isEmpty {
                     Text(agent.error).font(.caption).foregroundStyle(.orange).lineLimit(2)
                 }
@@ -128,7 +132,11 @@ struct ChatAgentPanel: View {
         let detail: String
         /// Runs at once when chosen with Enter (a command that takes no arguments).
         let runs: Bool
-        var id: String { completion }
+        /// A template: choosing it puts its filled request in the message instead of `completion`.
+        var template: BriefTemplate?
+        /// The section title shown above this row.
+        var heading: String?
+        var id: String { template.map { "template:" + $0.id } ?? completion }
     }
 
     /// Commands matching what is typed after `/`, or the argument choices of the command being typed.
@@ -145,31 +153,72 @@ struct ChatAgentPanel: View {
             }
         }
         let typed = body.lowercased()
-        return agent.commands.filter { $0.name.hasPrefix(typed) || (typed.count > 1 && $0.name.contains(typed)) }
+        var commands = agent.commands.filter { $0.name.hasPrefix(typed) || (typed.count > 1 && $0.name.contains(typed)) }
             .prefix(10).map { command in
                 Suggestion(
                     completion: "/" + command.name + (command.args == nil ? "" : " "),
                     title: "/" + command.name + (command.args.map { " " + $0 } ?? ""), detail: command.summary,
                     runs: command.args == nil)
             }
+        if !commands.isEmpty { commands[0].heading = String(localized: "Commands") }
+        // A bare `/` lists the templates first; typed text keeps the commands first, so `/new` still runs /new.
+        let templates = templateSuggestions(String(body))
+        return typed.isEmpty ? templates + commands : commands + templates
+    }
+
+    /// Templates matching what is typed after `/` (accents ignored), by group, the ones that fit first.
+    private func templateSuggestions(_ typed: String) -> [Suggestion] {
+        BriefCatalog.sections(for: document.briefState, query: typed).flatMap { section in
+            section.templates.enumerated().map { index, template in
+                Suggestion(
+                    completion: "", title: template.title, detail: template.detail, runs: false, template: template,
+                    heading: index == 0 ? section.group.title : nil)
+            }
+        }
     }
 
     private var suggestionMenu: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
-                HStack {
-                    Text(suggestion.title).font(.callout.monospaced()).lineLimit(1).layoutPriority(1)
-                    Spacer(minLength: 8)
-                    Text(suggestion.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        let state = document.briefState
+        return ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
+                        if let heading = suggestion.heading {
+                            Text(heading.uppercased()).font(.caption2.bold()).foregroundStyle(.tertiary)
+                                .padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 2)
+                        }
+                        suggestionRow(suggestion, state: state)
+                            .background(index == selection ? Color.accentColor.opacity(0.3) : Color.clear)
+                            .contentShape(Rectangle())
+                            .onTapGesture { accept(suggestion, run: false) }
+                            .id(suggestion.id)
+                    }
                 }
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(index == selection ? Color.accentColor.opacity(0.3) : Color.clear)
-                .contentShape(Rectangle())
-                .onTapGesture { accept(suggestion, run: false) }
+            }
+            .frame(maxHeight: 260).fixedSize(horizontal: false, vertical: true)
+            .onChange(of: selection) {
+                let shown = suggestions
+                if shown.indices.contains(selection) { proxy.scrollTo(shown[selection].id) }
             }
         }
         .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .controlBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.white.opacity(0.1)))
+    }
+
+    @ViewBuilder private func suggestionRow(_ suggestion: Suggestion, state: BriefFit) -> some View {
+        HStack(spacing: 6) {
+            if let template = suggestion.template {
+                Image(systemName: template.systemImage).foregroundStyle(.cyan).frame(width: 16)
+                Text(suggestion.title).font(.callout).lineLimit(1).layoutPriority(1)
+                    .opacity(template.fits(state) ? 1 : 0.6)
+                if template.fits(state) { BriefFitBadge() }
+            } else {
+                Text(suggestion.title).font(.callout.monospaced()).lineLimit(1).layoutPriority(1)
+            }
+            Spacer(minLength: 8)
+            Text(suggestion.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .padding(.horizontal, 8).padding(.vertical, 4)
     }
 
     /// Keys from the input: the menu takes arrows, Tab, Enter and Escape while it shows.
@@ -198,7 +247,8 @@ struct ChatAgentPanel: View {
         case .tab: accept(chosen, run: false)
         // Enter on a command typed in full runs it; otherwise it completes the highlighted one.
         case .submit:
-            if agent.draft.trimmingCharacters(in: .whitespaces) == chosen.completion && chosen.runs {
+            if chosen.template == nil, agent.draft.trimmingCharacters(in: .whitespaces) == chosen.completion,
+               chosen.runs {
                 submit()
             } else {
                 accept(chosen, run: true)
@@ -208,8 +258,38 @@ struct ChatAgentPanel: View {
     }
 
     private func accept(_ suggestion: Suggestion, run: Bool) {
+        if let template = suggestion.template { return insert(template) }
         agent.draft = suggestion.completion
         if run && suggestion.runs { submit() }
+    }
+
+    /// Frame and Expand…, with their labels when the dock is wide enough.
+    private func composerChips(labels: Bool) -> some View {
+        HStack(spacing: 6) {
+            ComposerChip(title: "Frame", systemImage: "viewfinder", on: agent.draftImage != nil, showsTitle: labels,
+                         action: toggleFrame)
+                .help("Attach the current viewer frame to the message")
+            ComposerChip(title: "Expand…", systemImage: "arrow.up.left.and.arrow.down.right", showsTitle: labels) {
+                document.agents.expandToBrief(agent.draft)
+                agent.draft = ""
+            }.help("Finish this request in New brief (⌘K)")
+        }.fixedSize()
+    }
+
+    /// A template's filled request replaces the message; its first empty field is selected for typing.
+    private func insert(_ template: BriefTemplate) {
+        document.agents.askModel.pick(template)
+        agent.draft = template.prompt()
+    }
+
+    private func toggleFrame() {
+        guard agent.draftImage == nil else {
+            agent.draftImage = nil
+            return
+        }
+        Task {
+            do { agent.draftImage = try await document.captureAgentFrame() } catch { agent.error = error.localizedDescription }
+        }
     }
 
     private func submit() {
@@ -237,7 +317,7 @@ struct ChatAgentPanel: View {
         if status["ready"] == .bool(true) {
             return [status["provider"]?.string, status["model"]?.string].compactMap { $0 }.joined(separator: " · ")
         }
-        return status["detail"]?.string ?? String(localized: "Add an API key in Settings › Plugins")
+        return String(localized: "Not ready")
     }
 }
 

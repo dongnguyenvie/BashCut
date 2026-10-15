@@ -309,7 +309,7 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
-                + "color compare, agent dock, right column tab, inspector tab, Settings section and search, Knowledge section, "
+                + "color compare, agent dock and chat message, right column tab, inspector tab, Settings section and search, Knowledge section, "
                 + "Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's "
                 + "search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.",
             parameters: [
@@ -327,6 +327,7 @@ public enum CommandCatalog {
                                  cli: .option("reveal")),
                 CommandParameter("inspector", .string, "Inspector tab", choices: UIAction.inspectorTabs,
                                  cli: .option("inspector")),
+                CommandParameter("chatDraft", .string, "Text in the shown chat agent's message box, as if typed", cli: .option("chat-draft")),
                 CommandParameter("settingsSection", .string, "Settings section (open Settings with ui.action open settings)",
                                  choices: UIAction.settingsSections, cli: .option("settings-section")),
                 CommandParameter("settingsSearch", .string, "Settings search text: lists matching settings of every "

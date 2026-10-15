@@ -142,8 +142,9 @@ calls back with `method`.
   - each tab has the transcript with tool rows, an input box, Send and Stop, a new-conversation button, and a
     status line (model and key state) with a link to Settings › Plugins.
 
-  Survey, Write VO and Review fill the shown agent's input box; **Ask agent…** (⌘K) sends the request written in
-  the Ask agent sheet as a turn.
+  The quick actions and quick-start cards fill the shown agent's input box; the input has Templates, Frame and
+  Expand…, and `/` lists the commands and the templates; **New brief…** (⌘K) sends the request written in the New
+  brief sheet as a turn.
 
   **Send to Agent** (clip menu, Clip menu, multi-selection Inspector; `ui action clip.send-to-agent`) attaches the
   selected clips as chips over the input (`Clip · Main · 00:12–00:18`, a linked pair once). Chips stay when the

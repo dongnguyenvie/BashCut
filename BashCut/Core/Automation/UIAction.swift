@@ -197,7 +197,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .toggleAgentDock: "Show or hide the agent dock"
         case .toggleLibraryPanel: "Show or hide the library panel (left of the viewer)"
         case .toggleInspector: "Show or hide the Inspector (right of the viewer)"
-        case .askAgent: "Ask agent"
+        case .askAgent: "New brief"
         case .openClaudeTerminal: "Claude terminal"
         case .openCodexTerminal: "Codex terminal"
         case .openShellTerminal: "Shell terminal"

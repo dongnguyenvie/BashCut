@@ -122,7 +122,7 @@ A command in *italics* is planned and does not exist yet. "—" means manual onl
 | G-2 | Automation socket, `bashcut-mcp` and `bashcut` CLI (read, UI, edit, privileged) | P0 | Implemented (48 commands) | `bashcut help` lists them |
 | G-3 | ⌘K popover and context chip | P0 | Implemented | `ui action agent.ask`, `context get` |
 | G-4 | Attach the current frame to ⌘K | P1 | Implemented | — |
-| G-5 | Quick actions (prompt templates) | P1 | Implemented (Survey, Write VO, Review; Suggest FX, Lessons Planned) | — |
+| G-5 | Quick actions and brief templates by project state (New brief, 25 templates, Recent, Saved) | P1 | Implemented (Suggest FX, Lessons Planned) | `ui action agent.ask` |
 | G-6 | Per-project session resume, Claude ↔ Codex handoff | P1 | Implemented | — |
 | G-7 | Privileged commands with a confirmation sheet; audit log | P1 | Implemented | `export start`, `export otio` |
 | G-8 | Structured chat mode (headless) | P2 | Planned | — |

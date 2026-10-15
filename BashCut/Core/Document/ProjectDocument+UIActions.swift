@@ -98,7 +98,7 @@ extension ProjectDocument {
             if agents.isDetached { agents.attach() } else { ui.toggleAgentTab() }
         case .toggleLibraryPanel: ui.showLibraryPanel.toggle()
         case .toggleInspector: ui.toggleInspectorTab()
-        case .askAgent: ui.showAsk = true
+        case .askAgent: agents.openBrief()
         case .openClaudeTerminal, .openCodexTerminal, .openShellTerminal:
             // The dock's + menu: a new tab with its own session token.
             if !agents.isDetached { ui.showAgentDock = true }
@@ -344,6 +344,9 @@ extension ProjectDocument {
         if let tab = arguments.optionalString("rightTab").flatMap(RightColumnTab.init(rawValue:)) {
             if tab == .agent, agents.isDetached { agents.attach() }
             ui.selectRightTab(tab)
+        }
+        if let draft = arguments.optionalString("chatDraft"), let id = agents.chatPluginID {
+            chatAgents.model(for: id).draft = draft
         }
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
         if let search = arguments.optionalString("settingsSearch") { ui.settingsSearch = search }
