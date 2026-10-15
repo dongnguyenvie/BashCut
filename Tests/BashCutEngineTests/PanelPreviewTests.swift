@@ -127,6 +127,98 @@ struct PanelPreviewTests {
         #expect(await store.renders == 2)
     }
 
+    @Test("The wanted keys are every built-in kind and each preset's own motion and easing")
+    func wantedKeys() throws {
+        let kinds = TransitionMotion.groups.flatMap(\.kinds)
+        let builtIn = TransitionPreview.wantedKeys(presets: [])
+        #expect(builtIn.count == Set(kinds).count)
+        #expect(builtIn.contains(TransitionPreview.key(
+            motion: TransitionMotion.resolved(kind: "iris", motion: nil), easing: TimelineTransition.defaultEasing)))
+        let custom = JSONValue.object(["incoming": .object(["opacity": .array([.number(0), .number(0.5), .number(1)])])])
+        let keys = TransitionPreview.wantedKeys(presets: [
+            TransitionPreset(kind: "iris", easing: "inOut"), TransitionPreset(kind: "mine", motion: custom),
+        ])
+        #expect(keys.isSuperset(of: builtIn) && keys.count == builtIn.count + 2)
+        #expect(keys.contains(TransitionPreview.key(motion: try TransitionMotion(json: custom), easing: "linear")))
+    }
+
+    /// Writes a fake preview (GIF and poster) of `bytes` each, last shown `age` seconds ago.
+    private static func fake(_ key: String, in folder: URL, bytes: Int = 10, age: TimeInterval = 0) throws {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for name in ["\(key).gif", "\(key).png"] {
+            let file = folder.appendingPathComponent(name)
+            try Data(count: bytes).write(to: file)
+            try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -age)], ofItemAtPath: file.path)
+        }
+    }
+
+    private static func names(_ folder: URL) -> Set<String> {
+        Set((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [])
+    }
+
+    @Test("Pruning deletes previews no tile wants and half-written renders, and keeps the rest")
+    func pruneUnwanted() async throws {
+        let folder = Self.folder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Self.fake("wanted", in: folder)
+        try Self.fake("old-easing", in: folder)
+        try Data(count: 10).write(to: folder.appendingPathComponent(".partial.gif"))
+        let store = TransitionPreviewStore(folder: folder)
+        let removed = await store.prune(keeping: ["wanted"])
+        #expect(removed.count == 3)
+        #expect(Self.names(folder) == ["wanted.gif", "wanted.png"])
+        #expect(await store.prune(keeping: ["wanted"]).isEmpty)
+    }
+
+    @Test("Past the size bound the previews shown longest ago go first")
+    func pruneBySize() async throws {
+        let folder = Self.folder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Self.fake("newest", in: folder, bytes: 100, age: 10)
+        try Self.fake("middle", in: folder, bytes: 100, age: 100)
+        try Self.fake("oldest", in: folder, bytes: 100, age: 1000)
+        let store = TransitionPreviewStore(folder: folder)
+        await store.prune(keeping: ["newest", "middle", "oldest"], byteLimit: 450)
+        #expect(Self.names(folder) == ["newest.gif", "newest.png", "middle.gif", "middle.png"])
+        // Showing a preview marks it used: the oldest file shown now outlives one that was not.
+        try Self.fake("oldest", in: folder, bytes: 100, age: 1000)
+        let motion = TransitionMotion.resolved(kind: "iris", motion: nil)
+        let key = TransitionPreview.key(motion: motion, easing: "linear")
+        try Self.fake(key, in: folder, bytes: 100, age: 5000)
+        #expect(await store.preview(motion: motion, easing: "linear") != nil)
+        #expect(await store.renders == 0)
+        await store.prune(keeping: ["newest", "middle", "oldest", key], byteLimit: 450)
+        #expect(Self.names(folder) == ["newest.gif", "newest.png", "\(key).gif", "\(key).png"])
+    }
+
+    @Test("A preview that is rendering is never pruned, and pruneOnce runs once")
+    func pruneSkipsRenders() async throws {
+        let folder = Self.folder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Self.fake("stale", in: folder)
+        let store = TransitionPreviewStore(folder: folder)
+        let motion = TransitionMotion.resolved(kind: "dissolve", motion: nil)
+        let key = TransitionPreview.key(motion: motion, easing: "linear")
+        let rendering = Task { await store.preview(motion: motion, easing: "linear") }
+        var prunedDuring = 0
+        while await store.renders == 0 {
+            if let removed = await store.pruneWhileRendering(key) {
+                prunedDuring += 1
+                #expect(!removed.contains { $0.lastPathComponent.hasPrefix(key) })
+            }
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        #expect(prunedDuring > 0)
+        #expect(!Self.names(folder).contains("stale.gif"))
+        let url = try #require(await rendering.value)
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        await store.pruneOnce { [] }
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+        try Self.fake("again", in: folder)
+        await store.pruneOnce { [] }
+        #expect(Self.names(folder) == ["again.gif", "again.png"])
+    }
+
     @Test("A look's still is the frame graded like a clip: its exposure and its LUT")
     func looks() throws {
         let base = try #require(TransitionPreview.samples()?.incoming)
@@ -143,5 +235,12 @@ struct PanelPreviewTests {
         let swapped = Self.mean(try LookPreview.render(base: base, color: [:], lut: cube))
         let original = Self.mean(base)
         #expect(abs(swapped[0] - original[2]) < 8 && abs(swapped[2] - original[0]) < 8)
+    }
+}
+
+extension TransitionPreviewStore {
+    /// `prune(keeping: [])` only while `key` renders, in one step on the actor.
+    fileprivate func pruneWhileRendering(_ key: String) -> [URL]? {
+        running[key] == nil ? nil : prune(keeping: [])
     }
 }
