@@ -219,6 +219,28 @@ struct PanelPreviewTests {
         #expect(Self.names(folder) == ["again.gif", "again.png"])
     }
 
+    @Test("An effect preset's saved GIF gives its first frame for the still tile and every frame with its delay")
+    func effectPreview() throws {
+        let samples = try #require(TransitionPreview.samples())
+        let folder = Self.folder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let gif = folder.appendingPathComponent("effect.gif")
+        try AnimatedImageMovie.writeGIF([samples.outgoing, samples.incoming, samples.outgoing], delay: 0.25, to: gif)
+        let first = try #require(AnimatedPreview.firstFrame(gif))
+        #expect(Self.distance(Self.mean(first), Self.mean(samples.outgoing)) < 12)
+        let loaded = AnimatedPreview.frames(gif)
+        #expect(loaded.images.count == 3)
+        #expect(abs(loaded.delay - 0.25) < 0.01)
+        #expect(Self.distance(Self.mean(loaded.images[1]), Self.mean(samples.incoming)) < 12)
+        // No delay (or a tiny one) plays at 10 fps; a missing file has no frames.
+        let fast = folder.appendingPathComponent("fast.gif")
+        try AnimatedImageMovie.writeGIF([samples.outgoing, samples.incoming], delay: 0, to: fast)
+        #expect(AnimatedPreview.frames(fast).delay == 0.1)
+        #expect(AnimatedPreview.frames(folder.appendingPathComponent("none.gif")).images.isEmpty)
+        #expect(AnimatedPreview.firstFrame(folder.appendingPathComponent("none.gif")) == nil)
+    }
+
     @Test("A look's still is the frame graded like a clip: its exposure and its LUT")
     func looks() throws {
         let base = try #require(TransitionPreview.samples()?.incoming)
