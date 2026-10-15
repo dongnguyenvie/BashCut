@@ -37,8 +37,10 @@ extension EditorView {
 
     private func trailingItems(compact: Bool) -> some View {
         HStack(spacing: 8) {
-            AgentStatusButton(document: document, compact: compact)
-            activity(compact: compact)
+            // Nothing sits here while the agent is idle and nothing runs: the save state is the dot on the project
+            // name, export progress is on the Export button and the plugin edits dot is on Plugins.
+            if document.activity.status != .idle { AgentStatusButton(document: document, compact: compact) }
+            if document.busy { ProgressView().controlSize(.mini).help("Working…") }
             Spacer(minLength: 8)
             if !compact {
                 PluginActionStrip(document: document, placement: "toolbar", compact: true)
@@ -76,9 +78,13 @@ extension EditorView {
         } label: {
             HStack(spacing: 5) {
                 Text(projectName).fontWeight(.semibold).lineLimit(1).frame(maxWidth: 200)
-                if document.dirty {
-                    Circle().fill(Color.secondary).frame(width: 6, height: 6)
-                        .help("Unsaved changes; BashCut saves automatically every 30 seconds")
+                if document.fileURL != nil {
+                    // Grey while there are unsaved changes (BashCut saves every 30 seconds), green when saved.
+                    Circle().fill(document.dirty ? Color.secondary : Color.green).frame(width: 6, height: 6)
+                        .help(String(
+                            format: String(localized: "%@ · rev %d"),
+                            document.dirty ? String(localized: "Edited") : String(localized: "Saved"),
+                            document.project.revision))
                 }
             }
         }
@@ -175,6 +181,7 @@ extension EditorView {
                 Button("Import Footage…") { document.run(.importMedia) }.disabled(!document.canPerform(.importMedia))
             }
             Button("History…") { document.run(.showHistory) }
+            if document.exports.report != nil { Button("Export report") { document.ui.showExportReport = true } }
             Section {
                 Button("Agent Skills…") { document.run(.showAgentKit) }
                 Button("Doctor…") { document.run(.showDoctor) }
@@ -215,74 +222,6 @@ extension EditorView {
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .accessibilityLabel("More")
         .help("More")
-    }
-
-    /// What the app is doing: export progress, work in progress, plugin edits waiting, or the save state.
-    /// Compact: one icon, with the details in its help.
-    private func activity(compact: Bool) -> some View {
-        HStack(spacing: 6) {
-            if compact {
-                compactActivity
-            } else if document.exports.isRunning {
-                ProgressView(value: document.exports.progress).frame(width: 140)
-                Text(document.exports.queue.detail ?? String(localized: "Exporting")).lineLimit(1)
-                Text(document.exports.progress, format: .percent.precision(.fractionLength(0))).monospacedDigit()
-                if document.exports.queue.queuedCount > 0 {
-                    Text("\(document.exports.queue.queuedCount) queued").foregroundStyle(.secondary)
-                }
-                Button { document.run(.cancelExport) } label: { Image(systemName: "xmark.circle.fill") }
-                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Cancel export")
-            } else if document.busy {
-                ProgressView().controlSize(.mini)
-                Text("Working…")
-            } else if !document.plugins.proposals.isEmpty {
-                Button {
-                    document.ui.showPluginProposals = true
-                } label: {
-                    Label("\(document.plugins.proposals.count) plugin edits", systemImage: "puzzlepiece.extension.fill")
-                }.buttonStyle(.plain).foregroundStyle(.orange).help("Review edits plugin hooks proposed")
-            } else if document.fileURL != nil {
-                Image(systemName: document.dirty ? "circle.fill" : "checkmark.circle")
-                    .foregroundStyle(document.dirty ? Color.secondary : Color.green).imageScale(.small)
-                Text(document.dirty ? "Edited" : "Saved")
-                Text(String(format: "rev %d", document.project.revision)).foregroundStyle(.secondary).monospacedDigit()
-                if document.exports.report != nil {
-                    Button("Export report") { document.ui.showExportReport = true }.buttonStyle(.link)
-                }
-            } else {
-                Text("BashCut").foregroundStyle(.secondary)
-            }
-        }
-        .font(.caption)
-        .padding(.horizontal, compact ? 7 : 10).frame(minWidth: compact ? nil : 220).frame(height: 24)
-        // Tinted while an export runs, so it stands out from the usual save state.
-        .background(RoundedRectangle(cornerRadius: 7).fill(
-            document.exports.isRunning ? Color.cyan.opacity(0.18) : Color.black.opacity(0.25)))
-        .overlay(RoundedRectangle(cornerRadius: 7).stroke(
-            document.exports.isRunning ? Color.cyan.opacity(0.45) : Color.white.opacity(0.08)))
-    }
-}
-
-extension EditorView {
-    @ViewBuilder fileprivate var compactActivity: some View {
-        if document.exports.isRunning {
-            ExportProgressRing(progress: document.exports.progress).help("Exporting")
-        } else if document.busy {
-            ProgressView().controlSize(.mini)
-        } else if !document.plugins.proposals.isEmpty {
-            Button {
-                document.ui.showPluginProposals = true
-            } label: {
-                Image(systemName: "puzzlepiece.extension.fill")
-            }.buttonStyle(.plain).foregroundStyle(.orange).help("Review edits plugin hooks proposed")
-        } else if document.fileURL != nil {
-            Image(systemName: document.dirty ? "circle.fill" : "checkmark.circle")
-                .foregroundStyle(document.dirty ? Color.secondary : Color.green).imageScale(.small)
-                .help(String(format: String(localized: "%@ · rev %d"),
-                             document.dirty ? String(localized: "Edited") : String(localized: "Saved"), document.project.revision))
-        } else {
-            Image(systemName: "scissors").foregroundStyle(.secondary).help("BashCut")
-        }
     }
 }
 

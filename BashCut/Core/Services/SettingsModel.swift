@@ -122,8 +122,14 @@ public final class SettingsModel {
     }
     /// Width of the timeline's layer header in points (#531), kept within `EditorUIState.timelineLeadingRange`.
     public var timelineHeaderWidth: Double {
-        didSet { defaults.set(timelineHeaderWidth, forKey: Keys.timelineHeaderWidth) }
+        didSet {
+            defaults.set(timelineHeaderWidth, forKey: Keys.timelineHeaderWidth)
+            timelineHeaderWidthChosen = true
+        }
     }
+    /// Whether the user set the header width (dragged it or switched it); until then it follows the window width
+    /// (`EditorUIState.defaultTimelineLeading`).
+    public private(set) var timelineHeaderWidthChosen = false
     /// Most recent first, at most `recentHistoryLimit`.
     public private(set) var recentHistory: [RecentProject]
     /// The newest `recentProjectLimit` of the history: the menus and the Welcome screen.
@@ -196,6 +202,7 @@ public final class SettingsModel {
         timelineHeaderWidth = (defaults.object(forKey: Keys.timelineHeaderWidth) as? Double).map {
             min(max($0, EditorUIState.timelineLeadingRange.lowerBound), EditorUIState.timelineLeadingRange.upperBound)
         } ?? EditorUIState.compactTimelineLeading
+        timelineHeaderWidthChosen = defaults.object(forKey: Keys.timelineHeaderWidth) != nil
         if let entries = defaults.array(forKey: Keys.recentHistory) as? [[String: Any]] {
             recentHistory = entries.compactMap { entry in
                 (entry["path"] as? String).map {
