@@ -70,6 +70,7 @@ struct PluginViewLayoutTests {
         #expect(event.json.object["type"] == .string("drag"))
         let answer = try tree(#"{"body": [], "libraryItem": "project:abc123"}"#)
         #expect(answer.libraryItem == "project:abc123")
+        #expect(answer.json.object["libraryItem"] == .string("project:abc123"))
         #expect(try tree(#"{"body": [], "libraryItem": "nowhere"}"#).libraryItem == nil)
     }
 }

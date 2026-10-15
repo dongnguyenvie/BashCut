@@ -76,7 +76,8 @@ private final class PluginWindowDelegate: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow(_ key: String, model: PluginViewModel) -> NSWindow {
-        let editor = NSApp.mainWindow ?? NSApp.keyWindow
+        // The editor even when the app is in the background (a window opened by a command line).
+        let editor = NSApp.windows.first { $0.contentView is NSHostingView<EditorView> } ?? NSApp.mainWindow
         let size = PluginWindowLayout.defaultSize(editor: editor?.frame.size)
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),

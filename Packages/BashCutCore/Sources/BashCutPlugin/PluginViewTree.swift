@@ -273,6 +273,7 @@ public struct PluginViewTree: Sendable, Equatable {
         var fields: [String: JSONValue] = ["body": .array(body.map(\.json))]
         if let title { fields["title"] = .string(title) }
         if let refreshSeconds { fields["refreshSeconds"] = .integer(refreshSeconds) }
+        if let libraryItem { fields["libraryItem"] = .string(libraryItem) }
         return .object(fields)
     }
 }
