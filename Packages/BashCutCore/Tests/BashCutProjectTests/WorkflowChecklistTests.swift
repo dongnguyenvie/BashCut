@@ -133,6 +133,58 @@ struct WorkflowChecklistTests {
         #expect(WorkflowChecklist.graphicsDraftGuard(project) == nil)
     }
 
+    @Test("Finalising draft graphics keeps the draft audit; changing a graphic's inputs does not (#634)")
+    func graphicFinalKeepsAudit() throws {
+        // Two uses of a 2.5 s lower third rendered as a draft (15 fps, 38 frames): one played through, one from 7.
+        let recorded: [String: JSONValue] = [
+            "composition": .string("/c/lower-third"), "name": .string("lower-third"), "fps": .integer(30),
+            "variables": .object(["title": .string("Hi")]), "seconds": .number(2.5),
+        ]
+        func graphic(_ id: String, fps: Int, frames: Int, draft: Bool) -> Media {
+            var media = ProjectFixtures.media(id, path: "\(id).mov", frames: frames, fps: FrameRate(fps, 1), kind: "video")
+            var graphics = recorded
+            graphics["frames"] = .integer(frames)
+            if draft { graphics["draft"] = .bool(true) }
+            media.fields["data"] = .object(["graphics": .object(graphics)])
+            return media
+        }
+        var project = try project().applying(
+            .group(
+                label: "Draft", author: .agent,
+                ops: [
+                    .addMedia(graphic("draft", fps: 15, frames: 38, draft: true)),
+                    .insert(track: "v1", item: Item(id: "g", media: "draft", at: 60, duration: 76)),
+                    .insert(track: "v1", item: Item(id: "h", media: "draft", at: 136, duration: 20, sourceIn: 7)),
+                ])
+        ).project
+        let pass = entry("audit", ["point": .string("draft"), "verdict": .string("pass"), "by": .string("critic"),
+                                   "timeline": .string(WorkflowChecklist.timelineFingerprint(project))])
+        #expect(WorkflowChecklist.draftGuard(project, entries: [pass]) == nil)
+
+        // graphic plan --final: new media at 30 fps (75 frames), in-points rescaled, the played-through use trimmed.
+        project = try project.applying(
+            .group(
+                label: "Final graphics", author: .agent,
+                ops: [
+                    .addMedia(graphic("final", fps: 30, frames: 75, draft: false)),
+                    .setSource(item: "g", media: "final", sourceIn: 0, reversed: nil),
+                    .setSource(item: "h", media: "final", sourceIn: 14, reversed: nil),
+                    .trim(item: "g", edge: .end, toFrame: 135, ripple: false),
+                ])
+        ).project
+        #expect(WorkflowChecklist.graphicDrafts(project).isEmpty)
+        #expect(WorkflowChecklist.draftGuard(project, entries: [pass]) == nil)
+
+        // A shorter use, a slip or new text is a change the audit has not seen.
+        for change: EditOperation in [
+            .trim(item: "g", edge: .end, toFrame: 120, ripple: false), .slip(item: "h", sourceIn: 20),
+            .setMediaData(media: "final", patch: ["graphics": .object(recorded.merging(["variables": .object(["title": .string("Bye")])]) { $1 })]),
+        ] {
+            let changed = try project.applying(change).project
+            #expect(WorkflowChecklist.draftGuard(changed, entries: [pass])?.category == "audit_missing")
+        }
+    }
+
     @Test("A final export needs a passing draft audit of this timeline, or the user's G5 approval")
     func draftGuard() throws {
         var project = try project()

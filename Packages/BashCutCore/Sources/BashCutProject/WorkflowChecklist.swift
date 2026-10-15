@@ -59,12 +59,14 @@ public enum WorkflowChecklist {
     }
 
     /// What the viewer sees and hears: tracks, transitions, markers, looks, audio settings and the format. An audit
-    /// stays valid while this does not change (notes such as the brief, plan or selects do not count).
+    /// stays valid while this does not change (notes such as the brief, plan or selects do not count). Items showing a
+    /// plugin graphic count by the graphic, not its render (`graphicTracks`), so finalising drafts keeps the audit.
     public static func timelineFingerprint(_ project: Project) -> String {
         var fields: [String: JSONValue] = [:]
         for key in ["tracks", "transitions", "markers", "luts", "audio", "format", "clipFill"] {
             fields[key] = project[key] ?? .null
         }
+        fields["tracks"] = graphicTracks(project)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let data = (try? encoder.encode(JSONValue.object(fields))) ?? Data()
