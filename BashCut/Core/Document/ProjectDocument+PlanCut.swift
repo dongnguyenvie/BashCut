@@ -88,7 +88,8 @@ extension ProjectDocument {
         do { return try PlanCut.patch(value, with: patch) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
     }
 
-    /// The list from `cut`, else `plan.cut`, with `patch` merged over it.
+    /// The list from `cut`, else `plan.cut`, with `patch` merged over it; entries that cannot be read are left out
+    /// with an error each (`spec.invalid`), so plan check lists them all at once.
     func planCutSpec(_ arguments: CommandArguments) throws -> PlanCut.Spec {
         let value = try planCutValue(arguments)
         guard let value else {
@@ -96,7 +97,7 @@ extension ProjectDocument {
                 "remediation": .object(["command": .string("project.set-data"), "hint": .string("plan --merge with {cut: …}")]),
             ]))
         }
-        do { return try PlanCut.decode(value) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
+        do { return try PlanCut.decodeAll(value) } catch let error as ProjectError { throw RPCFailure.invalid(error) }
     }
 
     /// The project's review limits with `plan.cut.review` merged over them; nil when the plan sets none.
@@ -237,11 +238,14 @@ extension ProjectDocument {
         var problems = resolveProblems + presetProblems + planFactProblems(spec)
         var result: [String: JSONValue] = ["baseRev": .integer(project.revision)]
         var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
-        do {
-            built = try PlanCut.build(
-                spec, clips: clips, on: project, textPresets: textPresets, transcripts: transcripts, takes: takes)
-        } catch {
-            problems.append(PlanCut.Problem(id: "cannot-build", severity: "error", entry: nil, detail: "\(error)"))
+        // With an entry left out, the build would report what its absence causes; its own error says enough.
+        if spec.invalid.isEmpty {
+            do {
+                built = try PlanCut.build(
+                    spec, clips: clips, on: project, textPresets: textPresets, transcripts: transcripts, takes: takes)
+            } catch {
+                problems.append(PlanCut.Problem(id: "cannot-build", severity: "error", entry: nil, detail: "\(error)"))
+            }
         }
         let review = planReview(spec)
         if let built {
@@ -249,6 +253,7 @@ extension ProjectDocument {
             if let review { after["review"] = .object(review) }
             let facts = PlanCut.facts(spec, clips: clips, placements: built.placements, on: after)
             problems += facts.problems + planFontProblems(after) + planStyleProblems(after)
+                + PlanCut.transitionProblems(spec, on: after)
             let fps = after.fps.value
             result["duration"] = .number((Double(after.duration) / fps * 100).rounded() / 100)
             result["clips"] = .array(facts.clips)

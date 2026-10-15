@@ -30,6 +30,8 @@ public enum PlanCut {
         public var cover: [Cover] = []
         /// `zoom`, `pan`, `tilt` for its own picture (a punch-in), as the item's `transform`.
         public var transform: [String: JSONValue] = [:]
+        /// The cut transition into the clip from the one before it (#623).
+        public var transition: Edge?
     }
 
     /// A picture laid over a clip's sound: source seconds `from` of `media`, for `seconds` (the last: the rest).
@@ -56,6 +58,9 @@ public enum PlanCut {
         public var style: [String: JSONValue]
         /// Text style fields (font, size, fill, stroke…), over the preset's.
         public var textStyle: [String: JSONValue] = [:]
+        /// Its own In and Out (the item's `enter`, `exit`).
+        public var enter: Edge?
+        public var exit: Edge?
     }
 
     /// The `textStyle` fields a title's `style` may give directly.
@@ -125,6 +130,10 @@ public enum PlanCut {
         public var until: String?
         public var main: Bool
         public var from: Double
+        /// The cut transition into it from the picture before it on its layer; its own In and Out.
+        public var transition: Edge?
+        public var enter: Edge?
+        public var exit: Edge?
     }
 
     public struct Spec: Sendable {
@@ -141,6 +150,8 @@ public enum PlanCut {
         public var unknownFields: [Problem] = []
         /// The fact keys each entry cites (`facts: [key]`), checked against the project's facts and claims.
         public var factReferences: [(entry: String, keys: [String])] = []
+        /// Entries that could not be read, one error each, all at once (the entries are left out).
+        public var invalid: [Problem] = []
     }
 
     static let roles = ["speech", "broll", "underVO"]
@@ -179,72 +190,16 @@ public enum PlanCut {
 
     // MARK: Decoding
 
-    public static func decode(_ value: JSONValue) throws -> Spec {
-        guard case .object(let root) = value else { throw ProjectError.invalid("plan.cut must be an object {clips, titles, music}") }
-        let clipValues = root["clips"]?.array ?? []
-        let lineValues = root["voiceover"]?.array ?? []
-        guard !clipValues.isEmpty || !lineValues.isEmpty else {
-            throw ProjectError.invalid("plan.cut must list at least one clip or one voiceover line")
-        }
-        var ids = IDs()
-        let clips = try clipValues.enumerated().map { index, value in
-            try decodeClip(value.object, id: ids.take(value.object["id"]?.string, "c", index))
-        }
-        let lines = try lineValues.enumerated().map { index, value in
-            try decodeLine(value.object, id: ids.take(value.object["id"]?.string, "l", index))
-        }
-        let sections = Set(clips.compactMap(\.section) + lines.compactMap(\.section))
-        let titles = try (root["titles"]?.array ?? []).enumerated().map { index, value in
-            try decodeTitle(
-                value.object, id: ids.take(value.object["id"]?.string, "t", index), entries: clips.map(\.id) + lines.map(\.id),
-                sections: sections)
-        }
-        let graphicValues = root["graphics"]?.array ?? []
-        var graphicIDs: [String] = []
-        for (index, value) in graphicValues.enumerated() {
-            graphicIDs.append(try ids.take(value.object["id"]?.string, "g", index))
-        }
-        let anchors = clips.map(\.id) + lines.map(\.id) + titles.map(\.id) + graphicIDs
-        let graphics = try zip(graphicValues, graphicIDs).map { value, id in
-            try decodeGraphic(value.object, id: id, entries: anchors, sections: sections)
-        }
-        var music: Music?
-        if case .object(let row)? = root["music"] {
-            guard let media = row["media"]?.string else { throw ProjectError.invalid("music: give media") }
-            let duck = row["duckDb"]?.double
-            if let duck, !(-60...0).contains(duck) { throw ProjectError.invalid("music.duckDb: -60…0") }
-            music = Music(media: media, from: max(0, row["from"]?.double ?? 0), volumeDb: row["volumeDb"]?.double, duckDb: duck)
-        }
-        var review: [String: JSONValue]?
-        if let value = root["review"], value != .null {
-            guard case .object(let limits) = value else { throw ProjectError.invalid("plan.cut.review: expected {limit: number}") }
-            review = limits
-        }
-        var spec = Spec(clips: clips, titles: titles, music: music, captions: try decodeCaptions(root["captions"]), review: review)
-        spec.voiceover = lines
-        spec.graphics = graphics
-        spec.sfx = try (root["sfx"]?.array ?? []).enumerated().map { index, value in
-            try decodeSound(value.object, id: ids.take(value.object["id"]?.string, "s", index), entries: anchors, sections: sections)
-        }
-        spec.unknownFields = unknownFields(clipValues, titles: root["titles"]?.array ?? [], ids: clips.map(\.id) + titles.map(\.id))
-            + unknownSoundFields(root["sfx"]?.array ?? [], ids: spec.sfx.map(\.id))
-            + unknownEntryFields(lineValues, ids: lines.map(\.id), known: lineKeys)
-            + unknownEntryFields(graphicValues, ids: graphicIDs, known: graphicKeys)
-        spec.factReferences = try factReferences([
-            (clipValues, clips.map(\.id)), (lineValues, lines.map(\.id)), (root["titles"]?.array ?? [], titles.map(\.id)),
-            (graphicValues, graphicIDs), (root["sfx"]?.array ?? [], spec.sfx.map(\.id)),
-        ])
-        return spec
-    }
-
     static let clipKeys: Set<String> = [
         "id", "media", "quote", "words", "from", "to", "seconds", "section", "speed", "volumeDb", "role", "cover", "facts",
+        "transition",
     ]
     static let coverKeys: Set<String> = ["media", "from", "seconds"]
     static let soundKeys: Set<String> = ["id", "media", "on", "section", "at", "offset", "seconds", "volumeDb", "facts"]
     static let lineKeys: Set<String> = ["id", "text", "caption", "take", "section", "at", "pause", "volumeDb", "facts"]
     static let graphicKeys: Set<String> = [
         "id", "media", "on", "section", "at", "offset", "seconds", "until", "track", "from", "render", "facts",
+        "transition", "enter", "exit",
     ]
 
     static func unknownSoundFields(_ sounds: [JSONValue], ids: [String]) -> [Problem] {
@@ -263,7 +218,9 @@ public enum PlanCut {
         }
     }
 
-    static let titleKeys: Set<String> = ["id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style", "facts"]
+    static let titleKeys: Set<String> = [
+        "id", "text", "clip", "offset", "at", "section", "seconds", "preset", "style", "facts", "enter", "exit",
+    ]
     /// Picture framing a clip or cover may give (a punch-in or reframe), with their item ranges.
     static let transformKeys: [String: ClosedRange<Double>] = ["zoom": 0.01...100, "pan": -65536...65536, "tilt": -65536...65536]
     /// Notes an agent leaves on an entry; read by nobody, never warned about.
@@ -429,5 +386,114 @@ public enum PlanCut {
             guard let id = value.object["id"]?.string else { return nil }
             return (id, value.object["label"]?.string ?? id)
         }
+    }
+}
+
+// MARK: Decoding the whole list
+
+extension PlanCut {
+    /// The list; throws at an entry that cannot be read (every such entry, in one message).
+    public static func decode(_ value: JSONValue) throws -> Spec {
+        let spec = try decodeAll(value)
+        guard spec.invalid.isEmpty else {
+            throw ProjectError.invalid(spec.invalid.map(\.detail).joined(separator: "; "))
+        }
+        return spec
+    }
+
+    /// The list with every entry that cannot be read left out and reported in `invalid` (all at once, so one fix
+    /// covers them); throws only when the list itself is not one.
+    public static func decodeAll(_ value: JSONValue) throws -> Spec {
+        guard case .object(let root) = value else { throw ProjectError.invalid("plan.cut must be an object {clips, titles, music}") }
+        let clipValues = root["clips"]?.array ?? []
+        let lineValues = root["voiceover"]?.array ?? []
+        guard !clipValues.isEmpty || !lineValues.isEmpty else {
+            throw ProjectError.invalid("plan.cut must list at least one clip or one voiceover line")
+        }
+        let titleValues = root["titles"]?.array ?? [], graphicValues = root["graphics"]?.array ?? []
+        let soundValues = root["sfx"]?.array ?? []
+        var invalid: [Problem] = []
+        func read<T>(_ entry: String?, _ body: () throws -> T) -> T? {
+            do { return try body() } catch {
+                invalid.append(Problem(id: "entry-invalid", severity: "error", entry: entry, detail: error.localizedDescription))
+                return nil
+            }
+        }
+        var ids = IDs()
+        func take(_ values: [JSONValue], _ prefix: String) -> [String?] {
+            values.enumerated().map { index, value in
+                read(value.object["id"]?.string) { try ids.take(value.object["id"]?.string, prefix, index) }
+            }
+        }
+        let clipIDs = take(clipValues, "c"), lineIDs = take(lineValues, "l"), titleIDs = take(titleValues, "t")
+        let graphicIDs = take(graphicValues, "g")
+        let sections = Set((clipValues + lineValues).compactMap { $0.object["section"]?.string })
+        // An entry that cannot be read still anchors others, so its error is the only one it causes.
+        let spoken = (clipIDs + lineIDs).compactMap { $0 }
+        let anchors = spoken + (titleIDs + graphicIDs).compactMap { $0 }
+        // Each entry by its ID, read with `body`, and its transitions read apart so both errors show.
+        func entries<T>(_ values: [JSONValue], _ ids: [String?], _ body: ([String: JSONValue], String) throws -> T) -> [T] {
+            zip(values, ids).compactMap { value, id in
+                guard let id else { return nil }
+                return read(id) { try body(value.object, id) }
+            }
+        }
+        func edge(_ row: [String: JSONValue], _ id: String, _ field: String) -> Edge? {
+            read(id) { try decodeEdge(row[field], entry: id, field: field) } ?? nil
+        }
+        let clips = entries(clipValues, clipIDs) { row, id in
+            var clip = try decodeClip(row, id: id)
+            clip.transition = edge(row, id, "transition")
+            return clip
+        }
+        let lines = entries(lineValues, lineIDs) { row, id in try decodeLine(row, id: id) }
+        let titles = entries(titleValues, titleIDs) { row, id in
+            var title = try decodeTitle(row, id: id, entries: spoken, sections: sections)
+            (title.enter, title.exit) = (edge(row, id, "enter"), edge(row, id, "exit"))
+            return title
+        }
+        let graphics = entries(graphicValues, graphicIDs) { row, id in
+            var graphic = try decodeGraphic(row, id: id, entries: anchors, sections: sections)
+            (graphic.transition, graphic.enter, graphic.exit) = (
+                edge(row, id, "transition"), edge(row, id, "enter"), edge(row, id, "exit"))
+            return graphic
+        }
+        var music: Music?
+        if case .object(let row)? = root["music"] {
+            music = read("music") {
+                guard let media = row["media"]?.string else { throw ProjectError.invalid("music: give media") }
+                let duck = row["duckDb"]?.double
+                if let duck, !(-60...0).contains(duck) { throw ProjectError.invalid("music.duckDb: -60…0") }
+                return Music(media: media, from: max(0, row["from"]?.double ?? 0), volumeDb: row["volumeDb"]?.double, duckDb: duck)
+            }
+        }
+        var review: [String: JSONValue]?
+        if let value = root["review"], value != .null {
+            review = read("review") {
+                guard case .object(let limits) = value else { throw ProjectError.invalid("plan.cut.review: expected {limit: number}") }
+                return limits
+            }
+        }
+        let captions = read("captions") { try decodeCaptions(root["captions"]) } ?? nil
+        var spec = Spec(clips: clips, titles: titles, music: music, captions: captions, review: review)
+        spec.voiceover = lines
+        spec.graphics = graphics
+        let soundIDs = take(soundValues, "s")
+        spec.sfx = entries(soundValues, soundIDs) { row, id in
+            try decodeSound(row, id: id, entries: anchors, sections: sections)
+        }
+        spec.unknownFields = unknownFields(clipValues, titles: titleValues, ids: clipIDs.map { $0 ?? "" } + titleIDs.map { $0 ?? "" })
+            + unknownSoundFields(soundValues, ids: soundIDs.map { $0 ?? "" })
+            + unknownEntryFields(lineValues, ids: lineIDs.map { $0 ?? "" }, known: lineKeys)
+            + unknownEntryFields(graphicValues, ids: graphicIDs.map { $0 ?? "" }, known: graphicKeys)
+        spec.factReferences = read(nil) {
+            try factReferences([
+                (clipValues, clipIDs.map { $0 ?? "" }), (lineValues, lineIDs.map { $0 ?? "" }),
+                (titleValues, titleIDs.map { $0 ?? "" }), (graphicValues, graphicIDs.map { $0 ?? "" }),
+                (soundValues, soundIDs.map { $0 ?? "" }),
+            ])
+        } ?? []
+        spec.invalid = invalid
+        return spec
     }
 }

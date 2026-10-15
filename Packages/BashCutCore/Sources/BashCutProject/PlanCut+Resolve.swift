@@ -7,7 +7,7 @@ extension PlanCut {
         _ spec: Spec, project: Project, transcripts: [String: SourceTranscript]
     ) -> (clips: [Resolved], problems: [Problem]) {
         var resolved: [Resolved] = []
-        var problems: [Problem] = []
+        var problems = spec.invalid
         for clip in spec.clips {
             guard let media = project.media.first(where: { $0.id == clip.media }) else {
                 problems.append(Problem(id: "unknown-media", severity: "error", entry: clip.id, detail: "No media \(clip.media) in the project"))
