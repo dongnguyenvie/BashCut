@@ -65,7 +65,7 @@ extension AgentDockModel {
             try AgentKitInstall.syncSkills(of: kit, into: skills, plugins: document.agentPluginSkills())
         }
         DebugLog.write("agents", "\(pluginID) terminal: \(launch.executable) with \(launch.arguments.count) argument(s)")
-        return try start(
+        return try await start(
             PluginTerminalProvider(plugin: plugin, launch: launch), canEdit: canEdit, prompt: prompt,
             icon: plugin.manifest.terminal?.symbol ?? "terminal")
     }

@@ -99,7 +99,7 @@ extension AgentDockModel {
     private func startForBrief(_ provider: AgentProviderID) async throws -> TerminalSession {
         let title = agentChoices.first { $0.id == provider }?.title ?? provider.rawValue
         askModel.status = String(format: String(localized: "Starting %@…"), title)
-        if let builtIn = AgentProviders.provider(provider) { return try startBuiltIn(builtIn) }
+        if let builtIn = AgentProviders.provider(provider) { return try await startBuiltIn(builtIn) }
         return try await openPluginTerminal(provider.rawValue)
     }
 

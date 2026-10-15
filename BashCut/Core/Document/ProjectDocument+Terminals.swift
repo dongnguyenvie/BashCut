@@ -69,7 +69,7 @@ extension ProjectDocument {
             let continues = choice.isAgent && agents.canContinue(id)
             if !agents.isDetached { document.ui.showAgentDock = true }
             let session = try await {
-                if let provider = AgentProviders.provider(id) { return try agents.startBuiltIn(provider) }
+                if let provider = AgentProviders.provider(id) { return try await agents.startBuiltIn(provider) }
                 return try await agents.openPluginTerminal(id.rawValue)
             }()
             return .object([
