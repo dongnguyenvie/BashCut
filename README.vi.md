@@ -65,7 +65,8 @@ Show Changes và hoàn tác được. Xem [Tự động hóa](docs/guides/automa
   jump-cut, flash in/out, hoặc đường cong tự vẽ)
 - **Chuyển động**: keyframe cho vị trí, tỉ lệ, xoay, độ mờ và âm lượng, hiện ngay trên timeline, cùng preset hoạt
   ảnh (zoom, pan, Ken Burns, pop-in, slide-up, zoom-punch); crop và bo góc
-- **Chuyển cảnh**: dissolve, whip, blink, zoom, spin, shutter, wipe và preset chuyển cảnh đã lưu
+- **Chuyển cảnh**: 39 kiểu chia theo nhóm (fade, whip, wipe, shape, crash, roll, seamless, glitch…) và preset
+  chuyển cảnh đã lưu; phụ đề, tiêu đề, sticker và overlay cũng dùng được chúng làm hiệu ứng vào (In) và ra (Out)
 - **Ảnh tĩnh** và sticker (emoji hoặc ảnh) trên timeline
 - **Đổi khung hình** của project đang mở (9:16, 16:9, 1:1…) mà không phải dựng lại
 
@@ -84,7 +85,9 @@ Show Changes và hoàn tác được. Xem [Tự động hóa](docs/guides/automa
 
 ### Âm thanh
 
-- Âm lượng, fade, keyframe âm lượng, ducking nhạc dưới giọng nói, chuẩn hoá loudness khi xuất
+- Âm lượng, fade, keyframe âm lượng, chuẩn hoá loudness khi xuất
+- **Nhạc nền** giữ một mức cố định, thấp hơn độ to đo được của giọng nói; chỉ ducking khi bạn yêu cầu, và nhạc
+  được giữ thấp qua các quãng nghỉ ngắn nên không nhấp nhô giữa các câu
 - Thu voiceover, và tạo giọng đọc bằng plugin (VieNeu TTS cho tiếng Việt, giọng clone)
 - **Beat grid** từ nhạc để cắt theo nhịp
 - Đo loudness, true peak và năng lượng dải giọng nói, **đồng bộ** camera với video quay màn hình bằng âm thanh, không
@@ -101,12 +104,20 @@ Show Changes và hoàn tác được. Xem [Tự động hóa](docs/guides/automa
 - Review: khoảng trống trong hình, khung lặp giữa hai cut, dòng phụ đề quá dài, lỗi nhận dạng lặp, voiceover quá gần
   giọng thật; lịch sử đầy đủ; autosave có khôi phục khi crash; tự tải lại khi file bị sửa bên ngoài, có xử lý xung đột
 - Proxy xem trước cho footage nặng; preset xuất cho TikTok, YouTube 1080p và 4K, bản nháp nhanh và ProRes, chạy nền
-  theo hàng đợi, có phụ đề burn-in và file `.srt` tuỳ chọn; xuất OTIO
+  theo hàng đợi, có phụ đề burn-in và file `.srt` tuỳ chọn; xuất OTIO. Agent chỉ xuất bản cuối khi bản nháp đã qua
+  audit, và không xuất khi đồ hoạ vẫn còn là bản render nháp
 
 ### AI agent
 
 - **Agent dock**: terminal Claude Code, Codex và Shell thật cạnh timeline, cùng agent chat và agent terminal từ
-  plugin (AI Editor bằng API key của bạn, Antigravity…)
+  plugin (AI Editor bằng API key của bạn, Antigravity…). Thẻ thiết lập hai bước giúp cài skill cho agent và các
+  plugin dựng phim nên dùng
+- **Giao việc** (⌘K, hoặc thanh giao việc dưới terminal): 25 mẫu yêu cầu với chip và ô điền, các yêu cầu gần đây và
+  đã lưu, cùng dòng **Footage** để thêm file và thư mục cho agent nhập vào project. Menu **To** chọn agent nhận việc
+  (mặc định là agent dùng gần nhất, hoặc mở agent mới); yêu cầu chỉ được gửi khi agent đã sẵn sàng
+- **Tin cậy thư mục ngay trong BashCut**: BashCut hỏi trước khi Claude Code hoặc Codex làm việc trong một thư mục
+  mới, và chấp nhận chế độ Bypass Permissions của Claude Code trong cùng hộp thoại, nên menu riêng của các CLI không
+  còn hiện ra
 - **Gửi cho Agent**: chọn clip rồi gửi kèm yêu cầu; **scope guard** giữ cho agent chỉ sửa những clip đó, hoặc hỏi
   bạn trước
 - **Show Changes**: xem agent đã sửa gì, nhảy tới chỗ đó, và hoàn tác cả lượt trong một bước
@@ -145,7 +156,7 @@ plugin Vlog trong [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plu
 
 ### Tự động hoá
 
-- CLI `bashcut` và MCP server bao trọn mọi thao tác, hộp thoại, phím tắt và chế độ xem: 140 lệnh, có chạy thử, kiểm
+- CLI `bashcut` và MCP server bao trọn mọi thao tác, hộp thoại, phím tắt và chế độ xem: 240 lệnh, có chạy thử, kiểm
   tra revision và mỗi lệnh là một thay đổi hoàn tác được ([danh sách lệnh](docs/reference/commands.md))
 - `ui frame` xuất một khung hình bất kỳ ra PNG để agent tự xem kết quả
 - Command palette (⇧⌘P), menu bar đầy đủ kiểu Mac và Settings có ô tìm kiếm
@@ -155,6 +166,8 @@ plugin Vlog trong [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plu
 - Plugin chạy ngoài tiến trình, viết bằng ngôn ngữ nào cũng được: capability (nhận giọng nói, giọng đọc, beat,
   loudness, đồng bộ, tìm và tạo mục thư viện), action trong menu và menu chuột phải, hook theo sự kiện, tuỳ chọn,
   agent chat và agent terminal, gói thư viện và **skill cho agent** dạy agent cách dùng plugin
+- **Giao diện plugin**: plugin có thể có panel riêng ở rail bên trái, tab trong agent dock, sheet và cửa sổ riêng
+  (timeline vẫn sửa được khi cửa sổ đang mở), với các view do BashCut vẽ native từ component plugin gửi sang
 - [Plugin registry](https://github.com/dongnguyenvie/bashcut-plugins) có chữ ký, với Duyệt, cài một chạm, kiểm tra
   cập nhật hằng ngày, Trust từng plugin và cài dependency không cần mở Terminal; cũng cài được từ link hoặc thư mục.
   Xem [Viết plugin](docs/guides/plugins.md)
@@ -229,6 +242,9 @@ scripts/verify.sh xcode test # sinh lại và test project Xcode (cần XcodeGen
 
 Test model thuần cũng chạy riêng được bằng `cd Packages/BashCutCore && swift test`. Test không bao giờ dùng
 workspace video thật hay agent CLI, và việc tải package chỉ xảy ra khi resolve dependency, không phải trong test.
+`scripts/bench-agents.py` là bench A/B chạy tay: cùng một yêu cầu cho Claude Code và Codex, khởi chạy y như app,
+rồi so token, lệnh gọi tool, thời gian và kết quả review cuối; kết quả nằm trong
+[trạng thái triển khai](docs/status/implementation.md).
 
 ## Các repository liên quan
 

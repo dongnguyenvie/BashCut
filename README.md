@@ -65,7 +65,8 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
   flash in/out, or your own curve)
 - **Motion**: keyframes for position, scale, rotation, opacity and volume, shown on the timeline, plus animation
   presets (zoom, pan, Ken Burns, pop-in, slide-up, zoom-punch); crop and rounded corners
-- **Transitions**: dissolve, whip, blink, zoom, spin, shutter, wipe and saved transition presets
+- **Transitions**: 39 kinds in groups (fade, whip, wipe, shape, crash, roll, seamless, glitch…) and saved transition
+  presets, also as the In and Out of captions, titles, stickers and overlays
 - **Still images** and stickers (emoji or image) on the timeline
 - **Change the canvas** of an open project (9:16, 16:9, 1:1…) without rebuilding it
 
@@ -85,7 +86,9 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
 
 ### Sound
 
-- Volume, fades, volume keyframes, ducking music under speech, loudness normalization at export
+- Volume, fades, volume keyframes, loudness normalization at export
+- **Music bed** at one fixed level under the voice's measured loudness; ducking under speech only when asked, held
+  through short gaps so the music does not pump between lines
 - Voiceover recording, and text-to-speech takes through a voice plugin (VieNeu TTS for Vietnamese, cloned voices)
 - **Beat grid** from the music, for cutting on the beat
 - Measure loudness, true peak and speech-band energy, and **sync** a camera with a screen recording by their sound,
@@ -103,12 +106,19 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
   voiceover too close to real speech; full history; autosave with crash recovery; reload when files change on disk,
   with conflict handling
 - Preview proxies for heavy footage; export presets for TikTok, YouTube 1080p and 4K, a quick draft and ProRes,
-  queued in the background, with burned-in captions and an optional `.srt`; OTIO export
+  queued in the background, with burned-in captions and an optional `.srt`; OTIO export. An agent's final export
+  waits for a passing draft audit and refuses graphics still rendered as drafts
 
 ### AI agents
 
 - **Agent dock**: real Claude Code, Codex and Shell terminals beside the timeline, plus chat agents and terminal
-  agents from plugins (AI Editor with your own API key, Antigravity…)
+  agents from plugins (AI Editor with your own API key, Antigravity…). A two-step setup card sets up the agent
+  skills and the recommended editing plugins
+- **New brief** (⌘K, or the brief bar under the terminal): 25 request templates with chips and fields, recent and
+  saved briefs, and a **Footage** row for files and folders the agent should import. **To** picks the agent (the
+  last used by default, or start a new one); the brief waits until the agent is ready
+- **Folder trust in BashCut**: BashCut asks before Claude Code or Codex works in a new folder, and accepts Claude
+  Code's Bypass Permissions mode in the same sheet, so the CLIs' own menus do not show
 - **Send to Agent**: select clips and send them with your request; the **scope guard** keeps the agent's edits to
   those clips, or asks you first
 - **Show Changes**: see what an agent changed, jump to it, and undo it as one step
@@ -146,7 +156,7 @@ Topic recipes (`bashcut.vlog:plan`, travel, food, explainer, hook script, publis
 
 ### Automation
 
-- The `bashcut` CLI and MCP server cover every UI action, dialog, shortcut and view: 140 commands, with dry runs,
+- The `bashcut` CLI and MCP server cover every UI action, dialog, shortcut and view: 240 commands, with dry runs,
   revision checks and one undoable edit per call ([command reference](docs/reference/commands.md))
 - `ui frame` renders any frame to a PNG, so an agent can look at its own work
 - Command palette (⇧⌘P), a full Mac menu bar and searchable Settings
@@ -156,7 +166,8 @@ Topic recipes (`bashcut.vlog:plan`, travel, food, explainer, hook script, publis
 - Out-of-process plugins in any language: capabilities (transcription, voice, beats, loudness, sync, library search
   and generate), actions in menus and context menus, hooks on editor events, options, chat and terminal agents,
   library packs and **agent skills** that teach agents how to use them
-- **Plugin UI**: a plugin can have its own panel in the left rail, tabs in the agent dock and sheets, with views
+- **Plugin UI**: a plugin can have its own panel in the left rail, tabs in the agent dock, sheets and windows that
+  keep the timeline editable, with views
   BashCut draws natively from the components the plugin sends (lists, forms, buttons, images, audio previews); plugins
   can build on each other (generate speech through your voice plugin, require another plugin)
 - A signed [plugin registry](https://github.com/dongnguyenvie/bashcut-plugins) with Browse, one-click install, daily
@@ -233,6 +244,9 @@ scripts/verify.sh xcode test # regenerates and tests the Xcode project (requires
 
 Pure model tests also run on their own with `cd Packages/BashCutCore && swift test`. Tests never use the real
 video workspace or agent CLIs, and package downloads happen at dependency resolution, not in tests.
+`scripts/bench-agents.py` is a manual A/B bench that runs one brief with Claude Code and Codex, launched as the app
+launches them, and compares tokens, tool calls, time and the final review; results are in
+[implementation status](docs/status/implementation.md).
 
 ## Related repositories
 
