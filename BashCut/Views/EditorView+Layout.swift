@@ -53,23 +53,30 @@ extension EditorView {
 
     /// The run panel and the agent change and export toasts: bottom right of the timeline, over its lowest tracks
     /// and clear of the scroll bar. They belong to the editor column, so they never sit over the agent dock beside it,
-    /// nor over the viewer's transport and timecode.
+    /// nor over the viewer's transport and timecode. The stack stays inside the timeline's height: the toasts keep
+    /// their size and the run panel takes what is left, scrolling its stages when the timeline is short.
     var toastStack: some View {
-        VStack(alignment: .trailing, spacing: 0) {
-            if document.fileURL != nil, document.runPanel.visible {
-                RunPanelView(document: document, model: document.runPanel)
+        GeometryReader { area in
+            VStack(alignment: .trailing, spacing: 0) {
+                if document.fileURL != nil, document.runPanel.visible {
+                    RunPanelView(document: document, model: document.runPanel)
+                }
+                Group {
+                    if let notice = document.exports.notice {
+                        ExportToast(notice: notice, document: document)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                    if let change = document.agentChange {
+                        AgentChangeToast(
+                            change: change, canUndo: document.canUndoAgentChange,
+                            show: { document.run(.showAgentChanges) },
+                            undo: { document.run(.undoAgentChange) },
+                            dismiss: { document.run(.dismissAgentChange) })
+                    }
+                }.fixedSize(horizontal: false, vertical: true).layoutPriority(1)
             }
-            if let notice = document.exports.notice {
-                ExportToast(notice: notice, document: document)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-            if let change = document.agentChange {
-                AgentChangeToast(
-                    change: change, canUndo: document.canUndoAgentChange,
-                    show: { document.run(.showAgentChanges) },
-                    undo: { document.run(.undoAgentChange) },
-                    dismiss: { document.run(.dismissAgentChange) })
-            }
+            .frame(maxHeight: area.size.height, alignment: .bottom)
+            .frame(width: area.size.width, height: area.size.height, alignment: .bottomTrailing)
         }
         .animation(.easeOut(duration: 0.2), value: document.exports.notice?.id)
     }

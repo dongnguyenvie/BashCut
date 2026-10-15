@@ -16,11 +16,11 @@ struct RunPanelView: View {
         VStack(alignment: .leading, spacing: 10) {
             header(progress)
             if !model.collapsed {
-                if let progress, let result = model.result, progress.finished {
-                    RunResultCard(document: document, model: model, result: result)
-                } else {
-                    if let progress { stages(progress) }
-                    RunActivitySection(document: document)
+                // A short timeline gives the panel less height than its stages: they scroll under the header
+                // instead of the panel growing over the viewer.
+                ViewThatFits(in: .vertical) {
+                    content(progress)
+                    ScrollView(.vertical) { content(progress) }
                 }
             }
         }
@@ -30,6 +30,17 @@ struct RunPanelView: View {
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.cyan.opacity(0.3)))
         .shadow(radius: 8)
         .padding(.horizontal, 14).padding(.top, 14)
+    }
+
+    @ViewBuilder private func content(_ progress: RunProgress?) -> some View {
+        if let progress, let result = model.result, progress.finished {
+            RunResultCard(document: document, model: model, result: result)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                if let progress { stages(progress) }
+                RunActivitySection(document: document)
+            }
+        }
     }
 
     private func header(_ progress: RunProgress?) -> some View {
@@ -105,14 +116,20 @@ struct RunPanelView: View {
         }
     }
 
-    /// A stage's name for people; a stage only a plan or plugin knows keeps its ID.
+    /// A stage's name for people.
     static func title(_ id: String) -> String {
         let titles: [String: String.LocalizationValue] = [
             "intake": "Brief", "survey": "Survey footage", "story": "Story", "rough-cut": "Cut", "rhythm": "Rhythm",
             "voiceover": "Voiceover", "sound": "Sound", "captions": "Captions", "colour": "Color", "effects": "Effects",
             "review": "Review", "export": "Export", "learn": "Learn",
+            // Stages a plan adds (WorkflowChecklist.extraSkills).
+            "visuals": "Visuals", "motion-graphics": "Graphics", "graphics": "Graphics", "stock": "Stock images",
+            "stock-images": "Stock images", "library": "Library", "b-roll": "B-roll",
         ]
-        return titles[id].map { String(localized: $0) } ?? id
+        if let title = titles[id] { return String(localized: title) }
+        // A stage only a plan or plugin knows: its ID as words ("visuals-check" → "Visuals check").
+        let words = id.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "_", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
 
     /// `m:ss`, or `h:mm:ss` past an hour.
