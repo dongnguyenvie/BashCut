@@ -1,5 +1,7 @@
+import AppKit
 import BashCutAgent
 import BashCutAutomation
+import BashCutDocument
 import Foundation
 
 /// A button under the agent input that changes with the project state: an editor action, or a request for the agent.
@@ -135,7 +137,10 @@ extension AgentDockModel {
 
     /// Keeps a sent brief in the project's Recent list (in memory only without a saved project).
     func recordRecentBrief(_ request: String) {
-        let record = BriefRecord(title: askModel.briefTitle, prompt: request, templateID: askModel.templateID)
+        let footage = askModel.footage.map(\.url.path)
+        let record = BriefRecord(
+            title: askModel.briefTitle, prompt: request, templateID: askModel.templateID,
+            footage: footage.isEmpty ? nil : footage)
         askModel.recent = BriefHistory.adding(record, to: askModel.recent)
         guard let projectFolder else { return }
         do { try BriefHistory.saveRecent(askModel.recent, project: projectFolder) } catch {
@@ -151,6 +156,18 @@ extension AgentDockModel {
         askModel.saved = BriefHistory.adding(record, to: askModel.saved, limit: 50)
         BriefHistory.storeSaved(askModel.saved)
         askModel.recordID = record.id
+    }
+
+    /// Add files or folder…: a panel that takes both; agents answer it with `ui respond --path`.
+    func chooseBriefFootage() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.message = String(localized: "Footage for the agent to import: video, audio, pictures or folders")
+        panel.prompt = String(localized: "Add")
+        guard let urls = ModalCenter.shared.open(panel, name: "brief-footage") else { return }
+        askModel.addFootage(urls)
     }
 
     func removeSavedBrief(_ record: BriefRecord) {

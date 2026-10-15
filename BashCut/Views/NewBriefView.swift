@@ -9,6 +9,8 @@ struct NewBriefView: View {
     @Bindable var ask: AgentAskModel
     /// The field whose "other…" chip is being typed in.
     @State private var typingOther: String?
+    /// Files are dragged over the sheet.
+    @State private var dropping = false
     @FocusState private var focus: Focus?
 
     private enum Focus: Hashable { case search, request, other }
@@ -36,6 +38,20 @@ struct NewBriefView: View {
             footer.padding(.horizontal, 20).padding(.vertical, 12)
         }
         .frame(width: 860, height: 580)
+        .overlay {
+            if dropping {
+                RoundedRectangle(cornerRadius: 10).strokeBorder(Color.cyan, lineWidth: 2)
+                    .overlay(alignment: .bottom) {
+                        Label("Drop to add as footage", systemImage: "plus.circle.fill")
+                            .padding(8).background(.regularMaterial, in: Capsule()).padding(.bottom, 70)
+                    }
+                    .allowsHitTesting(false)
+            }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            ask.addFootage(urls.filter(\.isFileURL))
+            return true
+        } isTargeted: { dropping = $0 }
         .onAppear { focus = .request }
     }
 
@@ -78,6 +94,17 @@ struct NewBriefView: View {
                             fieldControl(field)
                         }
                     }
+                    if showsFootage {
+                        GridRow {
+                            Text("Footage").foregroundStyle(.secondary)
+                            footageControl
+                        }
+                    }
+                }
+            } else if showsFootage {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Footage").foregroundStyle(.secondary)
+                    footageControl
                 }
             }
             HStack {
@@ -102,10 +129,71 @@ struct NewBriefView: View {
                     }
                 }
                 .frame(minHeight: 90)
+            if !ask.footage.isEmpty {
+                Text(verbatim: "+ " + BriefFootage.line(ask.footage))
+                    .font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2).truncationMode(.middle)
+            }
             if ask.draft.contains("‹") {
                 Text("Replace the parts in ‹…› before sending.").font(.caption).foregroundStyle(.secondary)
             }
         }
+    }
+
+    // MARK: Footage
+
+    private var footageNeed: BriefFootage.Need { BriefFootage.need(ask.templateID) }
+    private var showsFootage: Bool { footageNeed != .none || !ask.footage.isEmpty }
+    private var projectMedia: Int { document.project.media.count }
+
+    /// The project's media, the files and folders added, and Add files or folder…; a nudge when a video made from
+    /// footage has none.
+    private var footageControl: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            FlowLayout(spacing: 6) {
+                if projectMedia > 0 {
+                    Label(String(format: String(localized: "Project media · %d"), projectMedia), systemImage: "film.stack")
+                        .font(.callout).lineLimit(1)
+                        .padding(.horizontal, 10).padding(.vertical, 3)
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.18)))
+                        .help("The agent works with the media already in the project")
+                }
+                ForEach(ask.footage) { footageChip($0) }
+                BriefChip(
+                    title: footageNeed == .optional && ask.footage.isEmpty
+                        ? String(localized: "Add files or folder (optional)…") : String(localized: "Add files or folder…"),
+                    on: false, dashed: true
+                ) { agents.chooseBriefFootage() }
+                .help("Or drop files and folders on this sheet")
+            }
+            if footageNeed == .main, ask.footage.isEmpty, projectMedia == 0 {
+                Text("No footage yet: add what you shot, or drop it here.")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private func footageChip(_ item: BriefFootage.Item) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: item.isFolder ? "folder" : "film").foregroundStyle(.cyan)
+            Text(verbatim: item.name).lineLimit(1).truncationMode(.middle)
+            if item.isFolder {
+                Text(verbatim: "· \(item.mediaFiles)").foregroundStyle(.secondary)
+            }
+            Button {
+                ask.removeFootage(item)
+            } label: {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Remove")
+        }
+        .font(.callout)
+        .padding(.leading, 10).padding(.trailing, 6).padding(.vertical, 3)
+        .background(Capsule().fill(Color.cyan.opacity(0.12)))
+        .overlay(Capsule().strokeBorder(Color.cyan.opacity(0.5)))
+        .frame(maxWidth: 260)
+        .help(item.isFolder
+            ? String(format: String(localized: "%@ · %d media files"), item.path, item.mediaFiles) : item.path)
     }
 
     @ViewBuilder private func fieldControl(_ field: BriefField) -> some View {

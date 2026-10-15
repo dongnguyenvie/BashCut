@@ -56,8 +56,9 @@ extension AgentDockModel {
     /// Sends the New brief draft (with the viewer frame when attached) to the brief's target, starting the agent first
     /// when it is not open, then clears it and closes the sheet. On failure the brief stays and the sheet says why.
     func sendAsk() async {
-        let request = askModel.draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !request.isEmpty, !askModel.sending else { return }
+        let typed = askModel.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !typed.isEmpty, !askModel.sending else { return }
+        let request = BriefFootage.request(typed, items: askModel.footage)
         askModel.sending = true
         askModel.error = ""
         defer {
@@ -85,7 +86,8 @@ extension AgentDockModel {
             case .start(let provider):
                 guard try await deliver(request, image: image, to: startForBrief(provider)) else { return }
             }
-            recordRecentBrief(request)
+            recordRecentBrief(typed)
+            askModel.footage = []
             askModel.draft = ""
             askModel.edited = false
             askModel.target = nil
