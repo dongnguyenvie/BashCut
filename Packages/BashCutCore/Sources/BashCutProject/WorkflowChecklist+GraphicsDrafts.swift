@@ -52,3 +52,43 @@ extension WorkflowChecklist {
             ])
     }
 }
+
+// MARK: Fingerprint
+
+extension WorkflowChecklist {
+    /// The fields of `data.graphics` that only say how a graphic was rendered: a draft and its final render differ in
+    /// them alone (HyperFrames records the full fps on both; `frames` counts the render's own frames).
+    static let graphicRenderFields: Set<String> = ["draft", "fps", "frames"]
+
+    /// `project.tracks` for the timeline fingerprint, with every item that shows a plugin graphic (media with
+    /// `data.graphics`) pointing at the graphic instead of its render: `media` becomes the recorded inputs without
+    /// `graphicRenderFields`, `in` the project frame it starts at, and `dur` `"end"` when the item plays to the
+    /// render's last frame. A draft swapped for its final render (`graphic plan --final`, `rerender --all --final`:
+    /// new media at another fps, `in` and a played-through length rescaled) keeps the fingerprint; changing the
+    /// graphic's inputs or any other field of the item does not (#634).
+    static func graphicTracks(_ project: Project) -> JSONValue {
+        let tracks = project["tracks"] ?? .null
+        let graphics = project.media.filter { $0.fields["data"]?.object["graphics"]?.object.isEmpty == false }
+        let projectFPS = project.fps.value
+        guard !graphics.isEmpty, projectFPS > 0, case .array(let list) = tracks else { return tracks }
+        let byID = Dictionary(graphics.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return .array(list.map { track in
+            guard case .object(var fields) = track, case .array(let items) = fields["items"] else { return track }
+            fields["items"] = .array(items.map { value in
+                guard case .object(var item) = value, let media = item["media"]?.string.flatMap({ byID[$0] }),
+                    media.fps.value > 0
+                else { return value }
+                var graphic = media.fields["data"]?.object["graphics"]?.object ?? [:]
+                for key in graphicRenderFields { graphic[key] = nil }
+                let toProject = { (frames: Int) in Double(frames) / media.fps.value * projectFPS }
+                let start = Int(toProject(item["in"]?.int ?? 0).rounded())
+                item["media"] = .object(["graphic": .object(graphic)])
+                item["in"] = .integer(start)
+                let length = Int((toProject(media.frames) + 1e-6).rounded(.down))
+                if let duration = item["dur"]?.int, start + duration >= length { item["dur"] = .string("end") }
+                return .object(item)
+            })
+            return .object(fields)
+        })
+    }
+}

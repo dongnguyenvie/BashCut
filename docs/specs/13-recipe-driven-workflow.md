@@ -176,7 +176,9 @@ Only these guards, all for agent authors; the user in the app is never blocked:
 3. `export start` with a non-draft preset over a graphic a plugin rendered as a **draft** (media
    `data.graphics.draft: true`, #634): error `graphics_draft` with `data.drafts` (media, name, items) and
    `remediation.command` `bin/graphic plan --final` (every draft is a `plan.cut` graphic) or
-   `bin/graphic rerender --all --final`. Checked before the audit, since finalising changes the timeline.
+   `bin/graphic rerender --all --final`. Checked before the audit. Finalising keeps a draft audit current: the
+   timeline fingerprint counts an item showing a plugin graphic by the graphic's recorded inputs (without `draft`,
+   `fps`, `frames`), its in-point in project frames and "to the end" for a played-through length, not by the media.
 
 Everything else (skipped stages, missing evidence) lands in `run checklist` › `open` and the hand-off report.
 
