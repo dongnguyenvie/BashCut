@@ -48,6 +48,15 @@ private final class AgentDockWindowDelegate: NSObject, NSWindowDelegate {
     var kitPrompt: AgentKitPrompt?
     var kitSettingUp = false
     @ObservationIgnored var kitPromptChecked: Date?
+    /// What Claude Code and Codex reported last, and BashCut's kit version, for the setup card.
+    var kitStatuses: [AgentKitSetup.Target: AgentKitSetup.Status] = [:]
+    var kitVersion: String?
+    /// Agent tabs started before the skills were installed: a running CLI loads them only when it restarts.
+    var kitRestartSessions: [UUID] = []
+    /// Whether the setup card shows its steps; it opens the first time a kit version is seen.
+    var setupExpanded = false
+    /// A step was started from the card in this session: once all are done it stays, ticked, until Done.
+    var setupFinishedHere = false
     /// The folder question on show; answering resumes the launch waiting in `folderTrustAnswer`.
     var folderTrustPrompt: AgentFolderTrustPrompt?
     @ObservationIgnored var folderTrustAnswer: CheckedContinuation<AgentFolderTrustPrompt.Answer, Never>?
