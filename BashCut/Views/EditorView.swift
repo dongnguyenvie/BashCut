@@ -9,7 +9,6 @@ import SwiftUI
 // The editor keeps its major panels together so AppKit timeline and SwiftUI sheets share one document.
 struct EditorView: View {
     @Bindable var document: ProjectDocument
-    @State private var newSectionLabel = ""
     /// The window's height: below `EditorLayout.railLabelsMinHeight` the rail shows icons only (P1-3).
     @State var windowHeight = 900.0
     /// The rail's More popover, which lists the plugin panels.
@@ -63,6 +62,8 @@ struct EditorView: View {
         .ignoresSafeArea(.container, edges: .top)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08)).preferredColorScheme(.dark).tint(.cyan)
         .frame(minWidth: minSize.width, minHeight: minSize.height)
+        .onGeometryChange(for: Double.self, of: { $0.size.width },
+            action: { document.adaptTimelineHeader(windowWidth: $0) })
         .background(WindowMinSize(size: minSize))
         .overlay {
             if document.ui.showCommands {
@@ -195,77 +196,7 @@ struct EditorView: View {
     }
     private func runDoctor() { Task { await document.runDoctor() } }
     private var minSize: CGSize { EditorLayout.minSize(dock: document.ui.showAgentDock && !document.agents.isDetached) }
-    var timelineToolbar: some View {
-        HStack(spacing: 10) {
-            Text("TIMELINE").font(.caption.bold())
-            Button("Split") { document.run(.split) }.action(.split, in: document)
-            Button("Delete") { document.run(.delete) }.action(.delete, in: document)
-            Menu {
-                Button("Video Layer") { document.run(.addVideoLayer) }
-                Button("Adjustment Layer") { document.run(.addAdjustmentLayer) }
-                Button("Text Layer") { document.run(.addTextLayer) }
-                Button("Audio Layer") { document.run(.addAudioLayer) }
-            } label: {
-                Label("Add Layer", systemImage: "rectangle.stack.badge.plus")
-            }
-            Button {
-                document.run(.layerUp)
-            } label: { Image(systemName: "arrow.up") }
-                .help("Move selected layer up")
-                .action(.layerUp, in: document)
-            Button {
-                document.run(.layerDown)
-            } label: { Image(systemName: "arrow.down") }
-                .help("Move selected layer down")
-                .action(.layerDown, in: document)
-            Button(role: .destructive) {
-                document.run(.deleteLayer)
-            } label: {
-                Image(systemName: "rectangle.stack.badge.minus")
-            }
-            .help("Delete selected empty layer")
-            .action(.deleteLayer, in: document)
-            Toggle("Snap", isOn: Bindable(document.ui).snapping).toggleStyle(.button)
-            Button("Sections") { document.run(.showSections) }
-                .popover(isPresented: Bindable(document.ui).showSections) {
-                    SectionManagerView(
-                        document: document, newLabel: $newSectionLabel,
-                        done: { document.ui.showSections = false })
-                }
-            Button {
-                document.run(.refreshWaveforms)
-            } label: {
-                Image(systemName: "waveform")
-            }
-            .help("Refresh waveforms")
-            .action(.refreshWaveforms, in: document)
-            if document.waveforms.loading { ProgressView().controlSize(.mini) }
-            if !document.waveforms.errors.isEmpty {
-                Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
-                    .help(document.waveforms.errors.values.sorted().joined(separator: "\n"))
-            }
-            Button("Ask agent") { document.run(.askAgent) }.shortcut(.askAgent)
-            Spacer()
-            Button {
-                document.run(.zoomOut)
-            } label: { Image(systemName: "minus.magnifyingglass") }
-                .buttonStyle(.borderless).help("Zoom timeline out (⌘-)").action(.zoomOut, in: document)
-            Slider(
-                value: Binding(
-                    get: { document.ui.timelineZoomSliderValue },
-                    set: { document.ui.setTimelineZoomSliderValue($0, around: document.playhead) }),
-                in: EditorUIState.timelineZoomSliderRange
-            ).frame(width: 120).help("Timeline zoom; pinch or ⌘-scroll on the timeline")
-            Button {
-                document.run(.zoomIn)
-            } label: { Image(systemName: "plus.magnifyingglass") }
-                .buttonStyle(.borderless).help("Zoom timeline in (⌘=)").action(.zoomIn, in: document)
-            Button {
-                document.run(.zoomFit)
-            } label: { Image(systemName: "arrow.left.and.right.square") }
-                .buttonStyle(.borderless).help("Zoom timeline to fit (⇧Z)").disabled(!document.canPerform(.zoomFit))
-        }.font(.caption).controlSize(.small).padding(8).disabled(document.busy)
-    }
+    var timelineToolbar: some View { TimelineToolbar(document: document) }
     private var review: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
