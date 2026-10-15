@@ -1,6 +1,10 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Dock": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Dock" } }, "vi": { "stringUnit": { "state": "translated", "value": "Gắn vào" } } } },
+    "Undock": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Undock" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tách ra" } } } },
+    "Show this view over the viewer": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Show this view over the viewer" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện giao diện này đè lên màn xem" } } } },
+    "Show this view in its own window again": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Show this view in its own window again" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện lại giao diện này trong cửa sổ riêng" } } } },
     "In and Out": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "In and Out" } }, "vi": { "stringUnit": { "state": "translated", "value": "Vào và ra" } } } },
     "In transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "In transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng vào" } } } },
     "Out transition": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Out transition" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiệu ứng ra" } } } },

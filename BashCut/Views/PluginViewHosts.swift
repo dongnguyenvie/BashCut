@@ -3,9 +3,11 @@ import BashCutPlugin
 import BashCutProject
 import SwiftUI
 
-/// A plugin view on its own (a dock tab or a sheet): a lazy scrolling column, visible while it is on screen.
+/// A plugin view on its own (a dock tab, a sheet or a window): a lazy scrolling column, visible while it is on screen.
+/// A window sets `tracksVisibility` false: it says itself when the view shows, since a closed window keeps its views.
 struct PluginViewColumn: View {
     @Bindable var model: PluginViewModel
+    var tracksVisibility = true
 
     var body: some View {
         ScrollView {
@@ -14,6 +16,7 @@ struct PluginViewColumn: View {
             }.padding(12)
         }
         .task(id: model.pluginID + "/" + model.viewID) {
+            guard tracksVisibility else { return }
             model.visible = true
             while !Task.isCancelled { try? await Task.sleep(for: .seconds(3600)) }
             model.visible = false

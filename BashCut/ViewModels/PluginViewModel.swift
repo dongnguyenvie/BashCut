@@ -16,6 +16,8 @@ import Foundation
     private var invoking: [String: Int] = [:]
     /// View updates plugins send outside a request (#409).
     private var updates: PluginViewUpdates.Subscription?
+    /// Views in windows of their own (API 11).
+    private(set) lazy var windows = PluginViewWindows(document: document)
 
     init(document: ProjectDocument) {
         self.document = document
@@ -90,7 +92,10 @@ import Foundation
         return (plugin, view)
     }
 
-    /// Shows a view where it lives: the plugin's rail panel, its dock tab (opening the dock) or a sheet.
+    /// The model for `key` if one was made, without making one.
+    func existingModel(key: String) -> PluginViewModel? { models[key] }
+
+    /// Shows a view where it lives: the plugin's rail panel, its dock tab (opening the dock), a sheet or its window.
     func show(_ plugin: InstalledPlugin, view: PluginViewContribution) {
         let key = plugin.id + "/" + view.id
         DebugLog.write("ui", "plugin view \(key) in \(view.place.rawValue)")
@@ -101,14 +106,17 @@ import Foundation
             document.ui.showAgentDock = true
             document.agents.pluginViewKey = key
         case .sheet: document.ui.pluginSheet = key
+        case .window: windows.open(key)
         // The Inspector is always on screen; its plugin views follow the selection, so there is nothing to open.
         case .inspector: break
         }
     }
 
-    /// Closes the sheet when it shows `model`'s view.
+    /// Closes the sheet or window that shows `model`'s view (a plugin answered `close`).
     func closeSheet(of model: PluginViewModel) {
-        if document.ui.pluginSheet == model.pluginID + "/" + model.viewID { document.ui.pluginSheet = nil }
+        let key = model.pluginID + "/" + model.viewID
+        if document.ui.pluginSheet == key { document.ui.pluginSheet = nil }
+        if document.ui.pluginWindows.contains(key) || document.ui.dockedPluginView == key { windows.close(key) }
     }
 
     func model(plugin: String, view: String) -> PluginViewModel {
@@ -121,6 +129,7 @@ import Foundation
 
     /// Ends every plugin's command token and forgets views of plugins that are gone (project closed or switched).
     func reset() {
+        windows.closeAll()
         document.ui.clearPluginOverlays()
         for session in sessions.values { session.revoke(in: document.registry) }
         sessions = [:]

@@ -68,6 +68,7 @@ extension ProjectDocument {
         case .panel: ui.pluginPanel == plugin.id && pluginPanelView(plugin).map { plugin.id + "/" + $0.id } == key
         case .dock: ui.showAgentDock && ui.rightTab == .agent && agents.pluginViewKey == key
         case .sheet: ui.pluginSheet == key
+        case .window: ui.pluginWindows.contains(key) || ui.dockedPluginView == key
         case .inspector: selectedItems.count == 1
         }
     }
@@ -133,11 +134,13 @@ extension ProjectDocument {
         return .string(text)
     }
 
-    /// Plugins with panels or views, the open panel and sheet, and the host's plugin features (`plugins.list --views`).
+    /// Plugins with panels or views, the open panel, sheet and windows, and the host's plugin features (`plugins.list --views`).
     func pluginViewsJSON() -> JSONValue {
         .object([
             "panels": .array(pluginViews.viewPlugins.map(pluginPanelJSON)),
             "sheet": ui.pluginSheet.map(JSONValue.string) ?? .null,
+            "windows": .array(ui.pluginWindows.sorted().map(JSONValue.string)),
+            "docked": ui.dockedPluginView.map(JSONValue.string) ?? .null,
             "open": ui.pluginPanel.map(JSONValue.string) ?? .null,
             "features": .array(PluginFeature.all.map(JSONValue.string)),
             "apiVersion": .integer(PluginAPI.current),

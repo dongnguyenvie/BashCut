@@ -64,7 +64,7 @@ checked manifest, an entrypoint that already speaks the protocol and smoke tests
 | `id` | Yes | Reverse-domain style: lowercase letters and digits in at least two parts separated by `.` or `-` (`example.voice`) |
 | `name` | Yes | Display name, up to 80 characters; [localized text](#localized-text) |
 | `version` | Yes | Semantic version, such as `1.2.0` or `1.2.0-beta.1` |
-| `apiVersion` | Yes | `1` to `10`; see [API versions](#api-versions) |
+| `apiVersion` | Yes | `1` to `11`; see [API versions](#api-versions) |
 | `minApiVersion` / `maxApiVersion` | No | The host API window the plugin works with; `minApiVersion` defaults to `apiVersion` |
 | `entrypoint` | Yes | Relative path inside the bundle to an executable file; no leading `/` and no `..` |
 | `capabilities` | Yes | List of unique capability IDs (lowercase, segments separated by `.` or `-`); may be empty only when `contributes` is not |
@@ -97,7 +97,7 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (10); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (11); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
@@ -107,7 +107,7 @@ and the manifest's `terminal` object. Version 6 adds `contributes.library` (libr
 `contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
 with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. Version 9 adds
 the `review.check` capability. Version 10 adds the Tools panel: `views[].kind`, the `tools` action placement and
-`advanced` options. From version 8
+`advanced` options. Version 11 adds the `window` view location. From version 8
 on, the API version goes up at most once per BashCut release; smaller differences between hosts are
 [host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
@@ -987,7 +987,7 @@ the panel's frame from the manifest, so every plugin gets the same parts:
 | `views[].id` | A short key, unique; at most 8 views |
 | `views[].title` | Localized text, at most 40 characters |
 | `views[].kind` | `panel` (default) or `tool` (API 10): a `tool` view is listed in the **Tools** panel beside Auto captions, Voiceover and Beat detection, needs no `container` and no rail icon, and must have `location` `panel` (host feature `tools`). Asset libraries (stickers, effects, sounds…) need no view kind: providers reach the asset panels through `kind`s of `library.search` and `library.generate` |
-| `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet` or `inspector` |
+| `views[].location` | Where the view lives: `panel` (default), `dock`, `sheet`, `inspector` or `window` (API 11) |
 | `views[].icon` | Optional SF Symbol for a dock tab or sheet; the container's icon by default |
 | `views[].when` | Inspector views only: a [when condition](#when-conditions) such as `selection.kind == text` or `media.kind == video`; the view is not asked to render for items it does not match (host feature `inspector.when`) |
 
@@ -1001,6 +1001,7 @@ A container alone (no views) is a panel of the plugin's tools and skills. Views 
 | `dock` | A tab in the agent dock on the right, next to the agent tabs (330–500 pt wide) | The tab, always there while the plugin is ready | Wider work: libraries, take lists, long forms |
 | `sheet` | A sheet over the editor with a Close button (Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | A short task: a form, a confirmation with choices |
 | `inspector` | The Inspector (220 pt wide), under the controls of one selected item, on every tab | Selecting an item; rendered from scratch when the selection or its media changes | Settings of what is selected: a generated graphic's inputs, a take's options |
+| `window` (API 11) | A non-modal window of its own (75% of the editor window, at least 900×600; size and position remembered per view) with **Dock** and **Close** (Esc). **Dock** shows the same view over the viewer instead (**Undock** or Esc) | `plugins show-view`, the panel's **Views** list, or the plugin itself | Browsing next to the timeline: the editor stays usable, so results can be dragged onto it while the window stays open |
 
 Only `panel` views of the default kind need `contributes.container` (a `kind: tool` view lives in Tools); a plugin may have dock, sheet or inspector views without a rail
 icon. An inspector view reads the selection from its request's `context` (`selection`, `media` with its `data`) and
@@ -1010,9 +1011,15 @@ does not ask it about items it never handles. A new selection renders 120 ms aft
 cancelled (the plugin gets `cancel`), so the plugin renders one item at a time. The panel's
 **Plugin** section lists the plugin's dock and sheet views with a button that opens each. A plugin opens its own views
 from a view or action request with the host call `plugins.show-view` (`{"plugin": "<its id>", "view": "<id>"}`); it
-cannot open another plugin's. A view answer with `"close": true` closes its sheet (a finished form).
-`location.panel`, `location.dock`, `location.sheet` and `location.inspector` are [host features](#host-features). A host
-older than `location.inspector` refuses a manifest with an inspector view, so ship one only to apps that list it.
+cannot open another plugin's. A view answer with `"close": true` closes its sheet or window (a finished form).
+A sheet starts fresh each time it opens. A window view does not: closing the window keeps its components, input
+values, `state` and scroll position, and it is forgotten only when the project closes or switches, so a query and its
+results are still there when the user opens it again.
+`location.panel`, `location.dock`, `location.sheet`, `location.inspector` and `location.window` are
+[host features](#host-features). A host older than `location.inspector` refuses a manifest with an inspector view, so
+ship one only to apps that list it. A window view needs `apiVersion` 11; to keep a sheet for older apps, publish the
+window version with `minApiVersion` 11 and keep the previous version (with its sheet) in the registry: an older app
+installs the newest version its API allows.
 
 ### View requests
 
@@ -1044,7 +1051,7 @@ The answer:
 ```
 
 - `body` (required): the components. `state`: kept and sent back (at most 64 KiB; left out, the last one is kept).
-  `close: true` closes the view's sheet.
+  `close: true` closes the view's sheet or window.
   `refreshSeconds` (2–3600): render again after that long, only while the view is on screen. `notify`: a status
   message shown once.
 - While working, send `{"type":"event","id","event":{"kind":"render","body":[…],"title"?}}` to redraw before the answer
@@ -1179,8 +1186,11 @@ never asks the plugin per frame; the plugin sends its whole set again when somet
 ### Commands
 
 `plugins list --views` lists the plugins with panels or views, each view's location and whether it is shown, tools, skills,
-requirements, uses and the host features. `plugins show-view <plugin> --view id` shows a view where it lives (the
-sheet is dialog `plugin-view` in `ui dialog`; `ui respond close` closes it).
+requirements, uses and the host features, plus the open `sheet`, `windows` and the `docked` window view.
+`plugins show-view <plugin> --view id` shows a view where it lives (the sheet is dialog `plugin-view` in `ui dialog`;
+`ui respond close` closes it). A window is dialog `plugin-window` with `"window": true` and the id
+`sheet:plugin-window:<plugin>/<view>`: it is non-modal, so it never blocks `ui action` or other dialogs, and it is
+answered only by id: `ui respond --dialog sheet:plugin-window:<plugin>/<view> dock|undock|close`.
 `plugins view <plugin> [--view id] [--open]` renders a view and returns its components with the input values;
 `--open` also shows it. `plugins view-event <plugin> --node go [--type click|change|submit|select|action]
 [--value …]` does what a user does and returns the new components, so agents and tests can drive a plugin's UI.
@@ -1500,7 +1510,7 @@ Everything above is available to agents through the CLI and MCP (`bashcut_plugin
 |---|---|---|
 | `plugins list` | read | Plugins sheet: availability, transport, actions, hooks, options, library packs, skills, provider kinds, container, views, requires (with state), uses |
 | `plugins list --views` | read | The plugin panels in the rail's More popover and their views: views, tools, skills, requirements, uses; the host features |
-| `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab or its sheet |
+| `plugins show-view <plugin> --view <id>` | ui | Opening a view where it lives: the rail panel, its dock tab, its sheet or its window |
 | `plugins view <plugin> [--view id] [--open]` | ui | Opening a view; returns its components and input values |
 | `plugins view-event <plugin> --node <id> [--type …] [--value …]` | ui | Clicking, typing or selecting in a plugin view |
 | `plugins invoke <capability> [--provider P] [--params '{…}']` | edit, job | None: a capability's raw result, for capabilities without a command |

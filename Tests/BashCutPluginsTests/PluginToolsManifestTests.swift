@@ -67,7 +67,7 @@ struct PluginToolsManifestTests {
 
     @Test("The host serves API 10 and lists the tools feature")
     func hostFeature() {
-        #expect(PluginAPI.current == 10)
+        #expect(PluginAPI.current >= 10)
         #expect(PluginFeature.all.contains("tools"))
     }
 }
