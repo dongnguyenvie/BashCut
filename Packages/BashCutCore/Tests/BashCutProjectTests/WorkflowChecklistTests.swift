@@ -104,6 +104,35 @@ struct WorkflowChecklistTests {
         #expect(open.contains("process audit missing") == false)
     }
 
+    @Test("A final export refuses graphics rendered as drafts, naming them and the plugin's final render (#634)")
+    func graphicsDraftGuard() throws {
+        var project = try project()
+        #expect(WorkflowChecklist.graphicsDraftGuard(project) == nil)
+        project = try project.applying(.setMediaData(media: "m", patch: ["take": .integer(2)])).project
+        #expect(WorkflowChecklist.graphicsDraftGuard(project) == nil)
+        let final: JSONValue = .object(["composition": .string("diagram"), "name": .string("Flow"), "fps": .integer(30)])
+        project = try project.applying(.setMediaData(media: "m", patch: ["graphics": final])).project
+        #expect(WorkflowChecklist.graphicsDraftGuard(project) == nil)
+
+        var draft = final.object
+        draft["draft"] = .bool(true)
+        project = try project.applying(.setMediaData(media: "m", patch: ["graphics": .object(draft)])).project
+        let failure = try #require(WorkflowChecklist.graphicsDraftGuard(project))
+        #expect(failure.category == "graphics_draft")
+        #expect(failure.command == "bin/graphic rerender --all --final")
+        #expect(failure.message.contains("Flow (media m; items v, a)"))
+        #expect(WorkflowChecklist.graphicDrafts(project) == [.init(media: "m", name: "Flow", items: ["v", "a"])])
+        #expect(failure.details["drafts"]?.array.first?.object["items"] == .array([.string("v"), .string("a")]))
+
+        // Every draft is a plan.cut graphic's media: the plan's final render fixes it.
+        project["plan"] = .object(["cut": .object(["graphics": .array([.object(["id": .string("g1"), "media": .string("m")])])])])
+        #expect(WorkflowChecklist.graphicsDraftGuard(project)?.command == "bin/graphic plan --final")
+
+        // A draft no item uses is not exported (deleting the clip takes its linked sound too).
+        project = try project.applying(.delete(item: "v", ripple: false)).project
+        #expect(WorkflowChecklist.graphicsDraftGuard(project) == nil)
+    }
+
     @Test("A final export needs a passing draft audit of this timeline, or the user's G5 approval")
     func draftGuard() throws {
         var project = try project()

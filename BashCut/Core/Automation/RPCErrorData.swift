@@ -23,6 +23,8 @@ public enum RPCErrorCategory: String, Sendable, CaseIterable {
     case auditMissing = "audit_missing"
     /// A workflow guard: G2 before the plan's recipe skill was read.
     case recipeUnread = "recipe_unread"
+    /// A final export over graphics a plugin rendered as drafts (`data.graphics.draft`, #634).
+    case graphicsDraft = "graphics_draft"
     case internalError = "internal"
 
     /// Whether the same request can succeed later without changing it.

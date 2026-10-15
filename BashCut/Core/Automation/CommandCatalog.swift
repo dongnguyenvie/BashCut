@@ -245,8 +245,8 @@ public enum CommandCatalog {
                 + "wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves "
                 + "the project once it lands). An agent's export with any preset but quick-draft needs "
                 + "a draft audit with verdict pass of the current timeline (run append audit --point draft) or the "
-                + "user's G5 approval at this revision: else audit_missing. A name already on disk or queued gets "
-                + "the next free suffix (name-2…; the result says renamedFrom); " + exportOverwriteAndWithout,
+                + "user's G5 approval at this revision: else audit_missing. " + exportGraphicsDraftNote
+                + exportNameOverwriteAndWithout,
             parameters: [
                 CommandParameter("preset", .string, "Export preset", required: true, choices: exportPresets,
                                  cli: .option("preset")),
@@ -390,8 +390,6 @@ extension CommandCatalog {
         ])
 
     /// `export start --without` (#520).
-    static let exportOverwriteAndWithout = "overwrite replaces the files on disk (moved to the Trash) instead. "
-        + exportWithoutSummary
     static let exportWithoutSummary = "without leaves audio layers of those roles out of this file (music: the same cut "
         + "with voice and sound effects only, for a platform's own sound); its loudness and QC stay out of review."
     static let exportWithout = CommandParameter(

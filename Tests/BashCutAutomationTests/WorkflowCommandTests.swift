@@ -76,7 +76,7 @@ struct WorkflowCommandTests {
         #expect(CommandCatalog.exitStatus(method: "run.checklist", result: result("fail")) == 0)
     }
 
-    @Test("Guard failures are typed audit_missing or recipe_unread, not retryable, with the thrower's remediation")
+    @Test("Guard failures are typed audit_missing, recipe_unread or graphics_draft, not retryable, with the thrower's remediation")
     func guardCategories() {
         let failure = RPCFailure(-32003, "needs a draft audit", category: .auditMissing, data: [
             "remediation": .object(["command": .string("review packet --point draft")]),
@@ -85,5 +85,7 @@ struct WorkflowCommandTests {
         #expect(data["category"] == .string("audit_missing") && data["retryable"] == .bool(false))
         #expect(data["remediation"]?.object["command"] == .string("review packet --point draft"))
         #expect(RPCErrorCategory(rawValue: "recipe_unread") == .recipeUnread)
+        #expect(RPCErrorCategory(rawValue: "graphics_draft") == .graphicsDraft)
+        #expect(RPCErrorCategory.graphicsDraft.retryable == false)
     }
 }

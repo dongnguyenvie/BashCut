@@ -251,11 +251,13 @@ public enum WorkflowChecklist {
 
     // MARK: Guards (§7)
 
-    /// Why a guarded command cannot run yet: `audit_missing` or `recipe_unread`, and the command that fixes it.
+    /// Why a guarded command cannot run yet: `audit_missing`, `recipe_unread` or `graphics_draft`, the command that
+    /// fixes it and any facts behind it (`details`, merged into the error's data).
     public struct GuardFailure: Error, Equatable, Sendable {
         public let category: String
         public let message: String
         public let command: String
+        public var details: [String: JSONValue] = [:]
     }
 
     /// Before an agent's final export: the latest draft audit passed and the timeline has not changed since, or the
