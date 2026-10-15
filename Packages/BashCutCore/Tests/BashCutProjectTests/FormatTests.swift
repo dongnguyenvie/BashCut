@@ -22,6 +22,26 @@ struct FormatTests {
         #expect(landscape.duration == project.duration)
     }
 
+    @Test("setFormat scales pan and tilt keyframes with the static offsets")
+    func keyframedOffsets() throws {
+        var project = try ProjectFixtures.twoClips().applying(.setFormat(width: 1920, height: 1080)).project
+        project = try project.applying(.setProperties(item: "left", patch: [
+            "transform": .object(["pan": .integer(763), "tilt": .integer(-243), "zoom": .number(0.55)]),
+            "keyframes": .object(["pan": .array([
+                .object(["frame": .integer(0), "value": .integer(763)]),
+                .object(["frame": .integer(10), "value": .integer(0), "ease": .string("out")]),
+            ]), "tilt": .array([.object(["frame": .integer(0), "value": .integer(-243)])])]),
+        ])).project
+        let draft = try project.applying(.setFormat(width: 1280, height: 720)).project
+        let item = try #require(draft.tracks.flatMap(\.items).first { $0.id == "left" })
+        #expect(item["transform"]?.object["pan"]?.double == 509)  // 763 × 1280/1920
+        #expect(item["transform"]?.object["tilt"]?.double == -162)
+        let keys = try #require(item["keyframes"]?.object)
+        #expect(keys["pan"]?.array.map { $0.object["value"]?.double } == [509, 0])
+        #expect(keys["pan"]?.array.last?.object["ease"] == .string("out"))
+        #expect(keys["tilt"]?.array.first?.object["value"]?.double == -162)
+    }
+
     @Test("Odd, tiny or huge sizes are refused, and the codec reads setFormat")
     func validation() throws {
         let project = try ProjectFixtures.twoClips()
