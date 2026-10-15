@@ -214,6 +214,13 @@ extension ProjectDocument {
         settings.timelineHeaderWidth = width
     }
 
+    /// Until the user picks a header width, a window of 1280 pt or more shows the layer names and a narrower one
+    /// the short IDs. Not remembered, so resizing the window changes it again.
+    func adaptTimelineHeader(windowWidth: Double) {
+        guard !settings.timelineHeaderWidthChosen else { return }
+        ui.timelineLeading = EditorUIState.defaultTimelineLeading(windowWidth: windowWidth)
+    }
+
     /// Scrolls the timeline so `frame` is visible.
     func revealInTimeline(_ frame: Int) { ui.revealInTimeline(frame, duration: project.duration) }
 
@@ -246,8 +253,13 @@ extension ProjectDocument {
             switch action {
             case "open": return try document.openDialogFromAutomation(target)
             case "panel":
+                if document.toolEntries.contains(where: { $0.id == target && $0.source != .native }) {
+                    document.showTool(target)
+                    return .bool(true)
+                }
                 guard let tab = LibraryTab(panelName: target) else { throw RPCFailure(-32602, "Unknown panel \(target)") }
                 document.showLibraryTab(tab)
+                if let tool = LibraryTab.toolForPanelName(target) { document.showTool(tool) }
                 return .bool(true)
             case "source": return try document.showSource(target, in: arguments.optionalInt("in"), out: arguments.optionalInt("out"))
             case "notify":
@@ -382,6 +394,7 @@ extension ProjectDocument {
             "selectedItems": .array(selectedIDs.map(JSONValue.string)),
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
+            "tool": ui.libraryTab == .tools ? selectedTool.map { .string($0.id) } ?? .null : .null,
             "mediaSource": .string(ui.mediaSource),
             "inspector": .string(ui.inspectorTab),
             "settingsSection": .string(ui.settingsSection), "settingsSearch": .string(ui.settingsSearch),

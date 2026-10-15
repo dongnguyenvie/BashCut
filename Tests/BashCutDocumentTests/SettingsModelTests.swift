@@ -48,6 +48,17 @@ struct SettingsModelTests {
         #expect(defaults.string(forKey: "agentWorkspace") == nil)
     }
 
+    @Test("Developer mode is off by default and stored")
+    func developerMode() throws {
+        let defaults = try defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsModel(defaults: defaults)
+        #expect(!settings.developerMode)
+        settings.developerMode = true
+        #expect(defaults.bool(forKey: "developerMode"))
+        #expect(SettingsModel(defaults: defaults).developerMode)
+    }
+
     @Test("Dangerously allow all agent actions is on by default, overrides the agent switches and is stored")
     func allowAllAgents() throws {
         let defaults = try defaults()

@@ -60,7 +60,7 @@ The layout follows CapCut desktop, plus one right column with an Inspector tab a
 
 | Region | Content | Notes |
 |---|---|---|
-| **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Voice 🎙, Brand 🎨 | Same idea as CapCut's left rail |
+| **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Brand 🎨, then after a divider Tools 🔧 and, when a plugin has a panel, More ⋯ | Same idea as CapCut's left rail. Voiceover lives in Tools, plugin panels in the More popover. In a window shorter than 900 pt the tiles show icons only and the label is the tooltip |
 | **Library** | Content of the selected tab: thumbnail grid, drag to timeline, hover-scrub | Each tab is described in §3 |
 | **Viewer** | Preview in the project frame (9:16 / 16:9), timecode, toggleable TikTok safe area | Same engine as export. Heavy footage plays from automatic proxies; a manual quality picker (Full / ½ / Proxy) is Planned |
 | **Inspector** | Properties of the selected item | A tab of the right column (300 pt; 340 pt from a 1680 pt window). Header: kind colour bar, name, kind and layer, timecode range and length (the ID is under Copy ID). Tabs by kind: clip Video, Audio, Color, Speed; graphic Video, Color; text and caption Text, Video; audio Audio, Speed; adjustment Color. With nothing selected it shows the project (format, frame rate, clip fit, length, sections, outputs). Every number can be scrubbed and typed. Selecting a timeline item brings it forward unless the Agent tab was picked in the last 2 s |
@@ -171,7 +171,7 @@ segment (`source.show`) shows the last clip again where it was left.
 
 ### 3.2 Audio ♪
 
-Audio files can be imported and inserted into Music, SFX or Voiceover. **[Detect Beats]** on a music track runs an
+Audio files can be imported and inserted into Music, SFX or Voiceover. **Beat detection** (Tools, on the selected audio clip or an audio file) runs an
 `audio.beats` provider and creates the Beat band, which the timeline snaps to.
 
 **Planned:**
@@ -199,7 +199,7 @@ involves the network and copyright.
 | **Hook Title** | Large title for the hook |
 | **Chapter Card** | Chapter heading |
 
-**[Auto Captions]** runs a `captions.transcribe` provider and fills the Captions track. Each line is editable
+**Auto captions** (Tools, on the selected clip or a media file) runs a `captions.transcribe` provider and fills the Captions track. Each line is editable
 inline. Review warns about lines longer than 42 characters, because line length matters more than font size.
 
 Captions can be imported from and exported to `.srt`.
@@ -243,7 +243,7 @@ on the join is **Planned**.
 | **Scope** | One clip, or every layer below an adjustment item for its range | Implemented |
 | **Compare** | Split before/after slider in the viewer | Implemented |
 
-### 3.7 Voice 🎙
+### 3.7 Voice 🎙 (now Tools › Voiceover)
 
 This tab is the manual counterpart of the `nolan-voice-clone` skill.
 
@@ -283,8 +283,8 @@ This tab is the manual counterpart of the `nolan-voice-clone` skill.
 ### 3.8 Plugins sheet 🧩
 
 The Plugins sheet opens from the toolbar and from linked panels. Plugins hold optional, replaceable providers and
-run outside the editor process. A ready plugin with `contributes.container` (plugin API 8) also adds an icon to the
-left rail, under the built-in panels; it opens the plugin's panel in the library column: a header with its settings
+run outside the editor process. A ready plugin with `contributes.container` (plugin API 8) also adds an entry to the
+rail's More popover (the last tile of the left rail); it opens the plugin's panel in the library column: a header with its settings
 button, its declarative views (drawn natively from the components the plugin sends; only while on screen), and its
 Tools, Skills, Requires and Uses ([plugin guide](../guides/plugins.md#plugin-panels-and-views)). Views can also
 live in a tab of the agent dock (`location: dock`) or a sheet (`location: sheet`, opened by the plugin or
@@ -307,9 +307,9 @@ Capabilities used by panels today:
 
 | Panel | Capability |
 |---|---|
-| Voice | `voice.synthesize` |
-| Text › Auto Captions | `captions.transcribe` |
-| Audio › Detect Beats | `audio.beats` |
+| Tools › Voiceover | `voice.synthesize` |
+| Tools › Auto captions | `captions.transcribe` |
+| Tools › Beat detection | `audio.beats` |
 | Export › Normalize Audio | `audio.loudness` |
 
 The app records plugin, provider and version provenance on generated assets and measurements. It never takes
@@ -447,6 +447,7 @@ voiceover timing; loudness comes from the last normalized export of the revision
 | Quick Draft | 720p, H.264 |
 | ProRes | ProRes 422 HQ, to finish in another app |
 
+- **Status bar.** Under the editor: the selection (`1 selected · name`), the project length and, while jobs run, `▶ n jobs` with a popover of their progress, Open and Cancel; a one-off notice shows in it for 8 s.
 - **Background queue.** Exports run one at a time in the background, with progress in the status bar, so you can
   keep editing. Agent exports need approval in the app first.
 - **Normalize audio** needs an installed `audio.loudness` provider; it runs a two-pass normalization to the target
@@ -484,4 +485,5 @@ Shortcuts belong to editor actions; `bashcut ui actions` lists every action with
 | ⌘⇧A | Switch tab Claude ↔ Codex | Planned |
 | ⌘E | Export | Implemented |
 | ⌘⇧R | Review | Implemented |
-| ⌘1…⌘8 | Library tabs | Planned |
+| ⌘1…⌘8 | Asset panels (Media … Brand) | Implemented |
+| ⌘T | Tools panel | Implemented |
