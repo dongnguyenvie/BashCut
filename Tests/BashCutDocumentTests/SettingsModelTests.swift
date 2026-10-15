@@ -29,7 +29,7 @@ struct SettingsModelTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsModel(defaults: defaults)
         #expect(settings.workspace == nil)
-        #expect(settings.defaultProviderRaw == "codex")
+        #expect(settings.defaultProviderRaw == SettingsModel.lastUsedAgent && settings.lastAgentRaw == nil)
         #expect(settings.allowAgentEdits && settings.allowExternalAgents && !settings.autoApprovePrivileged)
         #expect(settings.defaultExportPresetRaw == "tiktok")
         #expect(settings.savedExportPreset == nil)
@@ -37,6 +37,7 @@ struct SettingsModelTests {
 
         settings.workspace = URL(fileURLWithPath: "/tmp/workspace")
         settings.defaultProviderRaw = "claude"
+        settings.lastAgentRaw = "codex"
         settings.allowAgentEdits = false
         settings.autoApprovePrivileged = true
         settings.defaultExportPresetRaw = ExportPreset.youtube1080.rawValue
@@ -47,7 +48,7 @@ struct SettingsModelTests {
 
         let reloaded = SettingsModel(defaults: defaults)
         #expect(reloaded.workspace?.path == "/tmp/workspace")
-        #expect(reloaded.defaultProviderRaw == "claude")
+        #expect(reloaded.defaultProviderRaw == "claude" && reloaded.lastAgentRaw == "codex")
         #expect(!reloaded.allowAgentEdits && reloaded.autoApprovePrivileged)
         #expect(reloaded.interfaceLanguage == "vi")
 

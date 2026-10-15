@@ -15,7 +15,8 @@ extension ProjectDocument {
     }
 
     /// Open sheets and popovers, bottom to top.
-    /// The New brief sheet: `send` sends the draft to the open agent, `clear` empties it.
+    /// The New brief sheet: `send` sends the draft to the sheet's agent (starting it when it is not open), `clear`
+    /// empties it.
     private func askSheet() -> ModalSheet? {
         guard ui.showAsk else { return nil }
         let draft = agents.askModel.draft
@@ -30,8 +31,7 @@ extension ProjectDocument {
                 guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     throw ModalError("The request is empty; write it in the sheet first")
                 }
-                guard agents.hasOpenAgent else { throw ModalError("Open an agent in the dock first") }
-                Task { await self.agents.sendAsk() }
+                agents.startSendAsk()
             case "clear": agents.askModel.draft = ""
             default: ui.showAsk = false
             }

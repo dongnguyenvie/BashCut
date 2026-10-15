@@ -207,6 +207,8 @@ struct SettingsView: View {
         SettingsSection {
             SettingsRow("Default agent", keywords: ["Claude", "Codex"]) {
                 Picker("Default agent", selection: $settings.defaultProviderRaw) {
+                    Text("Last used").tag(SettingsModel.lastUsedAgent)
+                    Divider()
                     ForEach(AgentProviders.agents, id: \.id) { Text($0.title).tag($0.id.rawValue) }
                 }.labelsHidden().fixedSize()
             }

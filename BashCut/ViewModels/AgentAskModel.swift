@@ -8,6 +8,14 @@ import Observation
     var draft = ""
     var attachFrame = false
     var sending = false
+    /// Where Send goes, when the user picked it in the sheet; nil follows the dock (`AgentDockModel.briefTarget`).
+    var target: BriefTarget?
+    /// What Send is doing while it starts or waits for an agent.
+    var status = ""
+    /// Why the last Send failed; the brief stays in the sheet.
+    var error = ""
+    /// The Send under way, which Cancel stops.
+    @ObservationIgnored var sendTask: Task<Void, Never>?
     /// The template whose fields show; nil for a request written from scratch.
     var templateID: String?
     /// The recent or saved brief shown, if one was picked instead of a template.

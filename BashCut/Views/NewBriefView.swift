@@ -1,8 +1,9 @@
 import BashCutAgent
 import SwiftUI
 
-/// New brief (⌘K): pick a recent brief, a saved one or a template, fill in its fields, check the request, send it to
-/// the open agent. Templates that suit the project are marked and listed first; the others are dimmed.
+/// New brief (⌘K): pick a recent brief, a saved one or a template, fill in its fields, check the request, pick the
+/// agent and send; an agent that is not open starts first. Templates that suit the project are marked and listed
+/// first; the others are dimmed.
 struct NewBriefView: View {
     @Bindable var document: ProjectDocument
     @Bindable var ask: AgentAskModel
@@ -19,10 +20,7 @@ struct NewBriefView: View {
 
     private var agents: AgentDockModel { document.agents }
     private var state: BriefFit { document.briefState }
-    private var agentTitle: String? {
-        if let id = agents.chatPluginID { return document.chatAgents.model(for: id).title }
-        return agents.current?.title
-    }
+    private var target: BriefTarget { agents.briefTarget }
     private var isEmpty: Bool { ask.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
@@ -55,11 +53,10 @@ struct NewBriefView: View {
 
     private var subtitle: String {
         let count = document.selectedIDs.count
-        let target = count > 1
+        let about = count > 1
             ? String(format: String(localized: "%d selected clips"), count)
             : document.selectedID ?? String(localized: "Whole project")
-        guard let agentTitle else { return String(localized: "Open an agent in the dock first, then send the brief") }
-        return String(format: String(localized: "To %@ · about %@ · ⌘↩ sends"), agentTitle, target)
+        return String(format: String(localized: "About %@ · ⌘↩ sends"), about)
     }
 
     // MARK: Detail
@@ -154,18 +151,65 @@ struct NewBriefView: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
-            Toggle("Attach current frame", isOn: $ask.attachFrame)
+            if !ask.status.isEmpty {
+                ProgressView().controlSize(.small)
+                Text(ask.status).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+            } else if !ask.error.isEmpty {
+                Label(ask.error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout).foregroundStyle(.orange).lineLimit(2)
+            } else {
+                Toggle("Attach current frame", isOn: $ask.attachFrame)
+            }
             Spacer()
             Button("Save as template", systemImage: "star") { agents.saveBriefAsTemplate() }
                 .disabled(isEmpty)
                 .help("Keep this request in Saved, for every project")
-            Button("Cancel") { document.ui.showAsk = false }.keyboardShortcut(.cancelAction)
-            Button(ask.sending ? String(localized: "Preparing frame…") : String(localized: "Send")) {
-                Task { await agents.sendAsk() }
-            }
+            Button("Cancel") {
+                ask.sendTask?.cancel()
+                document.ui.showAsk = false
+            }.keyboardShortcut(.cancelAction)
+            targetMenu
+            Button(isStart ? String(localized: "Start & send") : String(localized: "Send")) { agents.startSendAsk() }
             .keyboardShortcut(.return, modifiers: .command)
             .buttonStyle(.borderedProminent)
-            .disabled(isEmpty || ask.sending || !agents.hasOpenAgent)
+            .disabled(isEmpty || ask.sending)
+        }
+    }
+
+    private var isStart: Bool { if case .start = target { true } else { false } }
+
+    /// "To: Claude Code ▾": the open agent tabs and chat agents, then agents to start in a new tab.
+    private var targetMenu: some View {
+        let shown = agents.choice(for: target)
+        return Menu {
+            let open = agents.briefOpenChoices
+            if !open.isEmpty {
+                Section("Open") { ForEach(open) { targetButton($0) } }
+            }
+            Section("Start new") { ForEach(agents.briefStartChoices) { targetButton($0) } }
+        } label: {
+            Label {
+                Text(verbatim: shown?.title ?? "")
+                    + Text(verbatim: isStart ? " " + String(localized: "· new tab") : "").foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: shown?.icon ?? "terminal")
+            }
+        }
+        .fixedSize()
+        .disabled(ask.sending)
+        .help("Where the brief goes. A new tab starts the agent and sends once it is ready.")
+    }
+
+    private func targetButton(_ choice: BriefTargetChoice) -> some View {
+        Button {
+            ask.target = choice.target
+            ask.error = ""
+        } label: {
+            if choice.target == target {
+                Label(choice.title, systemImage: "checkmark")
+            } else {
+                Label(choice.title, systemImage: choice.icon)
+            }
         }
     }
 }
