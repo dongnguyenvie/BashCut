@@ -30,6 +30,20 @@ public enum TransitionPreview {
         return hasher.finalize().prefix(12).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// The keys the Transitions panel can show: every built-in kind at the default easing, and each preset's motion
+    /// (its own, else its kind's) with its easing. `TransitionPreviewStore.prune` keeps only these.
+    public static func wantedKeys(presets: [TransitionPreset]) -> Set<String> {
+        var keys = Set(TransitionMotion.groups.flatMap(\.kinds).map {
+            key(motion: TransitionMotion.resolved(kind: $0, motion: nil), easing: TimelineTransition.defaultEasing)
+        })
+        for preset in presets {
+            keys.insert(key(
+                motion: TransitionMotion.resolved(kind: preset.kind, motion: preset.motion),
+                easing: preset.easing ?? TimelineTransition.defaultEasing))
+        }
+        return keys
+    }
+
     /// The bundled sample stills: the outgoing and the incoming picture.
     public static func samples() -> (outgoing: CGImage, incoming: CGImage)? {
         func load(_ name: String) -> CGImage? {
@@ -182,18 +196,25 @@ public enum TransitionPreview {
 }
 
 /// Transition previews on disk (Application Support/BashCut/TransitionPreviews), rendered once per motion and easing.
-/// Concurrent requests for one key share a render; at most two render at a time.
+/// Concurrent requests for one key share a render; at most two render at a time. Old previews go in `prune`.
 public actor TransitionPreviewStore {
     public static let shared = TransitionPreviewStore(folder: FileManager.default.urls(
         for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("BashCut/TransitionPreviews", isDirectory: true))
 
     public let folder: URL
-    private var running: [String: Task<URL?, Never>] = [:]
+    private(set) var running: [String: Task<URL?, Never>] = [:]
     private var slots = 2
     private var waiting: [CheckedContinuation<Void, Never>] = []
     /// How many previews this store rendered (tests check that a second request reuses the file).
     public private(set) var renders = 0
+    /// Keys shown since launch: their files' dates were set once, so `prune` knows what was used recently.
+    private var used: Set<String> = []
+    private var pruned = false
+
+    /// The most the folder keeps (about 250 previews of 130 KB; 39 are built in): past it the previews shown longest
+    /// ago go first.
+    public static let byteLimit = 32 << 20
 
     public init(folder: URL) { self.folder = folder }
 
@@ -203,7 +224,12 @@ public actor TransitionPreviewStore {
     public func preview(motion: TransitionMotion, easing: String) async -> URL? {
         let key = TransitionPreview.key(motion: motion, easing: easing)
         let target = url(key: key)
-        if FileManager.default.fileExists(atPath: target.path) { return target }
+        if FileManager.default.fileExists(atPath: target.path) {
+            if used.insert(key).inserted {
+                try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: target.path)
+            }
+            return target
+        }
         if let task = running[key] { return await task.value }
         let task = Task<URL?, Never> {
             await acquire()
@@ -218,7 +244,55 @@ public actor TransitionPreviewStore {
         running[key] = task
         let result = await task.value
         running[key] = nil
+        used.insert(key)
         return result
+    }
+
+    /// `prune(keeping:)` once per launch: the Transitions panel calls it when it first shows.
+    public func pruneOnce(keeping keys: @Sendable () -> Set<String>) {
+        guard !pruned else { return }
+        pruned = true
+        prune(keeping: keys())
+    }
+
+    /// Deletes the previews (GIF and poster) whose key is not in `keys` (a changed motion or easing, a removed
+    /// preset), half-written files of renders that ended, then the previews shown longest ago while the folder is
+    /// over `byteLimit`. A key that is rendering now is never touched. Returns the deleted files.
+    @discardableResult
+    public func prune(keeping keys: Set<String>, byteLimit: Int = TransitionPreviewStore.byteLimit) -> [URL] {
+        let manager = FileManager.default
+        let properties: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey]
+        guard let files = try? manager.contentsOfDirectory(at: folder, includingPropertiesForKeys: properties)
+        else { return [] }
+        var removed: [URL] = []
+        func remove(_ file: URL) { if (try? manager.removeItem(at: file)) != nil { removed.append(file) } }
+        var kept: [String: (files: [URL], bytes: Int, date: Date)] = [:]
+        for file in files {
+            let name = file.lastPathComponent
+            // ".<uuid>.gif" is a render being written; with none running it is left from one that stopped.
+            if name.hasPrefix(".") {
+                if running.isEmpty, name.hasSuffix(".gif") { remove(file) }
+                continue
+            }
+            let key = file.deletingPathExtension().lastPathComponent
+            guard running[key] == nil else { continue }
+            guard keys.contains(key) else {
+                remove(file)
+                continue
+            }
+            let values = try? file.resourceValues(forKeys: Set(properties))
+            var entry = kept[key] ?? ([], 0, .distantPast)
+            entry.files.append(file)
+            entry.bytes += values?.fileSize ?? 0
+            entry.date = max(entry.date, values?.contentModificationDate ?? .distantPast)
+            kept[key] = entry
+        }
+        var total = kept.values.reduce(0) { $0 + $1.bytes }
+        for entry in kept.values.sorted(by: { $0.date < $1.date }) where total > byteLimit {
+            entry.files.forEach(remove)
+            total -= entry.bytes
+        }
+        return removed
     }
 
     private func acquire() async {

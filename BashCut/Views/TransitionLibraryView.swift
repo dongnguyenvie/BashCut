@@ -1,4 +1,5 @@
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import SwiftUI
 
@@ -46,6 +47,14 @@ struct TransitionLibraryView: View {
             Divider()
             LibraryItemsSection(document: document, kinds: [.transitionPreset], saveKinds: [.transitionPreset]) { item in
                 TransitionPresetRow(document: document, item: item, summary: Self.summary(item))
+            }
+        }
+        .task {
+            // Once per launch, off the main thread: previews no built-in kind or preset of any scope shows go.
+            let catalog = document.libraryCatalog
+            await TransitionPreviewStore.shared.pruneOnce {
+                let presets = (try? catalog.items(matching: LibraryCatalog.Filter(kinds: [.transitionPreset]))) ?? []
+                return TransitionPreview.wantedKeys(presets: presets.compactMap { try? TransitionPreset(params: $0.params) })
             }
         }
     }
