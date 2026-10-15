@@ -223,8 +223,10 @@ Every effect has a "when to use" note. Special effects also carry *"1–2 times 
 
 ### 3.5 Transitions ⇄
 
-The default is a hard cut. The other transitions are dissolve, whip, blink, zoom, spin, shutter, wipe, swing, glitch and halftone; all of
-them render the same in preview and export.
+The default is a hard cut. The panel groups the other 39 transitions as Fade, Whip, Wipe, Shape, Crash, Roll, Arc,
+Infinite, Screen, Seamless and Stylized (the technique names of eyecannndy.com/technique/transition, plus its most used
+cut techniques: flash cut, double exposure, colour shift, kaleidoscope); all of them render the
+same in preview and export.
 
 Select a clip beside a cut and choose a transition; the panel adjusts its duration in frames. A draggable handle
 on the join is **Planned**.

@@ -9,20 +9,25 @@ struct TransitionLibraryView: View {
             Text("Transitions").font(.headline)
             Text("Select a video clip beside a cut, then choose a transition.")
                 .font(.caption).foregroundStyle(.secondary)
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())]) {
-                ForEach(TimelineTransition.renderedKinds, id: \.self) { kind in
-                    Button {
-                        document.setSelectedTransition(kind: kind)
-                    } label: {
-                        Label(title(kind), systemImage: icon(kind))
-                            .frame(maxWidth: .infinity, minHeight: 34)
+            ForEach(TransitionMotion.groups, id: \.name) { group in
+                Text(LocalizedStringKey(group.name)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())]) {
+                    ForEach(group.kinds, id: \.self) { kind in
+                        Button {
+                            document.setSelectedTransition(kind: kind)
+                        } label: {
+                            Label(Self.title(kind), systemImage: icon(kind))
+                                .lineLimit(1).minimumScaleFactor(0.75)
+                                .frame(maxWidth: .infinity, minHeight: 34)
+                        }
+                        .buttonStyle(.bordered)
+                        .help(Self.title(kind))
                     }
-                    .buttonStyle(.bordered)
                 }
             }
             if let active = document.selectedTransition {
                 Divider()
-                LabeledContent("Active") { Text(title(active.kind)) }
+                LabeledContent("Active") { Text(Self.title(active.kind)) }
                 Stepper(
                     "Duration: \(active.duration) frames",
                     onIncrement: { document.adjustSelectedTransitionDuration(by: 3) },
@@ -49,8 +54,14 @@ struct TransitionLibraryView: View {
         }
     }
 
-    private func title(_ kind: String) -> LocalizedStringKey {
-        LocalizedStringKey(kind.capitalized)
+    /// "whip-right" reads "Whip right".
+    static func title(_ kind: String) -> LocalizedStringKey {
+        LocalizedStringKey(titleKey(kind))
+    }
+
+    static func titleKey(_ kind: String) -> String {
+        let words = kind.replacingOccurrences(of: "-", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
 
     static func easingTitle(_ easing: String) -> LocalizedStringKey {
@@ -72,7 +83,7 @@ struct TransitionLibraryView: View {
     /// Kind, length, easing and whether the preset has a sound, under its name.
     private static func summary(_ item: LibraryItem) -> String {
         guard let preset = try? TransitionPreset(params: item.params) else { return "" }
-        var parts = [String(localized: String.LocalizationValue(preset.kind.capitalized))]
+        var parts = [String(localized: String.LocalizationValue(titleKey(preset.kind)))]
         if let duration = preset.duration { parts.append(String(localized: "\(duration) frames")) }
         if let easing = preset.easing, easing != TimelineTransition.defaultEasing {
             parts.append(String(localized: easingValue(easing)))
@@ -90,20 +101,47 @@ struct TransitionLibraryView: View {
         }
     }
 
-    private func icon(_ kind: String) -> String {
-        switch kind {
-        case "dissolve": "circle.lefthalf.filled"
-        case "whip": "arrow.right"
-        case "blink": "sun.max.fill"
-        case "zoom": "plus.magnifyingglass"
-        case "spin": "arrow.clockwise"
-        case "shutter": "camera.aperture"
-        case "swing": "rotate.3d"
-        case "glitch": "waveform.path.ecg"
-        case "halftone": "circle.grid.3x3.fill"
-        default: "rectangle.split.2x1"
-        }
-    }
+    private func icon(_ kind: String) -> String { Self.icons[kind] ?? "rectangle.split.2x1" }
+
+    private static let icons: [String: String] = [
+        "dissolve": "circle.lefthalf.filled",
+        "whip": "arrow.left",
+        "whip-right": "arrow.right",
+        "whip-up": "arrow.up",
+        "whip-down": "arrow.down",
+        "blink": "sun.max.fill",
+        "zoom": "plus.magnifyingglass",
+        "crash-zoom": "arrow.up.left.and.arrow.down.right",
+        "crash-out": "arrow.down.right.and.arrow.up.left",
+        "spin": "arrow.counterclockwise",
+        "roll": "arrow.counterclockwise",
+        "roll-right": "arrow.clockwise",
+        "shutter": "camera.aperture",
+        "swing": "rotate.3d",
+        "arc": "arrow.uturn.left",
+        "arc-right": "arrow.uturn.right",
+        "glitch": "waveform.path.ecg",
+        "halftone": "circle.grid.3x3.fill",
+        "wipe-up": "rectangle.split.1x2",
+        "wipe-down": "rectangle.split.1x2.fill",
+        "barn-door": "rectangle.split.3x1",
+        "iris": "circle.circle",
+        "diamond": "diamond",
+        "infinite-zoom": "infinity",
+        "infinite-out": "square.on.square",
+        "screen-in": "rectangle.inset.filled",
+        "screen-out": "rectangle.center.inset.filled",
+        "blur": "drop.halffull",
+        "seamless-zoom": "scope",
+        "flash": "bolt.fill",
+        "dip-black": "moon.fill",
+        "double-exposure": "square.on.square.dashed",
+        "flicker": "light.beacon.max",
+        "color-shift": "paintpalette",
+        "kaleidoscope": "snowflake",
+        "slide": "rectangle.righthalf.inset.filled.arrow.right",
+        "slide-up": "rectangle.bottomhalf.inset.filled",
+    ]
 }
 
 /// A transition preset's kind, duration, easing and sound (with its offset from the cut and volume) in the library
@@ -117,7 +155,7 @@ struct TransitionPresetFields: View {
 
     var body: some View {
         Picker("Transition", selection: $preset.kind) {
-            ForEach(kinds, id: \.self) { Text(LocalizedStringKey($0.capitalized)).tag($0) }
+            ForEach(kinds, id: \.self) { Text(TransitionLibraryView.title($0)).tag($0) }
         }
         Stepper(
             "Duration: \(preset.duration ?? 15) frames",

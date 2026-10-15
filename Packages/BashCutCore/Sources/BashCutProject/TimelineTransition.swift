@@ -3,9 +3,7 @@ import Foundation
 /// A transition between two adjacent clips on a video layer: its kind, length, easing and motion (C5, C6).
 public struct TimelineTransition: JSONObject, Identifiable {
     /// The built-in kinds (`TransitionMotion.builtIns`); any other kind needs a `motion` field.
-    public static let renderedKinds = [
-        "dissolve", "whip", "blink", "zoom", "spin", "shutter", "wipe", "swing", "glitch", "halftone",
-    ]
+    public static let renderedKinds = TransitionMotion.groups.flatMap(\.kinds)
     public static let easingSummary = easings.joined(separator: ", ") + " or cubic-bezier(x1,y1,x2,y2)"
     /// How the tween runs over the transition (#77): `linear` (the default, stored as no field), the keyframe
     /// curves `in`, `out` and `inOut`, or any `cubic-bezier(…)` (one ease type with keyframes, flexibility audit C6).
