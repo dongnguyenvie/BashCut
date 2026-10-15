@@ -80,14 +80,6 @@ public enum PlanCut {
         public var volumeDb: Double?
     }
 
-    public struct Music: Sendable {
-        public var media: String
-        public var from: Double
-        public var volumeDb: Double?
-        /// The music layer's level under speech (its ducking), in dB.
-        public var duckDb: Double?
-    }
-
     /// Captions from what the clips say (their media's stored transcripts), in a preset and style.
     public struct Captions: Sendable {
         public var wordStyle: String?
@@ -460,12 +452,7 @@ extension PlanCut {
         }
         var music: Music?
         if case .object(let row)? = root["music"] {
-            music = read("music") {
-                guard let media = row["media"]?.string else { throw ProjectError.invalid("music: give media") }
-                let duck = row["duckDb"]?.double
-                if let duck, !(-60...0).contains(duck) { throw ProjectError.invalid("music.duckDb: -60…0") }
-                return Music(media: media, from: max(0, row["from"]?.double ?? 0), volumeDb: row["volumeDb"]?.double, duckDb: duck)
-            }
+            music = read("music") { try Music(row) }
         }
         var review: [String: JSONValue]?
         if let value = root["review"], value != .null {

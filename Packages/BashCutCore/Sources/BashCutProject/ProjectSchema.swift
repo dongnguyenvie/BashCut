@@ -287,15 +287,15 @@ public enum ProjectSchema {
                     "description": .string("Semantic role; any nonempty value, these are assigned by BashCut"),
                     "examples": .array(TrackRole.known.map(JSONValue.string)),
                 ]),
-                "name": string("Display name", minLength: 1),
+                "name": string("Display name", minLength: 1), "locked": boolean("Items cannot change until unlocked"),
                 "magnetic": boolean("Inserts append after the last item; drags reorder and compact"),
                 "hidden": boolean("Visual layers only: left out of preview and export"),
                 "muted": boolean("Audio layers only: silent, and its speech stops ducking music"),
-                "locked": boolean("Items cannot change until unlocked"),
                 "duckingEnabled": boolean("Music layers: suspend ducking without losing the level"),
                 "duckUnderSpeechDb": number("Music layers: level under speech", -60...0),
                 "duckAttackFrames": integer("Music layers: ramp in", minimum: 0, maximum: 10_000),
                 "duckReleaseFrames": integer("Music layers: ramp out", minimum: 0, maximum: 10_000),
+                "duckMinGapFrames": integer("Music layers: shorter speech gaps keep it down (2.5 s)", minimum: 0, maximum: 10_000),
                 "items": array("Items, in any order", of: ref("item")),
             ])
         // What an item carries depends on its layer's kind.

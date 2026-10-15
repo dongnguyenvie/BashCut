@@ -8,31 +8,13 @@ struct AudioGainPoint: Equatable, Sendable {
 
 enum AudioGainPlanner {
     static func speechRanges(in project: Project) -> [Range<Int>] {
-        let items = Dictionary(
-            uniqueKeysWithValues: project.tracks.flatMap { track in
-                track.items.map { ($0.id, $0) }
-            })
-        let ranges = project.tracks.flatMap { track -> [Range<Int>] in
-            guard track.role == "voiceover" || track.role == "dialogue", !track.isMuted else { return [] }
-            return track.items.compactMap { item in
-                let isSpeech: Bool
-                if track.role == "voiceover" {
-                    isSpeech = true
-                } else if item["tag"]?.object["role"]?.string == "speech" {
-                    isSpeech = true
-                } else if let videoID = item["linkedVideo"]?.string {
-                    isSpeech = items[videoID]?["tag"]?.object["role"]?.string == "speech"
-                } else {
-                    isSpeech = false
-                }
-                return isSpeech ? item.at..<item.end : nil
-            }
-        }
-        return merge(ranges)
+        MusicDucking.speechRanges(in: project)
     }
 
+    /// The gain points of `item`: its volume (or volume keys), fades and, on a ducking Music layer, the dips under
+    /// `speech`; gaps between lines shorter than the layer's hold (`minGapFrames`) keep the music down (#630).
     static func points(
-        for item: Item, on track: Track, speech: [Range<Int>], mixGainDb: Double = 0
+        for item: Item, on track: Track, speech: [Range<Int>], mixGainDb: Double = 0, minGapFrames: Int = 0
     ) -> [AudioGainPoint] {
         let silent = item["muted"] == .bool(true) || track.isMuted
         let staticDb = item["volumeDb"]?.double ?? 0
@@ -44,11 +26,10 @@ enum AudioGainPlanner {
         }
         let fadeIn = min(item.duration / 2, max(0, item["fadeIn"]?.int ?? 0))
         let fadeOut = min(item.duration / 2, max(0, item["fadeOut"]?.int ?? 0))
-        let duckDb = track.role == "music" && track["duckingEnabled"] != .bool(false)
-            ? track["duckUnderSpeechDb"]?.double : nil
+        let duckDb = MusicDucking.duckDb(track)
         let attack = max(0, track["duckAttackFrames"]?.int ?? 3)
         let release = max(0, track["duckReleaseFrames"]?.int ?? 8)
-        let relevant = duckDb == nil ? [] : speech.filter {
+        let relevant = duckDb == nil ? [] : MusicDucking.held(speech, minGap: minGapFrames).filter {
             $0.upperBound + release > item.at && $0.lowerBound - attack < item.end
         }
         var frames = Set([item.at, item.end])
@@ -103,17 +84,5 @@ enum AudioGainPlanner {
             return duck + (1 - duck) * progress
         }
         return 1
-    }
-
-    private static func merge(_ ranges: [Range<Int>]) -> [Range<Int>] {
-        var result: [Range<Int>] = []
-        for range in ranges.sorted(by: { ($0.lowerBound, $0.upperBound) < ($1.lowerBound, $1.upperBound) }) {
-            if let last = result.last, range.lowerBound <= last.upperBound {
-                result[result.count - 1] = last.lowerBound..<max(last.upperBound, range.upperBound)
-            } else {
-                result.append(range)
-            }
-        }
-        return result
     }
 }

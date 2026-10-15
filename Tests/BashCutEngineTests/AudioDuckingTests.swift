@@ -36,6 +36,42 @@ struct AudioDuckingTests {
         #expect(abs((adjusted.first?.volume ?? 0) - 0.501_187) < 0.0001)
     }
 
+    @Test("Ducking holds the music down in gaps shorter than the layer's hold and rises in longer ones (#630)")
+    func holdBetweenLines() {
+        let fps = 30.0
+        var track = Project(name: "Hold", fps: FrameRate(30, 1)).tracks[5]
+        track["duckUnderSpeechDb"] = .integer(-20)
+        let hold = MusicDucking.minGapFrames(track, fps: fps)
+        #expect(hold == 75)
+        let music = Item(id: "music", media: "media", at: 0, duration: 900)
+        // Lines 30–120 and 144–240 (a 0.8 s gap), then 360–450 (a 4 s gap).
+        let speech = [30..<120, 144..<240, 360..<450]
+        let points = AudioGainPlanner.points(for: music, on: track, speech: speech, minGapFrames: hold)
+        func volume(_ frame: Int) -> Float? { points.first { $0.frame == frame }?.volume }
+        let down = Float(0.1)
+        // Down from the first line to the end of the second, with no point in the short gap.
+        #expect(abs((volume(30) ?? 0) - down) < 0.0001 && abs((volume(240) ?? 0) - down) < 0.0001)
+        #expect(points.filter { (31..<240).contains($0.frame) }.isEmpty)
+        #expect(volume(248) == 1 && volume(357) == 1)  // up in the 4 s gap
+        #expect(abs((volume(360) ?? 0) - down) < 0.0001)
+        // Without the hold the music climbs back up in the short gap too.
+        let pumping = AudioGainPlanner.points(for: music, on: track, speech: speech, minGapFrames: 0)
+        #expect(pumping.first { $0.frame == 128 }?.volume == 1)
+    }
+
+    @Test("A fixed bed (ducking off) keeps one level under continuous voiceover (#630)")
+    func fixedBed() {
+        var track = Project(name: "Bed", fps: FrameRate(30, 1)).tracks[5]
+        track["duckingEnabled"] = .bool(false)
+        var music = Item(id: "music", media: "media", at: 0, duration: 900)
+        music["volumeDb"] = .number(-24)
+        let speech = stride(from: 0, to: 870, by: 114).map { $0..<($0 + 90) }
+        let points = AudioGainPlanner.points(
+            for: music, on: track, speech: speech, minGapFrames: MusicDucking.minGapFrames(track, fps: 30))
+        let level = Float(pow(10, -24.0 / 20))
+        #expect(points.allSatisfy { abs($0.volume - level) < 0.0001 })
+    }
+
     @Test("A muted layer is silent and its speech no longer ducks music")
     func mutedLayer() {
         var project = Project(name: "Mute", fps: FrameRate(30, 1))

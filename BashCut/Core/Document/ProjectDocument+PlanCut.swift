@@ -22,6 +22,8 @@ extension ProjectDocument {
                 ]))
             }
             var operations = built.planner.operations
+            let bed = await document.planMusicBed(spec.music, built: built.planner.project)
+            operations += bed.operations
             var properties: [String: JSONValue] = [:]
             let given = [arguments["cut"], arguments["patch"]].contains { $0 != nil && $0 != .null }
             if given, let cut = try document.planCutValue(arguments) {
@@ -37,6 +39,7 @@ extension ProjectDocument {
                 baseRevision: baseRevision, note: try Self.editNote(arguments))
             var json = check.json.object
             json["rev"] = .integer(result.revision)
+            json["music"] = bed.report
             let clips = spec.clips.count, lines = spec.voiceover.count
             let sections = Set(spec.clips.compactMap(\.section) + spec.voiceover.compactMap(\.section)).count
             let made = lines > 0 && clips == 0 ? "\(lines) voiceover lines" : "\(clips) clips"
@@ -282,6 +285,7 @@ extension ProjectDocument {
                 ])
             })
             if !built.kept.isEmpty { result["otherItems"] = .integer(built.kept.count) }
+            result["music"] = spec.music.map(Self.planMusicSummary)
             // The review of the edit as it would be; picture, loudness and plugin checks belong to a rendered revision.
             var context = reviewContext()
             context.picture = nil
