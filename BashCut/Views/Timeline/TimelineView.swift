@@ -1,4 +1,5 @@
 import AppKit
+import BashCutAutomation
 import BashCutDocument
 import SwiftUI
 
@@ -21,12 +22,24 @@ struct TimelineView: NSViewRepresentable {
         let agentChanges: Int
         let overlays: Int
         let size: CGSize
+        let showEmptyTracks: Bool
     }
 
     func makeNSView(context: Context) -> TimelineContainerView {
         let container = TimelineContainerView(canvas: TimelineCanvas(document: document))
         container.header.onSelect = { [document] id in document.selectedTrackID = id }
         container.header.onResize = { [document] width in document.setTimelineHeaderWidth(width) }
+        container.header.onToggleEmpty = { [document] in document.ui.showEmptyTracks.toggle() }
+        container.header.onAddMenu = { [document] in
+            let menu = NSMenu()
+            for (title, action) in [
+                (String(localized: "Video Layer"), UIAction.addVideoLayer),
+                (String(localized: "Adjustment Layer"), .addAdjustmentLayer),
+                (String(localized: "Text Layer"), .addTextLayer),
+                (String(localized: "Audio Layer"), .addAudioLayer),
+            ] { menu.addItem(ClosureMenuItem(title) { document.run(action) }) }
+            return menu
+        }
         container.header.onRename = { [document] id, name in
             do { try document.renameLayer(id, to: name) } catch { document.message = error.localizedDescription }
         }
@@ -59,7 +72,9 @@ struct TimelineView: NSViewRepresentable {
         let visible = view.documentVisibleRect
         let scale = document.ui.timelineScale / project.fps.value
         document.ui.timelineViewportWidth = view.contentSize.width
-        let layout = TimelineLayout(project: project, scale: scale, leading: document.ui.timelineLeading)
+        let layout = TimelineLayout(
+            project: project, scale: scale, leading: document.ui.timelineLeading,
+            expandEmpty: document.ui.showEmptyTracks, keep: document.selectedTrackID)
         let size = CGSize(
             width: max(view.contentSize.width, layout.x(project.duration) + TimelineLayout.trailing),
             height: max(view.contentSize.height, layout.contentHeight))
@@ -67,7 +82,8 @@ struct TimelineView: NSViewRepresentable {
             session: document.sessionID, revision: project.revision, scale: scale, leading: layout.leading,
             selectedID: document.selectedID,
             selectedIDs: document.selectedIDs, selectedTrackID: document.selectedTrackID, waveforms: document.waveforms.values.count,
-            agentChanges: document.agentChangedIDs.count, overlays: document.ui.pluginOverlayRevision, size: size)
+            agentChanges: document.agentChangedIDs.count, overlays: document.ui.pluginOverlayRevision, size: size,
+            showEmptyTracks: document.ui.showEmptyTracks)
         if key != canvas.lastContent {
             if key.session != canvas.lastContent?.session || key.revision != canvas.lastContent?.revision {
                 canvas.filmstripURLs.removeAll()
@@ -90,7 +106,8 @@ struct TimelineView: NSViewRepresentable {
             canvas.setFrameSize(size)
             // An edit or a selection change repaints only the clips it touched.
             if let previous, previous.session == key.session, previous.scale == key.scale, previous.leading == key.leading, previous.size == key.size,
-                previous.selectedTrackID == key.selectedTrackID, previous.waveforms == key.waveforms,
+                previous.selectedTrackID == key.selectedTrackID, previous.showEmptyTracks == key.showEmptyTracks,
+                previous.waveforms == key.waveforms,
                 previous.overlays == key.overlays,
                 let rects = canvas.changedRects(since: drawn) {
                 rects.forEach(canvas.setNeedsDisplay)
