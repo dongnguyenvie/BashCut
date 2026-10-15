@@ -72,6 +72,16 @@ extension CommandCatalog {
                          default: .bool(false), cli: .flag("overwrite")),
     ]
 
+    /// `export.start`'s summary from the output name on.
+    static let exportNameOverwriteAndWithout = " A name already on disk or queued gets the next free suffix (name-2…; "
+        + "the result says renamedFrom); overwrite replaces the files on disk (moved to the Trash) instead. "
+        + exportWithoutSummary
+
+    /// `export.start`'s graphics guard (#634), part of its summary.
+    static let exportGraphicsDraftNote = "It also refuses graphics a plugin rendered as drafts (media "
+        + "data.graphics.draft): else graphics_draft, listing them and the plugin's final render (bin/graphic plan "
+        + "--final or rerender --all --final)."
+
     static let exportWaitParameters = [
         CommandParameter("wait", .boolean, "When it starts at once, wait up to 100 s for it to finish and return the job",
                          default: .bool(false), cli: .flag("wait")),

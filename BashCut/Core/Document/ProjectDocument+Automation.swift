@@ -301,13 +301,7 @@ extension ProjectDocument {
             }
             let (asked, directory) = try document.exportDestination(arguments)
             guard document.project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
-            // A final export by an agent needs a passing draft audit of this timeline or the user's G5 approval
-            // (spec 13 §7), whatever agentPermissions say; drafts and the user are never blocked.
-            if author != .user, preset != .quickDraft, let log = document.runLog,
-                let failure = WorkflowChecklist.draftGuard(document.project, entries: log.entries())
-            {
-                throw Self.guardFailure(failure)
-            }
+            try document.checkExportGuards(preset: preset, author: author)
             let includeSubRip = arguments.bool("includeSRT")
             let normalizeAudio = arguments.bool("normalizeAudio")
             let bitRate = arguments.optionalDouble("bitrate").map { Int($0 * 1_000_000) }

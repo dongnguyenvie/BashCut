@@ -1,6 +1,7 @@
 import AppKit
 import BashCutAutomation
 import BashCutDocument
+import BashCutEngine
 import BashCutProject
 import BashCutStorage
 import Foundation
@@ -53,10 +54,11 @@ extension ProjectDocument {
 
     /// A workflow guard's failure (spec 13 §7) as an error with its category and the command that fixes it.
     static func guardFailure(_ failure: WorkflowChecklist.GuardFailure) -> RPCFailure {
-        RPCFailure(
+        var data = failure.details
+        data["remediation"] = .object(["command": .string(failure.command)])
+        return RPCFailure(
             -32003, failure.message,
-            category: failure.category == "recipe_unread" ? .recipeUnread : .auditMissing,
-            data: ["remediation": .object(["command": .string(failure.command)])])
+            category: RPCErrorCategory(rawValue: failure.category) ?? .auditMissing, data: data)
     }
 
     /// Before G2, and before the rough cut when G2 is skipped: agents need the recipe read and a strategy audit. The
@@ -66,6 +68,17 @@ extension ProjectDocument {
             let failure = WorkflowChecklist.strategyGuard(project, entries: log.entries())
         else { return }
         throw Self.guardFailure(failure)
+    }
+
+    /// Before a final export by an agent (spec 13 §7), whatever agentPermissions say; quick drafts and the user are
+    /// never blocked. No graphic rendered as a draft (#634), checked first because finalising changes the timeline;
+    /// then a passing draft audit of this timeline or the user's G5 approval.
+    func checkExportGuards(preset: ExportPreset, author: Author) throws {
+        guard author != .user, preset != .quickDraft else { return }
+        if let failure = WorkflowChecklist.graphicsDraftGuard(project) { throw Self.guardFailure(failure) }
+        if let log = runLog, let failure = WorkflowChecklist.draftGuard(project, entries: log.entries()) {
+            throw Self.guardFailure(failure)
+        }
     }
 
     func registerWorkflowCommands() {

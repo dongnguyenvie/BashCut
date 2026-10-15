@@ -59,12 +59,14 @@ public enum WorkflowChecklist {
     }
 
     /// What the viewer sees and hears: tracks, transitions, markers, looks, audio settings and the format. An audit
-    /// stays valid while this does not change (notes such as the brief, plan or selects do not count).
+    /// stays valid while this does not change (notes such as the brief, plan or selects do not count). Items showing a
+    /// plugin graphic count by the graphic, not its render (`graphicTracks`), so finalising drafts keeps the audit.
     public static func timelineFingerprint(_ project: Project) -> String {
         var fields: [String: JSONValue] = [:]
         for key in ["tracks", "transitions", "markers", "luts", "audio", "format", "clipFill"] {
             fields[key] = project[key] ?? .null
         }
+        fields["tracks"] = graphicTracks(project)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let data = (try? encoder.encode(JSONValue.object(fields))) ?? Data()
@@ -251,11 +253,13 @@ public enum WorkflowChecklist {
 
     // MARK: Guards (§7)
 
-    /// Why a guarded command cannot run yet: `audit_missing` or `recipe_unread`, and the command that fixes it.
+    /// Why a guarded command cannot run yet: `audit_missing`, `recipe_unread` or `graphics_draft`, the command that
+    /// fixes it and any facts behind it (`details`, merged into the error's data).
     public struct GuardFailure: Error, Equatable, Sendable {
         public let category: String
         public let message: String
         public let command: String
+        public var details: [String: JSONValue] = [:]
     }
 
     /// Before an agent's final export: the latest draft audit passed and the timeline has not changed since, or the

@@ -55,10 +55,12 @@ is `missing`, `not_configured` or `unhealthy` and `data.providers` lists each pr
 does), `unsupported_media` (this Mac cannot
 decode a media's video; `data.media` lists it with its codec and timeline frames), `internal`, and for `-32003`:
 `busy_dialog` (answer or close the open dialog: `ui dialog`), `busy_approval` (an earlier request waits for the
-user), `busy_running` (the same work is running), `file_conflict`, `not_available_now`, and the two workflow guards
-for agents (never the user): `audit_missing` (a final export without a passing draft audit of the current timeline
-or the user's G5 approval, or G2 without a strategy audit) and `recipe_unread` (G2 before the plan's recipe skill
-was read), each with `remediation.command` such as `review packet --point draft`. `context get` ›
+user), `busy_running` (the same work is running), `file_conflict`, `not_available_now`, and the workflow guards for
+agents (never the user): `audit_missing` (a final export without a passing draft audit of the current timeline
+or the user's G5 approval, or G2 without a strategy audit), `recipe_unread` (G2 before the plan's recipe skill
+was read) and `graphics_draft` (a final export over graphics a plugin rendered as drafts, `data.graphics.draft`;
+`data.drafts` lists each media, its name and the items that use it), each with `remediation.command` such as
+`review packet --point draft` or `bin/graphic plan --final`. `context get` ›
 `recentFailures` lists your session's failures of the last 15 minutes and how many in a row repeat.
 
 ## Terminal dock
