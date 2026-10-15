@@ -95,9 +95,9 @@ extension ProjectDocument {
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .showRecentProjects: try openDialog("recents")
         case .toggleAgentDock:
-            if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
+            if agents.isDetached { agents.attach() } else { ui.toggleAgentTab() }
         case .toggleLibraryPanel: ui.showLibraryPanel.toggle()
-        case .toggleInspector: ui.showInspector.toggle()
+        case .toggleInspector: ui.toggleInspectorTab()
         case .askAgent: ui.showAsk = true
         case .openClaudeTerminal, .openCodexTerminal, .openShellTerminal:
             // The dock's + menu: a new tab with its own session token.
@@ -341,6 +341,10 @@ extension ProjectDocument {
     /// Which tab the Inspector and section the Settings sheet and Knowledge window show.
     private func updatePanels(_ arguments: CommandArguments) {
         if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
+        if let tab = arguments.optionalString("rightTab").flatMap(RightColumnTab.init(rawValue:)) {
+            if tab == .agent, agents.isDetached { agents.attach() }
+            ui.selectRightTab(tab)
+        }
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
         if let search = arguments.optionalString("settingsSearch") { ui.settingsSearch = search }
         if let section = arguments.optionalString("knowledgeSection") { ui.knowledgeSection = section }
@@ -380,8 +384,10 @@ extension ProjectDocument {
             "snap": .bool(ui.snapping), "headerCompact": .bool(ui.timelineHeaderCompact),
             "headerWidth": .number(ui.timelineLeading), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
             "fullScreen": .bool(fullScreenPreview.isOn),
-            "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
-            "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.showInspector),
+            "agentDock": .bool(ui.showAgentDock && ui.rightTab == .agent && !agents.isDetached),
+            "agentDockDetached": .bool(agents.isDetached),
+            "rightTab": .string(ui.rightTab.rawValue), "rightColumn": .bool(ui.rightColumnVisible),
+            "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.inspectorShown),
             "chatTab": agents.chatPluginID.map(JSONValue.string) ?? .null,
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,

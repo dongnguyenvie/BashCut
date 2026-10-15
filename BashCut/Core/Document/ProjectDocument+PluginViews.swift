@@ -66,7 +66,7 @@ extension ProjectDocument {
         case .panel where plugin.manifest.views.contains { $0.isTool && plugin.id + "/" + $0.id == key }:
             ui.showLibraryPanel && ui.pluginPanel == nil && ui.libraryTab == .tools && ui.selectedTool == key
         case .panel: ui.pluginPanel == plugin.id && pluginPanelView(plugin).map { plugin.id + "/" + $0.id } == key
-        case .dock: ui.showAgentDock && agents.pluginViewKey == key
+        case .dock: ui.showAgentDock && ui.rightTab == .agent && agents.pluginViewKey == key
         case .sheet: ui.pluginSheet == key
         case .inspector: selectedItems.count == 1
         }

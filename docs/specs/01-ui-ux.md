@@ -27,7 +27,7 @@ control-by-control gap list is in [mockup parity](../status/mockup-parity.md).
 
 ### 1.2 Editor window
 
-The layout follows CapCut desktop, plus an agent dock on the right.
+The layout follows CapCut desktop, plus one right column with an Inspector tab and an Agent tab (P1-6). The diagram shows the Agent tab: the column runs the full height, beside the timeline. On the Inspector tab the column sits beside the viewer only and the timeline spans the full window width.
 
 ```text
 ┌ Toolbar ──────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -63,11 +63,11 @@ The layout follows CapCut desktop, plus an agent dock on the right.
 | **Tab rail** (far left) | Media 🎞, Audio ♪, Text T, Stickers ★, Effects ✦, Transitions ⇄, Filters ◐, Brand 🎨, then after a divider Tools 🔧 and, when a plugin has a panel, More ⋯ | Same idea as CapCut's left rail. Voiceover lives in Tools, plugin panels in the More popover. In a window shorter than 900 pt the tiles show icons only and the label is the tooltip |
 | **Library** | Content of the selected tab: thumbnail grid, drag to timeline, hover-scrub | Each tab is described in §3 |
 | **Viewer** | Preview in the project frame (9:16 / 16:9), timecode, toggleable TikTok safe area | Same engine as export. Heavy footage plays from automatic proxies; a manual quality picker (Full / ½ / Proxy) is Planned |
-| **Inspector** | Properties of the selected item | Tabs: Video, Audio, Text, Color, Speed. Every number can be scrubbed and typed |
+| **Inspector** | Properties of the selected item | A tab of the right column (300 pt; 340 pt from a 1680 pt window). Tabs: Video, Audio, Text, Color, Speed. Every number can be scrubbed and typed. Selecting a timeline item brings it forward unless the Agent tab was picked in the last 2 s |
 | **Timeline** | Tracks, Sections band, Beat band, edit toolbar | §2 |
-| **Agent dock** | Claude / Codex / Shell terminal tabs, context chip, quick actions | §4. Toggle with ⌘J; can be detached into its own window |
+| **Agent dock** | Claude / Codex / Shell terminal tabs, context chip, quick actions | §4. The Agent tab of the right column, with a dot while the agent works. ⌘J selects it (a second ⌘J hides the column); **Pop out** moves it into its own window, and the tab then says "Agent is in its own window" |
 
-The minimum window size is 1280×800. On small screens the agent dock floats by default instead of taking a column.
+The minimum window size is 1280×800. The window grows to the Agent tab's width (editor 860 pt plus the 300 pt column) when that tab opens; the Inspector tab needs no extra width. `ui view --right-tab inspector|agent` selects the tab.
 
 ## 2. Timeline
 

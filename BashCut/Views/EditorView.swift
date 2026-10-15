@@ -13,6 +13,8 @@ struct EditorView: View {
     @State var windowHeight = 900.0
     /// The rail's More popover, which lists the plugin panels.
     @State var showRailMore = false
+    /// The editor's width, for the right column's width (340 from 1680 pt, 300 below).
+    @State var windowWidth = 1280.0
     var body: some View {
         VStack(spacing: 0) {
             toolbar
@@ -31,31 +33,32 @@ struct EditorView: View {
                 // The dock works before a project is open, so an agent can be asked to create or open one.
                 let welcome = WelcomeView(document: document).frame(minWidth: 560, maxHeight: .infinity)
                 if document.ui.showAgentDock {
-                    HSplitView {
+                    HStack(spacing: 0) {
                         welcome
+                        Divider()
                         AgentDockView(model: document.agents)
-                            .frame(minWidth: EditorLayout.dockMinWidth, idealWidth: 370, maxWidth: 500)
+                            .frame(width: EditorLayout.rightColumnWidth(window: windowWidth)).clipped()
                     }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     welcome.frame(maxWidth: .infinity)
                 }
             } else {
-            // Without the dock the column is not in a split view: a split view keeps its pane's last width and
-            // would not let the window shrink below it (#528).
-            if document.ui.showAgentDock {
-                HSplitView {
+                // Not a split view: a split view keeps its pane's last width and would not let the window shrink
+                // below it (#528). The right column has one width per window size (P1-6).
+                HStack(spacing: 0) {
                     editorColumn
-                    AgentDockView(model: document.agents)
-                        .frame(minWidth: EditorLayout.dockMinWidth, idealWidth: 370, maxWidth: 500)
+                    if agentColumn {
+                        Divider()
+                        RightColumnView(document: document).frame(width: columnWidth).clipped()
+                    }
                 }
-            } else {
-                editorColumn
-            }
             }
             // Export progress, the save state and the revision are in the toolbar's activity capsule.
             StatusBarView(document: document)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windowHeight = $0 }
+        .onChange(of: document.selectedID) { if document.selectedID != nil { document.ui.itemSelected() } }
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: { windowWidth = $0 })
         .ignoresSafeArea(.container, edges: .top)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08)).preferredColorScheme(.dark).tint(.cyan)
         .frame(minWidth: minSize.width, minHeight: minSize.height)
@@ -192,7 +195,7 @@ struct EditorView: View {
         }
     }
     private func runDoctor() { Task { await document.runDoctor() } }
-    private var minSize: CGSize { EditorLayout.minSize(dock: document.ui.showAgentDock && !document.agents.isDetached) }
+    private var minSize: CGSize { EditorLayout.minSize(agentColumn: agentColumn || (document.fileURL == nil && document.ui.showAgentDock)) }
     var timelineToolbar: some View { TimelineToolbar(document: document) }
     private var review: some View {
         VStack(alignment: .leading, spacing: 12) {

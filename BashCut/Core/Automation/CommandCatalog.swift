@@ -309,20 +309,20 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
-                + "color compare, agent dock, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse "
-                + "category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's "
+                + "color compare, agent dock, right column tab, inspector tab, Settings section and search, Knowledge section, "
+                + "Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's "
                 + "search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.",
             parameters: [
-                CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600,
-                                 cli: .option("zoom")),
-                CommandParameter("zoomAnchor", .integer, "Frame kept in place by --zoom; the playhead by default",
-                                 minimum: 0, cli: .option("zoom-anchor")),
+                CommandParameter("zoom", .integer, "Timeline zoom in pixels per second", minimum: 1, maximum: 600, cli: .option("zoom")),
+                CommandParameter("zoomAnchor", .integer, "Frame kept in place by --zoom; the playhead by default", minimum: 0,
+                                 cli: .option("zoom-anchor")),
                 CommandParameter("snap", .boolean, "Snapping on or off", cli: .option("snap")),
                 CommandParameter("safeArea", .boolean, "Safe-area overlay on or off", cli: .option("safe-area")),
                 CommandParameter("viewerZoom", .string, "Viewer zoom: fit, or a percentage of the output size",
                                  choices: EditorViewerZoom.choices, cli: .option("viewer-zoom")),
                 CommandParameter("compare", .boolean, "Color before/after compare on or off", cli: .option("compare")),
-                CommandParameter("agentDock", .boolean, "Agent dock shown or hidden", cli: .option("agent-dock")),
+                CommandParameter("agentDock", .boolean, "Agent tab of the right column shown or hidden", cli: .option("agent-dock")),
+                CommandParameter("rightTab", .string, "Right column tab to show", choices: UIAction.rightTabs, cli: .option("right-tab")),
                 CommandParameter("reveal", .integer, "Scroll the timeline so this frame is visible", minimum: 0,
                                  cli: .option("reveal")),
                 CommandParameter("inspector", .string, "Inspector tab", choices: UIAction.inspectorTabs,

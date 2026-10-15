@@ -93,7 +93,7 @@ arguments.
 | `ui dialog` | read | Every open alert, file panel, sheet and popover |
 | `ui respond <option> [--path]` / `ui action open <dialog>` | ui | Answering or opening a dialog |
 | `ui select` / `ui seek` / `ui action panel <panel>` / `ui action notify <message>` | ui | Pointing something out to the user |
-| `ui view [--zoom 10…140] [--snap] [--safe-area] [--compare] [--agent-dock] [--inspector <tab>] [--knowledge-section <section>] [--reveal <frame>]` | ui | Zoom slider and ⌘=/⌘−, Snap, Safe area, Compare, Agent button, Inspector tabs, Knowledge window sidebar, scrolling |
+| `ui view [--zoom 10…140] [--snap] [--safe-area] [--compare] [--agent-dock] [--right-tab inspector|agent] [--inspector <tab>] [--knowledge-section <section>] [--reveal <frame>]` | ui | Zoom slider and ⌘=/⌘−, Snap, Safe area, Compare, Agent tab, right column tab, Inspector tabs, Knowledge window sidebar, scrolling |
 | `ui action source <media> [--in N] [--out N]` | ui | Clicking a Library thumbnail (source viewer) |
 
 ### Edit commands
