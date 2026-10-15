@@ -36,6 +36,10 @@ enum EditorLayout {
 }
 
 extension EditorView {
+    var rightColumn: some View {
+        RightColumnView(document: document, formatMenu: AnyView(formatMenu), platformMenu: AnyView(platformMenu))
+            .frame(width: columnWidth).clipped()
+    }
     var columnWidth: Double { EditorLayout.rightColumnWidth(window: windowWidth) }
     /// The Inspector tab shows: the column sits beside the viewer and the timeline spans the full width (design 7b).
     var inspectorColumn: Bool { document.ui.rightColumnVisible && document.ui.rightTab == .inspector }
@@ -94,7 +98,7 @@ extension EditorView {
                 }.frame(minWidth: EditorLayout.viewerMinWidth, maxWidth: .infinity).clipped()
                 if inspectorColumn {
                     Divider()
-                    RightColumnView(document: document).frame(width: columnWidth).clipped()
+                    rightColumn
                 }
             }.frame(minHeight: EditorLayout.paneMinHeight).disabled(document.busy)
             // The timeline is resizable against the panes above it (#528).

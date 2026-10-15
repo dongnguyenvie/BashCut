@@ -49,7 +49,7 @@ struct EditorView: View {
                     editorColumn
                     if agentColumn {
                         Divider()
-                        RightColumnView(document: document).frame(width: columnWidth).clipped()
+                        rightColumn
                     }
                 }
             }
