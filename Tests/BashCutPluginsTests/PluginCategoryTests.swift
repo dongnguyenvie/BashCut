@@ -40,6 +40,15 @@ struct PluginCategoryTests {
         #expect(try JSONDecoder().decode(PluginManifest.self, from: Data(json.utf8)).category == "color")
     }
 
+    @Test("The sample category marks example plugins and registry listings")
+    func sampleCategory() {
+        #expect(manifest(category: "sample").isSample)
+        #expect(!manifest(category: "utilities").isSample && !manifest().isSample)
+        #expect(PluginCategory.of(manifest(category: "sample")) == .utilities)
+        #expect(PluginRegistryEntry(id: "a.b", name: "A", category: "sample", versions: []).isSample)
+        #expect(!PluginRegistryEntry(id: "a.c", name: "C", versions: []).isSample)
+    }
+
     @Test("Automation offers the same category ids, in display order")
     func automationChoices() {
         #expect(UIAction.pluginCategories == PluginCategory.allCases.map(\.rawValue))

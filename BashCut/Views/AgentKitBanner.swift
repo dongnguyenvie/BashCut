@@ -5,8 +5,43 @@ import SwiftUI
 struct AgentKitBanner: View {
     @Bindable var model: AgentDockModel
     let prompt: AgentKitPrompt
+    /// The full card shows the first time this kit version is seen; after that it takes one line (P1-8).
+    @State private var collapsed: Bool
+
+    init(model: AgentDockModel, prompt: AgentKitPrompt) {
+        self.model = model
+        self.prompt = prompt
+        _collapsed = State(initialValue: model.settings.agentKitPromptSeen == prompt.version)
+    }
 
     var body: some View {
+        Group {
+            if collapsed { line } else { card }
+        }.onAppear { model.settings.agentKitPromptSeen = prompt.version }
+    }
+
+    private var line: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "brain.head.profile").foregroundStyle(.cyan)
+            Text("Agent skills:").foregroundStyle(.secondary)
+            if model.kitSettingUp {
+                ProgressView().controlSize(.mini)
+                Text("Setting up…").foregroundStyle(.secondary)
+            } else {
+                Button(prompt.outdated ? "Update" : "Set Up") { model.setUpKitFromPrompt() }.buttonStyle(.link)
+                Text("·").foregroundStyle(.secondary)
+                Button("Details…") { model.document.run(.showAgentKit) }.buttonStyle(.link)
+            }
+            Spacer(minLength: 0)
+            Button("Later") { model.document.run(.dismissAgentKitPrompt) }
+                .buttonStyle(.borderless).foregroundStyle(.secondary).disabled(model.kitSettingUp)
+        }
+        .font(.caption).lineLimit(1).padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Color.cyan.opacity(0.08))
+        .help(detail)
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "brain.head.profile").font(.title3).foregroundStyle(.cyan)

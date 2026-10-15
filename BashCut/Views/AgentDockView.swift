@@ -10,13 +10,18 @@ struct AgentDockView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 2) {
-                Text("AGENT").font(.caption.bold()).foregroundStyle(.secondary)
-                Spacer()
-                DockIconButton(
-                    systemImage: detached ? "rectangle.portrait.and.arrow.forward" : "macwindow.on.rectangle",
-                    help: detached ? "Attach agent dock" : "Detach agent dock"
-                ) {
-                    detached ? model.attach() : model.detach()
+                if detached {
+                    Text("AGENT").font(.caption.bold()).foregroundStyle(.secondary)
+                    Spacer()
+                    DockIconButton(systemImage: "rectangle.portrait.and.arrow.forward", help: "Attach agent dock") {
+                        model.attach()
+                    }
+                } else {
+                    Button { model.detach() } label: {
+                        Label("Pop out", systemImage: "macwindow.on.rectangle").font(.caption)
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Open the agent in its own window")
+                    Spacer()
                 }
                 DockIconButton(systemImage: "books.vertical", help: knowledgeHelp) {
                     if model.knowledge.proposalCount > 0 { model.document.ui.knowledgeSection = "inbox" }
@@ -71,32 +76,7 @@ struct AgentDockView: View {
                         }
                     }
             } else {
-                VStack(spacing: 14) {
-                    Image(systemName: "terminal").font(.largeTitle).foregroundStyle(.cyan)
-                    Text("Choose an agent").font(.headline)
-                    Text("Claude Code and Codex run with your CLI login or API key.").foregroundStyle(.secondary)
-                    Button("Start default agent") { model.openDefault() }
-                        .buttonStyle(.borderedProminent)
-                    ForEach(model.document.chatAgents.available, id: \.pluginID) { agent in
-                        Button(String(format: String(localized: "Start %@"), agent.title)) { model.openChat(agent.pluginID) }
-                    }
-                    ForEach(model.agentChoices) { choice in
-                        if model.canContinue(choice.id) {
-                            HStack {
-                                Button("Continue \(choice.title)") { model.open(choice.id) }
-                                    .help("Pick up your last conversation in this project")
-                                Button("New conversation") { model.startNewConversation(choice.id) }
-                                    .help("Start without the earlier conversation")
-                            }
-                        } else {
-                            Button("Start \(choice.title)") { model.open(choice.id) }
-                        }
-                    }
-                    if !model.sessionDiscoveryMessage.isEmpty {
-                        Label(model.sessionDiscoveryMessage, systemImage: "clock.arrow.circlepath")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+                AgentEmptyStateView(model: model)
             }
             if !model.error.isEmpty {
                 Text(model.error).font(.caption).foregroundStyle(.orange).padding(8).textSelection(.enabled)

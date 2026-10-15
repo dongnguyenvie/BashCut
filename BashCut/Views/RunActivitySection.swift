@@ -26,7 +26,7 @@ struct RunActivitySection: View {
             }
             if !jobs.isEmpty {
                 Text("Running jobs").font(.caption.bold()).foregroundStyle(.secondary)
-                ForEach(jobs) { job in jobRow(job) }
+                ForEach(jobs) { job in JobRow(document: document, job: job, showsMethod: true) }
             }
             if steps.isEmpty, jobs.isEmpty, document.runPanel.progress == nil {
                 Text("No agent activity yet. Steps and jobs show here while an agent works.")
@@ -92,22 +92,6 @@ struct RunActivitySection: View {
         }
         .font(.caption)
         .help(job?.error ?? step.error ?? "")
-    }
-
-    private func jobRow(_ job: Job) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: Self.icon(job.state == .queued ? .queued : .running)).foregroundStyle(.cyan).frame(width: 14)
-            Text(job.method).font(.caption.monospaced()).lineLimit(1)
-            if let detail = job.detail { Text(detail).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle) }
-            Spacer(minLength: 4)
-            if let value = job.progress {
-                ProgressView(value: value).frame(width: 50)
-            } else {
-                Text(job.state == .queued ? Self.stateName(.queued) : Self.stateName(.running)).foregroundStyle(.secondary)
-            }
-            Button { document.jobs.cancel(job.id) } label: { Image(systemName: "xmark.circle.fill") }
-                .buttonStyle(.plain).foregroundStyle(.secondary).help("Cancel this job")
-        }.font(.caption)
     }
 
     static func icon(_ state: AgentStep.State) -> String {

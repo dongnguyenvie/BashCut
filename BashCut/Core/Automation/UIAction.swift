@@ -155,6 +155,8 @@ public enum UIAction: String, CaseIterable, Sendable {
     }
 
     /// Inspector tabs, for `ui.view --inspector`.
+    /// The right column's tabs, for `ui.view --right-tab`; they match `RightColumnTab`.
+    public static let rightTabs = ["inspector", "agent"]
     public static let inspectorTabs = ["video", "audio", "text", "color", "speed"]
     /// The Media panel's sources: footage, project media, shared assets, the selects store (P1-D8) and library clips
     /// (P2-H5), matching `MediaLibrarySource`.

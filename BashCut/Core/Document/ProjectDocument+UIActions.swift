@@ -95,9 +95,9 @@ extension ProjectDocument {
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .showRecentProjects: try openDialog("recents")
         case .toggleAgentDock:
-            if agents.isDetached { agents.attach() } else { ui.showAgentDock.toggle() }
+            if agents.isDetached { agents.attach() } else { ui.toggleAgentTab() }
         case .toggleLibraryPanel: ui.showLibraryPanel.toggle()
-        case .toggleInspector: ui.showInspector.toggle()
+        case .toggleInspector: ui.toggleInspectorTab()
         case .askAgent: ui.showAsk = true
         case .openClaudeTerminal, .openCodexTerminal, .openShellTerminal:
             // The dock's + menu: a new tab with its own session token.
@@ -214,6 +214,13 @@ extension ProjectDocument {
         settings.timelineHeaderWidth = width
     }
 
+    /// Until the user picks a header width, a window of 1280 pt or more shows the layer names and a narrower one
+    /// the short IDs. Not remembered, so resizing the window changes it again.
+    func adaptTimelineHeader(windowWidth: Double) {
+        guard !settings.timelineHeaderWidthChosen else { return }
+        ui.timelineLeading = EditorUIState.defaultTimelineLeading(windowWidth: windowWidth)
+    }
+
     /// Scrolls the timeline so `frame` is visible.
     func revealInTimeline(_ frame: Int) { ui.revealInTimeline(frame, duration: project.duration) }
 
@@ -246,8 +253,13 @@ extension ProjectDocument {
             switch action {
             case "open": return try document.openDialogFromAutomation(target)
             case "panel":
+                if document.toolEntries.contains(where: { $0.id == target && $0.source != .native }) {
+                    document.showTool(target)
+                    return .bool(true)
+                }
                 guard let tab = LibraryTab(panelName: target) else { throw RPCFailure(-32602, "Unknown panel \(target)") }
                 document.showLibraryTab(tab)
+                if let tool = LibraryTab.toolForPanelName(target) { document.showTool(tool) }
                 return .bool(true)
             case "source": return try document.showSource(target, in: arguments.optionalInt("in"), out: arguments.optionalInt("out"))
             case "notify":
@@ -329,6 +341,10 @@ extension ProjectDocument {
     /// Which tab the Inspector and section the Settings sheet and Knowledge window show.
     private func updatePanels(_ arguments: CommandArguments) {
         if let tab = arguments.optionalString("inspector") { ui.inspectorTab = tab }
+        if let tab = arguments.optionalString("rightTab").flatMap(RightColumnTab.init(rawValue:)) {
+            if tab == .agent, agents.isDetached { agents.attach() }
+            ui.selectRightTab(tab)
+        }
         if let section = arguments.optionalString("settingsSection") { ui.settingsSection = section }
         if let search = arguments.optionalString("settingsSearch") { ui.settingsSearch = search }
         if let section = arguments.optionalString("knowledgeSection") { ui.knowledgeSection = section }
@@ -373,14 +389,17 @@ extension ProjectDocument {
             "snap": .bool(ui.snapping), "headerCompact": .bool(ui.timelineHeaderCompact),
             "headerWidth": .number(ui.timelineLeading), "safeArea": .bool(ui.showSafeArea), "compare": .bool(preview.showColorComparison),
             "fullScreen": .bool(fullScreenPreview.isOn),
-            "agentDock": .bool(ui.showAgentDock && !agents.isDetached), "agentDockDetached": .bool(agents.isDetached),
-            "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.showInspector),
+            "agentDock": .bool(ui.showAgentDock && ui.rightTab == .agent && !agents.isDetached),
+            "agentDockDetached": .bool(agents.isDetached),
+            "rightTab": .string(ui.rightTab.rawValue), "rightColumn": .bool(ui.rightColumnVisible),
+            "libraryPane": .bool(ui.showLibraryPanel), "inspectorPane": .bool(ui.inspectorShown),
             "chatTab": agents.chatPluginID.map(JSONValue.string) ?? .null,
             "playing": .bool(preview.isPlaying), "playhead": .integer(playhead),
             "selection": selectedID.map(JSONValue.string) ?? .null,
             "selectedItems": .array(selectedIDs.map(JSONValue.string)),
             "selectedTrack": selectedTrackID.map(JSONValue.string) ?? .null,
             "libraryPanel": .string(ui.libraryTab.panelName), "libraryFilter": libraryFilterJSON(),
+            "tool": ui.libraryTab == .tools ? selectedTool.map { .string($0.id) } ?? .null : .null,
             "mediaSource": .string(ui.mediaSource),
             "libraryLayout": .object(libraryLayoutJSON()),
             "inspector": .string(ui.inspectorTab),

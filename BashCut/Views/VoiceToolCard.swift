@@ -1,9 +1,12 @@
 import AVFoundation
 import BashCutPlugins
 import BashCutProject
+import BashCutDocument
 import SwiftUI
 
-struct VoiceLibraryView: View {
+/// Voiceover in the Tools panel (P1-4): the generator that was the Voice panel. Generates takes from a script and
+/// inserts the chosen one into the Voiceover layer; the takes and the recording controls are the result.
+struct VoiceToolCard: View {
     @Bindable var document: ProjectDocument
     @Bindable var pluginManager: PluginManagerModel
     @State private var text = ""
@@ -13,33 +16,36 @@ struct VoiceLibraryView: View {
     @State private var selectedTake = ""
     @State private var preview = AVPlayer()
     @State private var recorder = VoiceRecorderModel()
+    @State private var target = ToolTarget.project
+
+    private var generating: Bool { pluginManager.calling.contains("voice.synthesize") }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Voiceover", systemImage: "waveform")
-            TextEditor(text: $text).frame(minHeight: 90).scrollContentBackground(.hidden)
-                .padding(5).background(.black.opacity(0.25)).clipShape(RoundedRectangle(cornerRadius: 6))
-            providerPicker
-            VoicePickerView(document: document, pluginManager: pluginManager)
-            FindPluginButton(document: document, capability: "voice.synthesize")
-            ProviderOptionsView(document: document, capability: "voice.synthesize", providerID: provider)
-            Button(pluginManager.calling.contains("voice.synthesize")
-                ? String(localized: "Generating…")
-                : takeCount == 1 ? String(localized: "Generate → 1 take") : String(localized: "Generate → 3 takes")
-            ) {
-                generate()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(
-                document.fileURL == nil || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || pluginManager.calling.contains("voice.synthesize"))
-            takeList
-            recordingControls
-            Button("Import a voiceover take…") {
-                if let track = voiceoverTrackID { document.importMedia(kind: "audio", trackID: track) }
-            }.disabled(voiceoverTrackID == nil)
-            Text(message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-        }
+        ToolCard(
+            title: String(localized: "Voiceover"), icon: "waveform",
+            provider: providerBadge(pluginManager, capability: "voice.synthesize", chosen: provider),
+            info: "Turns a script into spoken takes. Pick the best take and it goes onto the Voiceover layer at the playhead.",
+            targets: ToolTarget.supported(by: ToolID.voice), target: $target, advancedCount: 2,
+            runTitle: takeCount == 1 ? String(localized: "Generate → 1 take") : String(localized: "Generate → 3 takes"),
+            canRun: document.fileURL != nil && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            running: generating, message: message, run: generate,
+            main: {
+                Text("Script").font(.caption).foregroundStyle(.secondary)
+                TextEditor(text: $text).frame(minHeight: 90).scrollContentBackground(.hidden)
+                    .padding(5).background(.black.opacity(0.25)).clipShape(RoundedRectangle(cornerRadius: 6))
+                providerPicker
+                VoicePickerView(document: document, pluginManager: pluginManager)
+            },
+            advanced: {
+                ProviderOptionsView(document: document, capability: "voice.synthesize", providerID: provider)
+                Button("Import a voiceover take…") {
+                    if let track = voiceoverTrackID { document.importMedia(kind: "audio", trackID: track) }
+                }.disabled(voiceoverTrackID == nil)
+            },
+            result: {
+                takeList
+                recordingControls
+            })
         .task(id: document.fileURL) {
             pluginManager.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
             provider = document.project.preferredProvider(for: "voice.synthesize") ?? ""
@@ -54,7 +60,7 @@ struct VoiceLibraryView: View {
         document.project.track(role: TrackRole.voiceover, kind: "audio")?.id
     }
 
-    private var providerPicker: some View {
+    @ViewBuilder private var providerPicker: some View {
         Picker("Provider", selection: $provider) {
             Text("Automatic").tag("")
             ForEach(pluginManager.providers(for: "voice.synthesize")) { choice in
@@ -69,6 +75,7 @@ struct VoiceLibraryView: View {
                     capability: "voice.synthesize", provider: value.isEmpty ? nil : value),
                 label: "Choose voice provider")
         }
+        FindPluginButton(document: document, capability: "voice.synthesize")
     }
 
     /// Takes the chosen provider (or the automatic one, the highest priority) gives per line: 3, or its `maxTakes`.

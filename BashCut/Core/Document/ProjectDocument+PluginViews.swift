@@ -15,6 +15,13 @@ extension ProjectDocument {
         ui.showLibraryPanel = true
     }
 
+    /// Shows the Tools panel on `id` (a `ToolID`, `<plugin>/<view>` or a tool action's id), revealing the panel column.
+    func showTool(_ id: String) {
+        DebugLog.write("ui", "tool \(id)")
+        ui.selectedTool = id
+        showLibraryTab(.tools)
+    }
+
     /// Shows a built-in library panel, revealing the panel column if it was hidden.
     func showLibraryTab(_ tab: LibraryTab) {
         DebugLog.write("ui", "library panel \(ui.libraryTab.rawValue) → \(tab.rawValue)")
@@ -25,7 +32,7 @@ extension ProjectDocument {
 
     /// The view a plugin's panel shows: the chosen one while the plugin still has it, else its first view.
     func pluginPanelView(_ plugin: InstalledPlugin) -> PluginViewContribution? {
-        let views = plugin.manifest.views.filter { $0.place == .panel }
+        let views = plugin.manifest.views.filter { $0.place == .panel && !$0.isTool }
         return views.first { $0.id == ui.pluginPanelViews[plugin.id] } ?? views.first
     }
 
@@ -56,8 +63,10 @@ extension ProjectDocument {
     /// Whether a view is on screen where it lives.
     func isShowing(_ key: String, _ place: PluginViewLocation, plugin: InstalledPlugin) -> Bool {
         switch place {
+        case .panel where plugin.manifest.views.contains { $0.isTool && plugin.id + "/" + $0.id == key }:
+            ui.showLibraryPanel && ui.pluginPanel == nil && ui.libraryTab == .tools && ui.selectedTool == key
         case .panel: ui.pluginPanel == plugin.id && pluginPanelView(plugin).map { plugin.id + "/" + $0.id } == key
-        case .dock: ui.showAgentDock && agents.pluginViewKey == key
+        case .dock: ui.showAgentDock && ui.rightTab == .agent && agents.pluginViewKey == key
         case .sheet: ui.pluginSheet == key
         case .inspector: selectedItems.count == 1
         }

@@ -9,14 +9,6 @@ struct LibraryView: View {
     @Bindable var pluginManager: PluginManagerModel
     @State private var search = ""
     @State private var audioTrack = ""
-    @State private var captionSource = ""
-    @State private var captionProvider = ""
-    @State private var replaceGeneratedCaptions = true
-    @State private var captionWordStyle = "none"
-    @State private var captionMessage = ""
-    @State private var beatSource = ""
-    @State private var beatProvider = ""
-    @State private var beatMessage = ""
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -36,9 +28,8 @@ struct LibraryView: View {
                     case .filters: FilterLibraryView(document: document)
                     case .transitions:
                         TransitionLibraryView(document: document)
-                    case .voice:
-                        VoiceLibraryView(document: document, pluginManager: pluginManager)
                     case .brand: BrandLibraryView(document: document)
+                    case .tools: ToolsPanelView(document: document, pluginManager: pluginManager)
                     }
                     PluginActionStrip(document: document, placement: "panel." + document.ui.libraryTab.panelName)
                 }.padding(10)
@@ -203,106 +194,11 @@ struct LibraryView: View {
                     ]
                 },
                 tile: { item in AudioLibraryTile(document: document, item: item) })
-            Divider()
-            Text("Beat Detection").font(.headline)
-            let beatSources = document.project.media.filter { $0["kind"] == .string("audio") }
-            if beatSources.isEmpty {
-                Text("Import an audio file to detect beats.").font(.caption).foregroundStyle(.secondary)
-            } else {
-                Picker("Source", selection: $beatSource) { ForEach(beatSources) { Text($0.fileName).tag($0.id) } }
-            }
-            Picker("Provider", selection: $beatProvider) {
-                Text("Automatic").tag("")
-                ForEach(pluginManager.providers(for: "audio.beats")) { choice in
-                    Text("\(choice.provider.name) · \(choice.pluginName)").tag(choice.provider.id)
-                }
-            }
-            .onChange(of: beatProvider) { _, value in
-                let stored = document.project.preferredProvider(for: "audio.beats") ?? ""
-                guard value != stored else { return }
-                document.apply(
-                    .setProviderPreference(
-                        capability: "audio.beats", provider: value.isEmpty ? nil : value),
-                    label: "Choose beat provider")
-            }
-            FindPluginButton(document: document, capability: "audio.beats")
-            ProviderOptionsView(document: document, capability: "audio.beats", providerID: beatProvider)
-            Button(pluginManager.calling.contains("audio.beats") ? "Detecting beats…" : "Detect beats") {
-                detectBeats()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(document.fileURL == nil || beatSource.isEmpty || pluginManager.calling.contains("audio.beats"))
-            if let bpm = document.project.beatBPM {
-                Text("\(document.project.beatFrames.count) beats · \(bpm, format: .number.precision(.fractionLength(1))) BPM")
-                    .font(.caption.monospacedDigit())
-            }
-            Text(beatMessage).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-        }
-        .task(id: document.project.media.map(\.id).joined(separator: ":")) {
-            pluginManager.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
-            beatProvider = document.project.preferredProvider(for: "audio.beats") ?? ""
-            let audio = document.project.media.filter { $0["kind"] == .string("audio") }
-            if !audio.contains(where: { $0.id == beatSource }) { beatSource = audio.first?.id ?? "" }
         }
     }
 
-    private func detectBeats() {
-        beatMessage = ""
-        Task {
-            do {
-                try await document.detectBeats(mediaID: beatSource)
-                beatMessage = String(localized: "Beat grid updated")
-            } catch { beatMessage = error.localizedDescription }
-        }
-    }
     private var text: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Auto Captions").font(.headline)
-            Picker("Source", selection: $captionSource) {
-                ForEach(document.project.media) { media in
-                    Text(media.fileName).tag(media.id)
-                }
-            }
-            Picker("Provider", selection: $captionProvider) {
-                Text("Automatic").tag("")
-                ForEach(pluginManager.providers(for: "captions.transcribe")) { choice in
-                    Text("\(choice.provider.name) · \(choice.pluginName)").tag(choice.provider.id)
-                }
-            }
-            .onChange(of: captionProvider) { _, value in
-                let stored = document.project.preferredProvider(for: "captions.transcribe") ?? ""
-                guard value != stored else { return }
-                document.apply(
-                    .setProviderPreference(
-                        capability: "captions.transcribe", provider: value.isEmpty ? nil : value),
-                    label: "Choose transcription provider")
-            }
-            FindPluginButton(document: document, capability: "captions.transcribe")
-            ProviderOptionsView(document: document, capability: "captions.transcribe", providerID: captionProvider)
-            Toggle("Replace existing captions", isOn: $replaceGeneratedCaptions)
-            Picker("Word by word", selection: $captionWordStyle) {
-                Text("Off").tag("none")
-                Text("Highlight word").tag("highlight")
-                Text("Karaoke").tag("karaoke")
-                Text("Reveal word by word").tag("reveal")
-            }
-            Button(
-                pluginManager.calling.contains("captions.transcribe") ? "Transcribing…" : "Generate captions"
-            ) {
-                generateCaptions()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(
-                document.fileURL == nil || captionSource.isEmpty
-                    || pluginManager.calling.contains("captions.transcribe"))
-            Text(captionMessage).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-            Divider()
-            Menu("Import SRT…") {
-                Button("Add captions…") { document.importCaptions() }
-                Button("Replace captions…") { document.importCaptions(replace: true) }
-            }.disabled(document.fileURL == nil)
-            Button("Export SRT…", action: document.exportCaptions).disabled(document.fileURL == nil)
-            Divider()
             LibraryItemsSection(document: document, kinds: [.textPreset], saveKinds: [.textPreset]) { item in
                 Button {
                     document.placeFromLibrary(item)
@@ -313,25 +209,6 @@ struct LibraryView: View {
                     }.padding(8)
                 }.buttonStyle(.bordered).disabled(document.fileURL == nil)
             }
-        }
-        .task(id: document.project.media.map(\.id).joined(separator: ":")) {
-            pluginManager.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
-            captionProvider = document.project.preferredProvider(for: "captions.transcribe") ?? ""
-            if !document.project.media.contains(where: { $0.id == captionSource }) {
-                captionSource = document.project.media.first?.id ?? ""
-            }
-        }
-    }
-
-    private func generateCaptions() {
-        captionMessage = ""
-        Task {
-            do {
-                try await document.generateCaptions(
-                    mediaID: captionSource, replace: replaceGeneratedCaptions,
-                    wordStyle: captionWordStyle == "none" ? nil : captionWordStyle)
-                captionMessage = String(localized: "Captions generated")
-            } catch { captionMessage = error.localizedDescription }
         }
     }
 }
