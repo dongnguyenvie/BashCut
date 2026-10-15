@@ -140,6 +140,13 @@ transitions, grade and opacity apply to it too (`clip backdrop`, Inspector › V
 
 ## Motion and style as data
 
+An item that is not part of a video cut (text, a sticker, a graphic, an overlay clip) may have `enter` and `exit`:
+`{"kind", "duration", "easing"?, "motion"?}` like a transition, played on the item alone inside its own frame
+(`enter`: the kind's incoming side over its first frames; `exit`: its outgoing side over its last, a kind that
+leaves the outgoing picture in place running its incoming side backwards; a side that does not hide the item fades
+it). Each is clamped to the item, and a cut transition at the same clip edge wins. Video and text items only; other
+fields inside are kept.
+
 - **Ease.** Keyframe `ease` and transition `easing` are one type: `linear`, `in`, `out`, `inOut` (keyframes also
   `hold`) or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in 0…1.
 - **Keyframes** animate `zoom`, `pan`, `tilt`, `rotation`, `opacity`, `volume` and numeric style fields as

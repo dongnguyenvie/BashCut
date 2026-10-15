@@ -166,6 +166,26 @@ extension CommandCatalog {
                 baseRevision,
             ]),
         CommandSpec(
+            "clip.transition", .edit,
+            "Give a text, sticker, graphic or overlay item a transition kind as its own entrance or exit (Inspector › "
+                + "In and Out), played inside the item's frame: enter plays the kind's incoming side over its first "
+                + "frames, exit its outgoing side (a wipe or shape runs backwards) over its last; a whip or zoom fades "
+                + "the item on the way. A cut transition at the same edge of a clip wins. Kinds as on upsertTransition; "
+                + "none removes. Stored as the item's enter and exit fields. Returns rev and items.",
+            parameters: [
+                CommandParameter("item", .string, "Item ID; the selection by default", cli: .positional),
+                CommandParameter("items", .string, "Several item IDs, comma separated", cli: .option("items")),
+                CommandParameter("side", .string, "in, out or both", required: true, choices: ["in", "out", "both"],
+                                 cli: .option("side")),
+                CommandParameter("kind", .string, "Transition kind, or none", required: true,
+                                 choices: TimelineTransition.renderedKinds + ["none"], cli: .option("kind")),
+                CommandParameter("frames", .integer, "Length in frames; the item's own or half a second by default",
+                                 minimum: 1, maximum: ItemTransition.maximumDuration, cli: .option("frames")),
+                CommandParameter("easing", .string, "linear, in, out, inOut or cubic-bezier(x1,y1,x2,y2)",
+                                 cli: .option("easing")),
+                baseRevision,
+            ]),
+        CommandSpec(
             "text.line-style", .edit,
             "Give one text line its own font, size and colours (two fonts in one title; Inspector › Text › Lines). font "
                 + "is a PostScript name from fonts list (family and weight), scale (× the block's font "

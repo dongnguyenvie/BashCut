@@ -135,6 +135,8 @@ struct InspectorView: View {
             if item.mediaID != nil { cropControls(item) }
             Divider()
             MotionControls(document: document, item: item, forText: false)
+            Divider()
+            ItemTransitionControls(document: document, item: item)
         case "Audio":
             audioControls(item)
         case "Text":
@@ -269,6 +271,8 @@ struct InspectorView: View {
             }
             Divider()
             MotionControls(document: document, item: item, forText: true)
+            Divider()
+            ItemTransitionControls(document: document, item: item)
         } else {
             Text("Select a caption to edit text.").foregroundStyle(.secondary)
         }

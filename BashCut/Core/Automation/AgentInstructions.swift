@@ -18,8 +18,8 @@ extension CommandCatalog {
         // freezeFrame, or an effect preset's freeze step.
         "clip.speed", "clip.speed-curve", "clip.freeze",
         // Dragging a selection, Inspector › Text › Lines and › Backdrop; agents use the move and reorder ops and
-        // setProperties of textStyle.lines and backdrop.
-        "timeline.move-items", "text.line-style", "clip.backdrop",
+        // setProperties of textStyle.lines, backdrop, enter and exit.
+        "timeline.move-items", "text.line-style", "clip.backdrop", "clip.transition",
         // Plugin overlays (plugins set them for themselves) and packaging saved skills as a plugin (#407, #506).
         "plugins.overlays", "plugins.set-overlays", "skills.export",
         // Learning facts (P3-I1–I5) the kit's self-learn and publish skills call by name: the ledger, outcomes,
@@ -207,7 +207,7 @@ extension CommandCatalog {
         {"op":"setProviderPreference","capability":"voice.synthesize","provider":"acme.voice.fast"}.
         {"op":"setBeatGrid","media":"MEDIA_ID","bpm":120,"frames":[0,15,30]}.
         {"op":"setMediaData","media":"MEDIA_ID","patch":{"take":3,"verdict":"keep","reason":"sharp, clean audio"}}
-        keeps your own fields on a media under data (takes, verdicts; null removes a key; media list shows them).
+        keeps your fields on a media under data (null removes a key; media list shows them).
         {"op":"upsertSection","id":"section-hook","label":"Hook","atFrame":0},
         {"op":"deleteSection","id":"section-hook"}.
         {"op":"upsertTransition","id":"cut-a-b","kind":"dissolve","from":"CLIP_A","to":"CLIP_B","duration":12,
@@ -218,14 +218,15 @@ extension CommandCatalog {
          "motion":{"incoming":{"opacity":[0,1]}}: zoom, panX|Y,
          rotation, opacity, exposure (EV), scaleX, reveal(FromRight|Top|Bottom), revealCenter, iris, diamond, swing,
          rgbSplit, halftone, blur, blurX|Y, zoomBlur, hue, saturation, kaleidoscope: [from, to] or more),
-        {"op":"deleteTransition","id":"cut-a-b"}.
+        {"op":"deleteTransition","id":"cut-a-b"}. Lone text, sticker, overlay: setProperties
+        {"enter":{"kind":"iris","duration":12},"exit":{…}}.
         {"op":"insert","track":"ADJUSTMENT_TRACK_ID","item":{"id":"grade-1","at":0,"dur":90,"color":{"saturation":0.8,"lut":"LUT_ID"}}},
         {"op":"addColorLUT","lut":{"id":"look","name":"Look","path":"luts/look.cube","size":33}},
         {"op":"deleteColorLUT","id":"look"}.
         {"op":"roll","item":"ID","edge":"end","toFrame":120},
         {"op":"slip","item":"ID","sourceIn":60}.
-        Roll moves a shared cut, keeping the total length. Slip changes only the source start.
-        atFrame/toFrame are absolute integer timeline frames. in is an integer source frame at the media fps.
+        Roll moves a shared cut; slip only the source start.
+        atFrame/toFrame: absolute timeline frames; in: a source frame at the media fps.
         Never hand-edit project.bashcut.json while the app is open, never overwrite original footage, and never render with ffmpeg.
         Editing the timeline (apply, cuts, voice, text, color, mix) needs no confirm: work on and use checkpoint request only at
         gates. Search for and download the music, sound effects, images, footage and fonts the edit needs without asking,

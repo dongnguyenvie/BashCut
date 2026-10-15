@@ -291,6 +291,12 @@
           "description" : "Text: the clip whose effect preset placed this text; applying it again replaces it",
           "type" : "string"
         },
+        "enter" : {
+          "$ref" : "#/$defs/itemTransition"
+        },
+        "exit" : {
+          "$ref" : "#/$defs/itemTransition"
+        },
         "fadeIn" : {
           "description" : "Audio fade-in in timeline frames",
           "maximum" : 2000000000,
@@ -1253,6 +1259,35 @@
         "id",
         "at",
         "dur"
+      ],
+      "type" : "object"
+    },
+    "itemTransition" : {
+      "description" : "Video and text items not in a video cut: a transition kind played on the item alone, in its own frame. enter plays the incoming side over the first frames; exit the outgoing side (a wipe or shape runs backwards) over the last; a side that does not hide the item fades it",
+      "properties" : {
+        "duration" : {
+          "description" : "Timeline frames (clamped to the item)",
+          "maximum" : 100000,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "easing" : {
+          "description" : "How the tween runs: linear, in, out, inOut or cubic-bezier(x1,y1,x2,y2); linear when absent",
+          "type" : "string"
+        },
+        "kind" : {
+          "description" : "Transition kind, as on a transition, or any name with motion",
+          "pattern" : "^[a-z][a-z0-9-]{0,63}$",
+          "type" : "string"
+        },
+        "motion" : {
+          "description" : "The tween as data, as on a transition (enter reads incoming, exit outgoing)",
+          "type" : "object"
+        }
+      },
+      "required" : [
+        "kind",
+        "duration"
       ],
       "type" : "object"
     },

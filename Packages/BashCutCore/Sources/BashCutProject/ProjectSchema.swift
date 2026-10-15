@@ -195,7 +195,7 @@ public enum ProjectSchema {
         root["$schema"] = .string("https://json-schema.org/draft/2020-12/schema")
         root["$id"] = .string("https://bashcut.app/schema/\(Project.schema).json")
         root["title"] = .string("BashCut project")
-        root["$defs"] = .object(definitions.merging(mediaDescriptionDefinitions) { first, _ in first })
+        root["$defs"] = .object(definitions.merging(mediaDescriptionDefinitions) { $1 }.merging(["itemTransition": itemTransitionSchema]) { $1 })
         return .object(root)
     }
 
@@ -436,7 +436,7 @@ public enum ProjectSchema {
         for property in ItemProperty.all where property.group == nil {
             properties[property.key] = schema(for: property)
         }
-        properties["voice"] = voiceItemSchema
+        properties.merge(["voice": voiceItemSchema, "enter": ref("itemTransition"), "exit": ref("itemTransition")]) { $1 }
         return fields("A timeline item; see the layer rules for which fields it needs", required: ["id", "at", "dur"],
                       properties: properties)
     }

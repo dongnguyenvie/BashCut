@@ -29,11 +29,12 @@ extension ProjectDocument {
             coalescingKey: coalesce ? "backdrop." + ids.joined(separator: ",") : nil)
     }
 
-    /// `clip.reframe`, `text.line-style` and `clip.backdrop`.
+    /// `clip.reframe`, `text.line-style`, `clip.backdrop` and `clip.transition`.
     func registerPictureCommands() {
         registerReframeCommands()
         registerTextLineCommands()
         registerBackdropCommands()
+        registerItemTransitionCommands()
     }
 
     func registerBackdropCommands() {

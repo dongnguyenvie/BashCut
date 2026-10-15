@@ -514,6 +514,18 @@ recorded show only label and author. Plugins see `why` in the `edit.committed` e
   or `kaleidoscope` (0–1, a six-way mirror) to 2–16 values spread evenly over the eased tween. Preview and
   export draw it the same way. The clips must be adjacent on one video track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
   longer describes a valid cut.
+- **In and Out of text, stickers and overlays.** An item that is not part of a video cut (a caption, a title, a
+  sticker, a graphic, an overlay clip) uses the same kinds as its own entrance and exit:
+  `{"op": "setProperties", "item": "ID", "patch": {"enter": {"kind": "iris", "duration": 12}, "exit": {"kind":
+  "whip-up", "duration": 10, "easing": "in"}}}` (`motion` as on a transition; `null` removes one). They play inside
+  the item's own frame (the text box, the placed picture), so an iris or a wipe reveals the text itself. `enter`
+  plays the kind's incoming side over the first frames; `exit` its outgoing side over the last, and a kind whose
+  outgoing side leaves the picture as it is (a wipe, a shape, a slide, a dissolve) runs its incoming side backwards;
+  a side that does not hide the item (a whip, a zoom) also fades it. They work with keyframes and animation presets
+  (the keyframes move the result). Each is clamped to the item; at a clip edge that has a cut transition, the cut
+  wins. A split keeps `enter` on the left part and `exit` on the right. `bashcut clip transition [ITEM] --side
+  in|out|both --kind KIND|none [--frames N] [--easing E] [--items A,B]` is the Inspector's In and Out; dragging a
+  Transitions tile onto a text or overlay item sets its In.
 - **Roll.** `{"op": "roll", "item": "ID", "edge": "end", "toFrame": 75}` moves the shared cut with exactly one
   adjacent clip; `edge: "start"` uses the preceding clip. Both clips must stay nonempty and within source
   bounds, and the rest of the track and the total duration stay fixed.

@@ -195,7 +195,9 @@ public actor CompositionBuilder {
                                 trackID: target.trackID, transform: transform,
                                 properties: item.fields, transition: incoming, lut: lut,
                                 motion: motion.map { ($0, placement) }, crop: crop, style: style,
-                                animatedCrop: animatedCrop, backdrop: backdrop, source: layerSource)))
+                                animatedCrop: animatedCrop, backdrop: backdrop, source: layerSource,
+                                appearance: ItemAppearance(
+                                    item: item, cutAtStart: incoming != nil, cutAtEnd: transitionFrom[item.id] != nil))))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
                             layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
