@@ -8,13 +8,19 @@ public struct BriefRecord: Codable, Sendable, Identifiable, Equatable {
     /// The template it started from, if any.
     public var templateID: String?
     public var date: Date
+    /// Paths of the footage sent with it (`BriefFootage`), so sending it again brings them back.
+    public var footage: [String]?
 
-    public init(id: UUID = UUID(), title: String, prompt: String, templateID: String? = nil, date: Date = Date()) {
+    public init(
+        id: UUID = UUID(), title: String, prompt: String, templateID: String? = nil, date: Date = Date(),
+        footage: [String]? = nil
+    ) {
         self.id = id
         self.title = title
         self.prompt = prompt
         self.templateID = templateID
         self.date = date
+        self.footage = footage
     }
 }
 

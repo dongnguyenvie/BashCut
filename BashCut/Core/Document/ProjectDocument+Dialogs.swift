@@ -15,14 +15,17 @@ extension ProjectDocument {
     }
 
     /// Open sheets and popovers, bottom to top.
-    /// The New brief sheet: `send` sends the draft to the sheet's agent (starting it when it is not open), `clear`
-    /// empties it.
+    /// The New brief sheet: `send` sends the draft to the sheet's agent (starting it when it is not open), `footage`
+    /// opens the file panel for footage, `clear` empties it.
     private func askSheet() -> ModalSheet? {
         guard ui.showAsk else { return nil }
         let draft = agents.askModel.draft
         return ModalSheet(
             name: "ask", title: "New brief", message: draft.isEmpty ? nil : draft,
-            options: [ModalOption("send", String(localized: "Send")), ModalOption("clear", String(localized: "Clear")), Self.close]
+            options: [
+                ModalOption("send", String(localized: "Send")), ModalOption("footage", String(localized: "Add files or folder…")),
+                ModalOption("clear", String(localized: "Clear")), Self.close,
+            ]
         ) { [weak self] option in
             guard let self else { return }
             switch option {
@@ -32,6 +35,12 @@ extension ProjectDocument {
                     throw ModalError("The request is empty; write it in the sheet first")
                 }
                 agents.startSendAsk()
+            case "footage":
+                // The file panel opens after this answer, from the run loop like a click: a modal run inside a
+                // main-queue job would stop every automation request, `ui respond --path` included.
+                RunLoop.main.perform(inModes: [.default]) {
+                    MainActor.assumeIsolated { self.agents.chooseBriefFootage() }
+                }
             case "clear": agents.askModel.draft = ""
             default: ui.showAsk = false
             }

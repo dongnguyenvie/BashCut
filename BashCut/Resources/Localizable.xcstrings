@@ -1,6 +1,15 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Drop to add as footage": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Drop to add as footage" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thả vào để thêm làm footage" } } } },
+    "Project media · %d": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Project media · %d" } }, "vi": { "stringUnit": { "state": "translated", "value": "Media của project · %d" } } } },
+    "The agent works with the media already in the project": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The agent works with the media already in the project" } }, "vi": { "stringUnit": { "state": "translated", "value": "Agent dùng media đã có trong project" } } } },
+    "Add files or folder (optional)…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add files or folder (optional)…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm file hoặc thư mục (không bắt buộc)…" } } } },
+    "Add files or folder…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Add files or folder…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thêm file hoặc thư mục…" } } } },
+    "Or drop files and folders on this sheet": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Or drop files and folders on this sheet" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hoặc kéo thả file, thư mục vào đây" } } } },
+    "No footage yet: add what you shot, or drop it here.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No footage yet: add what you shot, or drop it here." } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa có footage: thêm những gì bạn đã quay, hoặc kéo thả vào đây." } } } },
+    "%@ · %d media files": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%@ · %d media files" } }, "vi": { "stringUnit": { "state": "translated", "value": "%1$@ · %2$d file media" } } } },
+    "Footage for the agent to import: video, audio, pictures or folders": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Footage for the agent to import: video, audio, pictures or folders" } }, "vi": { "stringUnit": { "state": "translated", "value": "Footage để agent import: video, âm thanh, ảnh hoặc thư mục" } } } },
     "Set up BashCut for %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Set up BashCut for %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thiết lập BashCut cho %@" } } } },
     "%d of %d done": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%d of %d done" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã xong %1$d/%2$d" } } } },
     "BashCut skills": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "BashCut skills" } }, "vi": { "stringUnit": { "state": "translated", "value": "Kỹ năng BashCut" } } } },

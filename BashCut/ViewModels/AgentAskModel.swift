@@ -7,6 +7,8 @@ import Observation
 @MainActor @Observable final class AgentAskModel {
     var draft = ""
     var attachFrame = false
+    /// Files and folders the agent imports for this brief; kept when another template is picked.
+    var footage: [BriefFootage.Item] = []
     var sending = false
     /// Where Send goes, when the user picked it in the sheet; nil follows the dock (`AgentDockModel.briefTarget`).
     var target: BriefTarget?
@@ -50,7 +52,14 @@ import Observation
         custom = [:]
         edited = true
         draft = record.prompt
+        footage = (record.footage ?? []).compactMap { BriefFootage.item(URL(fileURLWithPath: $0)) }
     }
+
+    func addFootage(_ urls: [URL]) {
+        footage = BriefFootage.adding(urls.compactMap { BriefFootage.item($0) }, to: footage)
+    }
+
+    func removeFootage(_ item: BriefFootage.Item) { footage.removeAll { $0.url == item.url } }
 
     func set(_ field: BriefField, _ value: String) {
         values[field.id] = value
