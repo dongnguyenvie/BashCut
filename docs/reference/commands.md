@@ -1261,7 +1261,7 @@ Read or set the project's style lock for image generate: style prompt, reference
 
 ### `bashcut image disclose [--text <text>]`
 
-Put the disclosure label over every generated picture on the timeline that lacks one: one text item (disclosure: true, small, top left) per run of generated pictures, on the titles layer, in one undo step. The label is text, else the style lock's or the brand's disclosure. Returns rev and the added items; move or restyle them like any text.
+Put the disclosure label over every generated picture on the timeline that lacks one: one text item (disclosure: true, small, top left) per run of generated pictures, on the titles layer, in one undo step. The label is text, else the style lock's or the brand's disclosure. Returns rev and the added items; move or restyle them like any text. Only when the user asks: by default nothing generated is labelled on the video (AI disclosure is the platform's upload toggle).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_image_disclose`
 - `text`: string. Label text for this call

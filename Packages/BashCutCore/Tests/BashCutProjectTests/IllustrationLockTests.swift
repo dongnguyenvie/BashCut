@@ -44,7 +44,7 @@ struct IllustrationLockTests {
     }
 
     /// A generated picture on Main for 0..<90 and a plain one after it.
-    private func project(labels: [Item]) throws -> Project {
+    private func project(labels: [Item], credits: Bool = true) throws -> Project {
         let base = Project(name: "Disclose", fps: FrameRate(30, 1))
         let main = try #require(base.tracks.first { $0.role == TrackRole.main }).id
         let captions = try base.requireTrack(role: TrackRole.captions).id
@@ -58,7 +58,10 @@ struct IllustrationLockTests {
             "fps": FrameRate(30, 1).json, "frames": .integer(300), "hasAudio": .bool(false),
         ])
         var ops: [EditOperation] = [
-            .setProjectProperties(patch: ["brand": .object(["disclosure": .string("Ảnh tạo bằng AI")])]),
+            .setProjectProperties(patch: [
+                "brand": .object(["disclosure": .string("Ảnh tạo bằng AI")]),
+                "review": .object(["credits": .bool(credits)]),
+            ]),
             .addMedia(generated), .addMedia(plain),
             .insert(track: main, item: Item(id: "scene", media: "gen", at: 0, duration: 90)),
             .insert(track: main, item: Item(id: "real", media: "photo", at: 90, duration: 90)),
@@ -74,8 +77,9 @@ struct IllustrationLockTests {
         return item
     }
 
-    @Test("Review flags a generated picture until labels cover all of it; real pictures need none")
+    @Test("Review flags a generated picture until labels cover all of it, only with review.credits on")
     func review() throws {
+        #expect(TimelineReview.disclosureIssues(try project(labels: [], credits: false)).isEmpty)
         let bare = TimelineReview.disclosureIssues(try project(labels: []))
         #expect(bare.map(\.id) == ["ai-undisclosed-scene"] && bare.first?.fix?.command == "image.disclose")
         #expect(bare.first?.facts["uncoveredFrames"] == .integer(90))

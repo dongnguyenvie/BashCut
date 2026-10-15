@@ -60,7 +60,8 @@ extension CommandCatalog {
             "Put the disclosure label over every generated picture on the timeline that lacks one: one text item "
                 + "(disclosure: true, small, top left) per run of generated pictures, on the titles layer, in one undo "
                 + "step. The label is text, else the style lock's or the brand's disclosure. Returns rev and the added "
-                + "items; move or restyle them like any text.",
+                + "items; move or restyle them like any text. Only when the user asks: by default nothing generated "
+                + "is labelled on the video (AI disclosure is the platform's upload toggle).",
             parameters: [
                 CommandParameter("text", .string, "Label text for this call", cli: .option("text")),
             ]),

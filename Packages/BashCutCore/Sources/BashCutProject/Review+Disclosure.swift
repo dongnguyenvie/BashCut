@@ -3,8 +3,10 @@ import Foundation
 extension TimelineReview {
     /// A warning per generated picture on screen (#550: media with `generated: true`) that is not covered for its whole
     /// span by a disclosure label: a text item marked `disclosure`, or one whose text is the project's disclosure
-    /// label. `image disclose` adds the labels.
+    /// label. `image disclose` adds the labels. Off unless the user turns on `review.credits`: by default nothing
+    /// generated is labelled on the video, and AI disclosure is the platform's upload toggle.
     static func disclosureIssues(_ project: Project) -> [ReviewIssue] {
+        guard ReviewProfile(project).credits else { return [] }
         let generated = Set(project.media.filter(\.isGenerated).map(\.id))
         guard !generated.isEmpty else { return [] }
         let label = project.disclosureText
