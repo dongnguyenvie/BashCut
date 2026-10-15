@@ -441,6 +441,30 @@ swift build -c release --product bashcut-bench
 .build/release/bashcut-bench <footage-dir> --clips 20 [--proxies]
 ```
 
+## Agent A/B bench (2026-10-15)
+
+`scripts/bench-agents.py run claude|codex` runs one brief with each agent exactly as the app launches it (the bench app
+opens the agent's tab with `agent open --new`; the script copies that process's command line, environment and folder
+and re-runs it headless: `claude -p --output-format stream-json`, `codex exec --json`), stops at the end of the turn,
+a checkpoint awaiting the user, a question to the user or a time cap, then runs `review run --summary`. `table` prints
+the runs side by side and writes `.local/bench/ab/ab-table.json`. Main 8659aa4, a 20–25 s vertical talking-head cut
+with market and mountain B-roll and captions from three 30 s clips, no export:
+
+| | Claude (opus-5-5) | Codex (gpt-5.6-luna, low) |
+|---|---|---|
+| Wall time | 183 s | 90 s |
+| Tokens (incl. cache reads) | 1.41M ($1.20) | 0.49M |
+| Context first → last | 46k → 88k | 29k → 58k |
+| Tool calls (`context get`) | 23 (1) | 9 (1) |
+| Idle wake-ups, human answers | 0, 0 | 0, 0 |
+| Final review | pass | incomplete, 5 warnings |
+
+Neither agent called an MCP tool; both drove the `bashcut` CLI from a shell. Largest costs: Claude's 46k floor per
+request (61 listed skills, 248 deferred bashcut tools) and 6 calls guessing the transcript JSON with `jq`; Codex
+printing five whole SKILL.md files (75k characters) from a stale `~/.agents/skills`, and the user's Codex plugins in its
+28k floor. Bench-only overrides: Claude without `CLAUDE_CONFIG_DIR` (the configured folder's login had expired),
+Codex with bashcut MCP tools pre-approved (`exec` cannot answer the TUI's approval prompt).
+
 ## Feature bench (2026-10-06)
 
 `scripts/bench-features.py [--only groups] [--stress N] [--keep]` against the running app (debug Xcode build, M1
