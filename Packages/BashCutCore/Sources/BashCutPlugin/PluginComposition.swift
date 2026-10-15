@@ -33,10 +33,13 @@ public enum PluginFeature {
     /// Skill and library packs without an entrypoint (#506).
     public static let skillsOnly = "skillsOnly"
 
+    /// The Tools panel: `tools` action placement, `views[].kind: tool` and `advanced` options (API 10).
+    public static let tools = "tools"
+
     /// Features that are not a view component or place.
     static let named = [
         container, views, requires, invoke, optionsSet, voiceMaxTakes, voiceSavedClones, inspectorWhen, viewUpdate,
-        overlays, viewsDrag, skillsOnly,
+        overlays, viewsDrag, skillsOnly, tools,
     ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
@@ -78,6 +81,11 @@ public struct PluginContainerContribution: Codable, Sendable, Equatable {
 /// `context` carries the selection and its media, and a view with an empty body shows nothing there).
 public enum PluginViewLocation: String, Codable, Sendable, CaseIterable { case panel, dock, sheet, inspector }
 
+/// What a view is for (API 10). A `panel` view fills the plugin's rail panel (the default); a `tool` view is listed in
+/// the Tools panel next to the built-in tools. Asset libraries need neither: providers reach the asset panels through
+/// `PluginProvider.kinds`.
+public enum PluginViewKind: String, Codable, Sendable, CaseIterable { case panel, tool }
+
 /// A plugin view (API 8). The plugin draws it by answering `view.render` and `view.event` with a component tree; see
 /// `PluginViewTree`. `location` says where it shows (the rail panel by default).
 public struct PluginViewContribution: Codable, Sendable, Equatable, Identifiable {
@@ -89,16 +97,25 @@ public struct PluginViewContribution: Codable, Sendable, Equatable, Identifiable
     /// For an inspector view: a [when condition](PluginWhen) on the selection (`selection.kind == text`,
     /// `media.kind == video`); the view is not asked to render for items it does not match (#405, `inspector.when`).
     public let when: String?
+    /// `panel` (default) or `tool` (API 10): a tool view is listed in the Tools panel and needs no rail container.
+    public let kind: PluginViewKind?
 
     public init(
-        id: String, title: LocalizedText, location: PluginViewLocation? = nil, icon: String? = nil, when: String? = nil
+        id: String, title: LocalizedText, location: PluginViewLocation? = nil, icon: String? = nil, when: String? = nil,
+        kind: PluginViewKind? = nil
     ) {
         self.id = id
         self.title = title
         self.location = location
         self.icon = icon
         self.when = when
+        self.kind = kind
     }
+
+    public var effectiveKind: PluginViewKind { kind ?? .panel }
+
+    /// True for a view the Tools panel lists (a `tool` view in the panel location).
+    public var isTool: Bool { effectiveKind == .tool }
 
     /// The parsed `when`, nil when there is none.
     public var condition: PluginWhen? { when.flatMap { try? PluginWhen(parsing: $0) } }
@@ -116,6 +133,9 @@ public struct PluginViewContribution: Codable, Sendable, Equatable, Identifiable
             guard icon.range(of: "^[a-z0-9]+(?:\\.[a-z0-9]+)*$", options: .regularExpression) != nil, icon.count <= 64 else {
                 throw PluginError.invalid("View \(id) icon must be an SF Symbol name")
             }
+        }
+        if isTool {
+            guard place == .panel else { throw PluginError.invalid("View \(id): kind tool needs location panel") }
         }
         if let when {
             guard place == .inspector else { throw PluginError.invalid("View \(id): when is for inspector views") }
