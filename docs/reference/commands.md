@@ -1795,7 +1795,7 @@ List every editor action (buttons, menu items, keyboard shortcuts) with its shor
 
 ### `bashcut ui action <action> [<target>] [--in <in>] [--out <out>]`
 
-Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate, quick-edit, recents, voice-clone), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, brand, tools, voice), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
+Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, playback.toggle) or by shortcut (cmd+b, space, cmd+=). Actions that open a dialog return at once; answer it with ui.respond. With a target: open DIALOG (a sheet or popover: new-project, export, export-report, agent-changes, review, history, plugins, settings, doctor, knowledge, ask, sections, external-changes, plugin-proposals, commands, shortcuts, add-plugin, library-search, library-generate, quick-edit, recents, voice-clone), panel PANEL (a library panel in the left rail: media, audio, text, stickers, effects, transitions, filters, brand, tools, captions, voice, beats), source MEDIA (the source viewer, with --in/--out frames marked) or notify MESSAGE (a short status message).
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_ui_action`
 - `action`: string, required. Action ID or shortcut, or open, panel, source, notify
@@ -2174,7 +2174,7 @@ List library items. Kinds: Media clips, Audio, Text, Stickers, Effects, Transiti
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_list`
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
-- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, brand, tools, voice. Only items the library panel shows
+- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, brand, tools, captions, voice, beats. Only items the library panel shows
 - `offset`: integer, ≥ 0. Skip this many matches (paging)
 - `limit`: integer, 1…500. At most this many matches (paging; 50 with offset alone)
 - `tag`: string. Only items with this tag
@@ -2197,7 +2197,7 @@ Usage of every library item, the saved items nobody used, and groups of duplicat
 
 - Mode: read · Runs: immediately · MCP: `bashcut_library_stats`
 - `kind`: string, one of audio, text-preset, sticker, effect-preset, transition-preset, look, voice, clip, brand. Item kind
-- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, brand, tools, voice. Only items the library panel shows
+- `panel`: string, one of media, audio, text, stickers, effects, transitions, filters, brand, tools, captions, voice, beats. Only items the library panel shows
 
 ### `bashcut library add [--kind <kind>] [--name <name>] [--from-result <fromResult>] [--id <id>] [--scope <scope>] [--origin <origin>] [--author <author>] [--tags <tags>] [--pack <pack>] [--params <params>] [--file <file>] [--profile <profile>] [--preview <preview>] [--source <source>] [--license <license>]`
 

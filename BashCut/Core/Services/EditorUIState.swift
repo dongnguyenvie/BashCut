@@ -388,8 +388,8 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
     /// The automation name (`ui.panel`).
     public var panelName: String { rawValue.lowercased() }
 
-    /// The panel named `panelName`. `voice` was a panel of its own before Tools: it is the Tools panel's Voiceover tool
-    /// (`Self.toolForPanelName` says which tool a name selects).
+    /// The panel named `panelName`. The built-in tool ids (`captions`, `voice`, `beats`) name the Tools panel; `voice`
+    /// was a panel of its own before Tools (`Self.toolForPanelName` says which tool a name selects).
     public init?(panelName: String) {
         if Self.toolForPanelName(panelName) != nil {
             self = .tools
@@ -399,8 +399,8 @@ public enum LibraryTab: String, CaseIterable, Identifiable, Sendable {
         self = tab
     }
 
-    /// The tool a panel name selects inside Tools: `voice` (the old Voice panel), nil for every other name.
-    public static func toolForPanelName(_ name: String) -> String? { name == "voice" ? ToolID.voice : nil }
+    /// The tool a panel name selects inside Tools: `voice` (the old Voice panel), `captions` and `beats`; nil otherwise.
+    public static func toolForPanelName(_ name: String) -> String? { ToolID.builtIn.contains(name) ? name : nil }
 
     public var icon: String {
         switch self {

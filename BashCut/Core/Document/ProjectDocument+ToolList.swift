@@ -25,8 +25,11 @@ extension ProjectDocument {
     /// The built-in tools, then the plugin tools: views with `kind: tool`, then actions placed in `tools`.
     /// Plugins that are not ready, or are samples while Developer mode is off, add nothing.
     var toolEntries: [ToolListEntry] {
-        var list = [ToolListEntry(
-            id: ToolID.voice, title: String(localized: "Voiceover"), icon: "waveform", provider: nil, source: .native)]
+        var list = [
+            ToolListEntry(id: ToolID.captions, title: String(localized: "Auto captions"), icon: "captions.bubble", provider: nil, source: .native),
+            ToolListEntry(id: ToolID.voice, title: String(localized: "Voiceover"), icon: "waveform", provider: nil, source: .native),
+            ToolListEntry(id: ToolID.beats, title: String(localized: "Beat detection"), icon: "metronome", provider: nil, source: .native),
+        ]
         for entry in pluginViews.toolViews {
             list.append(ToolListEntry(
                 id: entry.key, title: entry.view.title.text,
