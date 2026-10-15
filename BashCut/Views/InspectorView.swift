@@ -199,6 +199,7 @@ struct InspectorView: View {
                 trackNumber(
                     "Release (frames)", key: "duckReleaseFrames",
                     defaultValue: 8, range: 0...240, integer: true)
+                trackNumber("Hold gaps under (frames)", key: "duckMinGapFrames", defaultValue: holdDefault, range: 0...900, integer: true)
             }
         }
     }
@@ -383,4 +384,9 @@ extension InspectorView {
             document.apply(.roll(item: item.id, edge: .end, toFrame: document.playhead), label: "Roll cut")
         }
     }
+}
+
+extension InspectorView {
+    /// The hold of a Music layer that sets none: 2.5 s in frames (#630).
+    fileprivate var holdDefault: Double { (MusicDucking.defaultMinGapSeconds * document.project.fps.value).rounded() }
 }

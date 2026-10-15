@@ -160,7 +160,7 @@ extension Project {
 
 extension Track {
     fileprivate func validateDuckingProperties() throws {
-        let keys = ["duckUnderSpeechDb", "duckingEnabled", "duckAttackFrames", "duckReleaseFrames"]
+        let keys = ["duckUnderSpeechDb", "duckingEnabled", "duckAttackFrames", "duckReleaseFrames", "duckMinGapFrames"]
         if keys.contains(where: { self[$0] != nil }), kind != "audio" || role != "music" {
             throw ProjectError.invalid("track.\(id): ducking is only valid on Music audio tracks")
         }
@@ -173,7 +173,7 @@ extension Track {
         } else if self["duckingEnabled"] != nil {
             throw ProjectError.invalid("track.\(id).duckingEnabled: expected boolean")
         }
-        for key in ["duckAttackFrames", "duckReleaseFrames"] {
+        for key in ["duckAttackFrames", "duckReleaseFrames", "duckMinGapFrames"] {
             if let value = self[key], !(value.int.map { (0...10_000).contains($0) } ?? false) {
                 throw ProjectError.invalid("track.\(id).\(key): expected nonnegative integer frames")
             }

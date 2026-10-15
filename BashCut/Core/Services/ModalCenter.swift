@@ -27,12 +27,15 @@ public struct ModalSnapshot: Sendable, Equatable {
     public let options: [ModalOption]
     /// Privileged decisions are visible to automation but only native user interaction may answer them.
     public let userOnly: Bool
+    /// A non-modal window (a plugin view's window): listed, answered only by its `dialog` id, and never in the way
+    /// of other actions.
+    public let window: Bool
     /// Open and save panels are answered with a `path` (or `cancel`).
     public var acceptsPath: Bool { kind == .open || kind == .save }
 
     public init(
         id: String = UUID().uuidString, kind: Kind, name: String, title: String, message: String? = nil,
-        options: [ModalOption], userOnly: Bool = false
+        options: [ModalOption], userOnly: Bool = false, window: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -41,6 +44,7 @@ public struct ModalSnapshot: Sendable, Equatable {
         self.message = message
         self.options = options
         self.userOnly = userOnly
+        self.window = window
     }
 
     public var json: JSONValue {
@@ -48,7 +52,7 @@ public struct ModalSnapshot: Sendable, Equatable {
             "id": .string(id), "kind": .string(kind.rawValue), "name": .string(name), "title": .string(title),
             "message": message.map(JSONValue.string) ?? .null,
             "options": .array(options.map { .object(["id": .string($0.id), "title": .string($0.title)]) }),
-            "acceptsPath": .bool(acceptsPath), "userOnly": .bool(userOnly),
+            "acceptsPath": .bool(acceptsPath), "userOnly": .bool(userOnly), "window": .bool(window),
         ])
     }
 }
@@ -59,10 +63,10 @@ public struct ModalSheet {
     public let respond: @MainActor (String) throws -> Void
     public init(
         name: String, title: String, message: String? = nil, options: [ModalOption], userOnly: Bool = false,
-        respond: @escaping @MainActor (String) throws -> Void
+        window: Bool = false, id: String? = nil, respond: @escaping @MainActor (String) throws -> Void
     ) {
-        snapshot = ModalSnapshot(id: "sheet:" + name, kind: .sheet, name: name, title: title, message: message,
-                                 options: options, userOnly: userOnly)
+        snapshot = ModalSnapshot(id: "sheet:" + (id ?? name), kind: .sheet, name: name, title: title, message: message,
+                                 options: options, userOnly: userOnly, window: window)
         self.respond = respond
     }
 }
@@ -88,10 +92,17 @@ public final class ModalCenter {
 
     /// All open dialogs, topmost last. AppKit modals sit above sheets.
     public var open: [ModalSnapshot] { sheets().map(\.snapshot) + entries.map(\.snapshot) }
-    public var current: ModalSnapshot? { open.last }
+    /// The topmost dialog in the way of other actions; non-modal windows never are.
+    public var current: ModalSnapshot? { open.last { !$0.window } }
 
-    /// Answers the topmost dialog (or `dialog`, when given) with an option ID or title, or a path.
+    /// Answers the topmost dialog (or `dialog`, when given) with an option ID or title, or a path. A non-modal window
+    /// is answered only by its `dialog` id.
     public func respond(option: String?, path: URL?, dialog: String? = nil) throws {
+        if let dialog, let window = sheets().last(where: { $0.snapshot.window && $0.snapshot.id == dialog }) {
+            guard let option else { throw ModalError("Choose one of: \(Self.list(window.snapshot))") }
+            try window.respond(try Self.match(option, in: window.snapshot))
+            return
+        }
         guard current?.userOnly != true else {
             throw ModalError("This decision requires the user to respond in the app")
         }
@@ -103,7 +114,7 @@ public final class ModalCenter {
             try entry.respond(try option.map { try Self.match($0, in: entry.snapshot) }, path)
             return
         }
-        guard let sheet = sheets().last else { throw ModalError("No dialog is open") }
+        guard let sheet = sheets().last(where: { !$0.snapshot.window }) else { throw ModalError("No dialog is open") }
         guard let option else { throw ModalError("Choose one of: \(Self.list(sheet.snapshot))") }
         try sheet.respond(try Self.match(option, in: sheet.snapshot))
     }

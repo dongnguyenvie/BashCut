@@ -76,5 +76,5 @@ extension CommandCatalog {
 /// The event types a plugin view understands (`PluginViewEvent.Kind`), for the command catalog, which cannot import
 /// the plugin module.
 public enum PluginViewEventKinds {
-    public static let all = ["click", "change", "submit", "select", "action"]
+    public static let all = ["click", "change", "submit", "select", "action", "drag"]
 }

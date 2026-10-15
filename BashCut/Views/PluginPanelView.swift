@@ -212,6 +212,8 @@ struct PluginNodeView: View {
         case .audio: PluginAudioButton(path: node.string("path"), title: node.string("title"))
         case .list: PluginListView(node: node, model: model)
         case .grid: PluginGridView(node: node, model: model)
+        case .split: PluginSplitView(node: node, model: model)
+        case .nav: PluginNavView(node: node, model: model)
         case .button: button
         case .textField: PluginTextField(node: node, model: model)
         case .textArea: textArea

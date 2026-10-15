@@ -51,11 +51,8 @@ extension PlanCut {
         placements += try placeSounds(spec.sfx, anchors: placements, sections: sections, length: total, in: &planner)
         if let music = spec.music, total > 0, let placed = try placeMusic(music, length: total, in: &planner) {
             placements.append(placed)
-            if let duck = music.duckDb {
-                let track = try planner.project.requireTrack(role: TrackRole.music)
-                try planner.add([.setTrackProperties(
-                    track: track.id, patch: ["duckingEnabled": .bool(true), "duckUnderSpeechDb": .number(duck)])])
-            }
+            let track = try planner.project.requireTrack(role: TrackRole.music)
+            try planner.add([.setTrackProperties(track: track.id, patch: musicTrackPatch(music, track: track, fps: planner.project.fps.value))])
         }
         try applyEdges(spec, kept: handSet, in: &planner)
         let others = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == nil }.map(\.id)
@@ -254,6 +251,18 @@ extension PlanCut {
         return placements
     }
 
+    /// The Music layer's ducking for the bed: off for a fixed bed; asked for, at `duckDb` (else the layer's level,
+    /// else −14 dB) with the hold of `duckMinGapSeconds` (2.5 s) between lines (#630).
+    static func musicTrackPatch(_ music: Music, track: Track, fps: Double) -> [String: JSONValue] {
+        guard music.ducks else { return ["duckingEnabled": .bool(false)] }
+        let gap = music.duckMinGapSeconds ?? MusicDucking.defaultMinGapSeconds
+        return [
+            "duckingEnabled": .bool(true),
+            "duckUnderSpeechDb": .number(music.duckDb ?? track["duckUnderSpeechDb"]?.double ?? Music.defaultDuckDb),
+            "duckMinGapFrames": .integer(Int((gap * fps).rounded())),
+        ]
+    }
+
     /// The music bed from frame 0, as long as the clips (or what the file has left).
     static func placeMusic(_ music: Music, length total: Int, in planner: inout LayerPlanner) throws -> Placement? {
         guard let media = planner.project.media.first(where: { $0.id == music.media }) else { return nil }
@@ -264,7 +273,11 @@ extension PlanCut {
         try planner.placeMedia(
             media, on: track.id, at: 0, duration: duration, itemID: id, sourceIn: Int((music.from * media.fps.value).rounded(.down)))
         var patch: [String: JSONValue] = [tag: .string("music")]
-        if let volume = music.volumeDb { patch["volumeDb"] = .number(volume) }
+        if let volume = music.volumeDb {
+            patch["volumeDb"] = .number(volume)
+        } else if !music.ducks {
+            patch["volumeDb"] = .number(Music.fallbackVolumeDb)
+        }
         try planner.add([.setProperties(item: id, patch: patch)])
         return Placement(id: "music", at: 0, end: duration)
     }

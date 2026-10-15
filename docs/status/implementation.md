@@ -192,8 +192,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 ### Audio & voice
 
 - Volume, mute and fades; automatic music ducking under tagged Dialogue and all Voiceover regions, with level,
-  attack and release in integer frames, mixed the same way in preview and export. `clip volume --db` sets clip
-  gain on clips and their linked sound, one or `--items` in one undo step (#628).
+  attack, release and a hold (`duckMinGapFrames`, 2.5 s by default: shorter gaps between lines keep the music down)
+  in integer frames, mixed the same way in preview and export. `clip volume --db` sets clip gain on clips and their
+  linked sound, one or `--items` in one undo step (#628). A `plan.cut` music bed is one fixed level set
+  `underVoiceDb` (16 dB) under the measured voice, with ducking off unless asked for (#630).
 - The Audio panel resolves `audio.beats`, validates BPM and beat times, maps them through trim and speed to
   timeline frames, and adds undoable beat-grid drawing and snapping.
 - The Voice panel resolves a healthy `voice.synthesize` provider (with an undoable project preference), generates
@@ -203,7 +205,7 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   duration and input level, and inserts at the playhead.
 - Review warns when voiceover comes within 0.3 s of tagged speech on any layer.
 - Review issues carry a severity and a fix (command or hint); `review run --summary` adds counts and a pass flag.
-  Sound checks: loudness from the last normalized export of the revision, ducking off under speech, dead air, music
+  Sound checks: loudness from the last normalized export of the revision, a pumping music bed, dead air, music
   drop-outs. Text checks: vertical safe area (caption bar, side buttons, top bar), title safe, minimum size, caption
   lines, overlap. Hook check for the first 3 s.
 - Platform targets (#441): `output.presets` names the export presets a project is made for (format menu ›

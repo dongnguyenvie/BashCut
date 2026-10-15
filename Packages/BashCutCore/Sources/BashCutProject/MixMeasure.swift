@@ -122,9 +122,29 @@ public enum MixMeasure {
         return .object([
             "step": .number(step), "speechFrom": .string(words.isEmpty ? "stem" : "words"),
             "voice": spread(voice), "musicUnderSpeech": spread(under), "musicInGaps": spread(gaps),
-            "speechWindows": .array(windows),
+            "speechWindows": .array(windows), "musicBeds": bedsJSON(project),
             "effects": effectsJSON(project, speech: speech, effects: effects, words: words, nearSeconds: nearSeconds),
         ])
+    }
+
+    /// Each Music layer with sound: a fixed bed (`ducking: false`), or how its ducking moves under speech — the gaps
+    /// where it rises, those shorter than 2.5 s, moves (down and up) per minute of speech and `pumping` when that is
+    /// over 4 (#630).
+    static func bedsJSON(_ project: Project) -> JSONValue {
+        let fps = project.fps.value
+        let beds = Dictionary(uniqueKeysWithValues: MusicDucking.beds(project).map { ($0.track, $0) })
+        let round = { (value: Double) in JSONValue.number((value * 10).rounded() / 10) }
+        return .array(project.tracks.filter { $0.role == TrackRole.music && !$0.items.isEmpty && !$0.isMuted }.map { track in
+            guard let bed = beds[track.id] else {
+                return .object(["track": .string(track.id), "ducking": .bool(false), "pumping": .bool(false)])
+            }
+            return .object([
+                "track": .string(track.id), "ducking": .bool(true), "duckDb": .number(bed.duckDb),
+                "minGapSeconds": round(Double(bed.minGapFrames) / fps), "rises": .integer(bed.rises.count),
+                "shortRises": .integer(bed.shortRises.count), "movesPerMinute": round(bed.movesPerMinute),
+                "pumping": .bool(bed.pumping),
+            ])
+        })
     }
 
     /// Every item on a sound-effects layer: its loudest momentary level and sample peak; the voice at the same moment

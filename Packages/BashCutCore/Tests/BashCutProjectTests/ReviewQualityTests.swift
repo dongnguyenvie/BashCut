@@ -106,7 +106,25 @@ struct ReviewQualityTests {
         #expect(measured(bare, -31, 0.2, bare.revision).first { $0.id == "true-peak" }?.severity == .error)
     }
 
-    @Test("Music with ducking off under speech, dead air and a music bed that drops out (#431); no limits, no issues")
+    @Test("A fixed bed (ducking off) is fine; a bed that ducks and rises between close lines pumps (#630)")
+    func pumpingBed() throws {
+        var project = try project(seconds: 60)
+        // Lines of 3 s with 0.8 s gaps (24 frames at 30 fps) over a minute of music.
+        set(&project, track: "a2", (0..<14).map { Item(id: "vo\($0)", media: "voice", at: $0 * 114, duration: 90) })
+        set(&project, track: "a3", [Item(id: "bed", media: "music", at: 0, duration: 1_800)])
+        let index = project.tracks.firstIndex { $0.id == "a3" }!
+        project.tracks[index]["duckingEnabled"] = .bool(false)
+        #expect(ids(run(project), "music-pumping").isEmpty)
+        project.tracks[index]["duckingEnabled"] = .bool(true)
+        #expect(ids(run(project), "music-pumping").isEmpty)  // the default hold keeps it down
+        project.tracks[index]["duckMinGapFrames"] = .integer(0)
+        let pumping = run(project).first { $0.id == "music-pumping-a3" }
+        #expect(pumping?.severity == .warning && pumping?.facts["shortRises"] == .integer(13))
+        let op = pumping?.fix?.arguments["ops"]?.array.first?.object
+        #expect(op?["patch"]?.object["duckMinGapFrames"] == .integer(75))
+    }
+
+    @Test("Dead air and a music bed that drops out (#431); no limits, no issues")
     func soundLayout() throws {
         var project = try project(seconds: 20)
         set(&project, track: "a2", [Item(id: "vo", media: "voice", at: 0, duration: 150)])
@@ -117,11 +135,7 @@ struct ReviewQualityTests {
         let index = project.tracks.firstIndex { $0.id == "a3" }!
         project.tracks[index]["duckingEnabled"] = .bool(false)
         let issues = run(project)
-        let ducking = issues.first { $0.id == "ducking-a3" }
-        #expect(ducking?.fix?.command == "timeline.apply" && ducking?.severity == .info)
-        let op = ducking?.fix?.arguments["ops"]?.array.first?.object
-        #expect(op?["op"] == .string("setTrackProperties"))
-        #expect(op?["patch"]?.object["duckingEnabled"] == .bool(true))
+        #expect(ids(issues, "music-pumping").isEmpty)
         // 200–300 has no sound (3.3 s); 500–600 too, at the end.
         #expect(ids(issues, "silence-") == ["silence-clip+200", "silence-clip+500"])
         #expect(ids(issues, "music-gap-") == ["music-gap-clip+200"])
@@ -129,7 +143,6 @@ struct ReviewQualityTests {
         project.tracks[index]["muted"] = .bool(true)
         project.tracks[index]["duckingEnabled"] = .bool(true)
         let muted = run(project)
-        #expect(ids(muted, "ducking-").isEmpty)
         #expect(ids(muted, "music-gap-").isEmpty)
         #expect(ids(muted, "silence-") == ["silence-clip+150"])
         #expect(muted.first { $0.id == "silence-clip+150" }?.facts["seconds"] != nil)
