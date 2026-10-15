@@ -1754,12 +1754,12 @@
           "type" : "string"
         },
         "kind" : {
-          "description" : "Transition kind: dissolve, whip, blink, zoom, spin, shutter, wipe, swing, glitch, halftone, or any name with motion",
+          "description" : "Transition kind: dissolve, blink, flash, dip-black, double-exposure, whip, whip-right, whip-up, whip-down, wipe, wipe-right, wipe-up, wipe-down, barn-door, shutter, slide, slide-up, iris, diamond, zoom, crash-zoom, crash-out, spin, roll, roll-right, swing, arc, arc-right, infinite-zoom, infinite-out, screen-in, screen-out, blur, seamless-zoom, glitch, halftone, flicker, color-shift, kaleidoscope, or any name with motion",
           "pattern" : "^[a-z][a-z0-9-]{0,63}$",
           "type" : "string"
         },
         "motion" : {
-          "description" : "The tween as data: outgoing and incoming {property: [values]} over the tween; properties exposure, halftone, opacity, panX, panY, reveal, rgbSplit, rotation, scaleX, swing, zoom",
+          "description" : "The tween as data: outgoing and incoming {property: [values]} over the tween; properties blur, blurX, blurY, diamond, exposure, halftone, hue, iris, kaleidoscope, opacity, panX, panY, reveal, revealCenter, revealFromBottom, revealFromRight, revealFromTop, rgbSplit, rotation, saturation, scaleX, swing, zoom, zoomBlur",
           "type" : "object"
         },
         "to" : {

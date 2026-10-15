@@ -56,6 +56,15 @@ struct StyleAsDataTests {
         let glitch = try #require(TransitionMotion.builtIns["glitch"])
         #expect(glitch.value("rgbSplit", incoming: false, at: 0.75) == 0.05)
         #expect(TransitionMotion.builtIns["halftone"]?.value("halftone", incoming: true, at: 1) == 0.004)
+        // Every kind is in one panel group, and every built-in row stays inside the property ranges.
+        #expect(TimelineTransition.renderedKinds.count == Set(TimelineTransition.renderedKinds).count)
+        #expect(TimelineTransition.renderedKinds.count == 39)
+        for (kind, motion) in TransitionMotion.builtIns {
+            #expect((try? TransitionMotion(json: motion.json)) == motion, "\(kind)")
+        }
+        let crash = try #require(TransitionMotion.builtIns["crash-zoom"])
+        #expect(crash.value("opacity", incoming: true, at: 0.25) == 0 && crash.value("opacity", incoming: true, at: 0.5) == 1)
+        #expect(TransitionMotion.builtIns["iris"]?.value("iris", incoming: true, at: 0.5) == 0.5)
         _ = try TransitionMotion(json: .object(["incoming": .object(["rgbSplit": .array([.number(0.1), .number(0)])])]))
 
         let push: JSONValue = .object([

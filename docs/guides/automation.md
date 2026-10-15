@@ -495,14 +495,23 @@ recorded show only label and author. Plugins see `why` in the `edit.committed` e
   (without one it updates the transition at that cut or names a new one `transition-<from>-<to>`), a kind, an
   integer-frame `duration`, an
   optional `easing` (`linear`, the default, `in`, `out`, `inOut` or `"cubic-bezier(x1,y1,x2,y2)"` with x1 and x2 in
-  0…1, the same ease type keyframes use) and an optional `motion`. The built-in kinds (`dissolve`, `whip`, `blink`,
-  `zoom`, `spin`, `shutter`, `wipe`, `swing` — the next card swings in about its left edge, `glitch` — RGB split and
-  jitter, `halftone` — print dots) are rows of data; any other kind (lowercase letters, digits, dashes) needs a
+  0…1, the same ease type keyframes use) and an optional `motion`. The built-in kinds are rows of data, in the groups of the
+  Transitions panel: fade (`dissolve`, `blink`, `flash` to white, `dip-black`, `double-exposure`), whip (`whip` to the left, `whip-right`, `whip-up`, `whip-down`, with
+  motion blur), wipe (`wipe` from the left, `wipe-right`, `wipe-up`, `wipe-down`, `barn-door` from the middle,
+  `shutter`, `slide` and `slide-up` over the last picture), shape (`iris`, `diamond`), crash (`zoom`, `crash-zoom`,
+  `crash-out`), roll (`spin`, `roll`, `roll-right`), arc (`swing` — the next card swings in about its left
+  edge, `arc`, `arc-right`), infinite (`infinite-zoom`, `infinite-out`), screen (`screen-in`, `screen-out`) and
+  seamless (`blur`, `seamless-zoom`) and stylized (`glitch` — RGB split and
+  jitter, `halftone` — print dots, `flicker`, `color-shift`, `kaleidoscope`); any other kind (lowercase letters, digits, dashes) needs a
   `motion`: `{"outgoing": {…}, "incoming": {…}}`, each side mapping `zoom`, `panX`/`panY` (share of the frame,
   right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX` (horizontal squeeze),
   `reveal` (share of the width shown from the left), `swing` (degrees about the left edge in perspective, positive
-  takes the right edge away), `rgbSplit` (red and blue apart by a share of the width, 0–0.2) or `halftone` (dot
-  spacing as a share of the width, 0–0.1) to 2–16 values spread evenly over the eased tween. Preview and
+  takes the right edge away), `rgbSplit` (red and blue apart by a share of the width, 0–0.2), `halftone` (dot
+  spacing as a share of the width, 0–0.1), `blur` (soft blur, share of the width, 0–0.1), `blurX`/`blurY` (motion
+  blur along that axis, 0–0.2), `revealFromRight`/`revealFromTop`/`revealFromBottom` (wipes from those edges),
+  `revealCenter` (share of the width shown around the centre), `iris` or `diamond` (a shape from the centre, 1 = the
+  whole frame), `zoomBlur` (streaked out from the centre, 0–0.2), `hue` (degrees), `saturation` (1 = unchanged, 0–4)
+  or `kaleidoscope` (0–1, a six-way mirror) to 2–16 values spread evenly over the eased tween. Preview and
   export draw it the same way. The clips must be adjacent on one video track. `deleteTransition` restores a hard cut; moving or deleting either clip removes a transition that no
   longer describes a valid cut.
 - **Roll.** `{"op": "roll", "item": "ID", "edge": "end", "toFrame": 75}` moves the shared cut with exactly one

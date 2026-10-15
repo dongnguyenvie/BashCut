@@ -150,9 +150,16 @@ transitions, grade and opacity apply to it too (`clip backdrop`, Inspector › V
   `{"outgoing": {property: [values]}, "incoming": {…}}`. Properties: `zoom`, `panX`/`panY` (share of the frame,
   right/up), `rotation` (degrees, counterclockwise), `opacity`, `exposure` (EV), `scaleX`, `reveal` (share of
   the width shown from the left), `swing` (degrees about the left edge in perspective), `rgbSplit` (red/blue offset
-  as a share of the width) and `halftone` (dot spacing as a share of the width); 2–16 values spread evenly over the
-  eased tween. The built-in kinds (`dissolve`, `whip`, `blink`, `zoom`, `spin`, `shutter`, `wipe`, `swing`,
-  `glitch`, `halftone`) are rows of the same table; any other kind needs `motion`.
+  as a share of the width), `halftone` (dot spacing as a share of the width), `blur` (soft blur radius),
+  `blurX`/`blurY` (motion blur along an axis; both as a share of the width), `revealFromRight`, `revealFromTop`,
+  `revealFromBottom`, `revealCenter`, `iris` and `diamond` (share of the frame shown), `zoomBlur` (share of the
+  width), `hue` (degrees), `saturation` and `kaleidoscope` (0–1); 2–16 values spread evenly
+  over the eased tween. The built-in kinds (`dissolve`, `blink`, `flash`, `dip-black`, `double-exposure`, `whip`, `whip-right`, `whip-up`, `whip-down`,
+  `wipe`, `wipe-right`, `wipe-up`, `wipe-down`, `barn-door`, `shutter`, `slide`, `slide-up`, `iris`, `diamond`, `zoom`,
+  `crash-zoom`, `crash-out`, `spin`, `roll`, `roll-right`, `swing`, `arc`, `arc-right`, `infinite-zoom`,
+  `infinite-out`, `screen-in`, `screen-out`, `blur`, `seamless-zoom`, `glitch`, `halftone`, `flicker`,
+  `color-shift`, `kaleidoscope`) are rows of the same table; any other kind
+  needs `motion`.
 - **Text style** is open: besides the declared `textStyle` fields, the renderer reads `background {color, opacity,
   padding, radius}`, `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
   opacity, thickness, gap, length, radius}]` (thickness and gap in font sizes, defaults 0.12 and 0.2; length a share

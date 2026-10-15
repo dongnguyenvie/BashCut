@@ -306,16 +306,18 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         return image
     }
 
-    /// The transition's motion at this time (C5: every kind is data): exposure, halftone dots and the RGB split, then
-    /// zoom, horizontal squeeze and rotation around the frame centre with the pan, the perspective swing about the left
-    /// edge, then the reveal from the left. Preview and export share it.
+    /// The transition's motion at this time (C5: every kind is data): exposure, halftone dots, the RGB split, the
+    /// blurs, colour and kaleidoscope, then zoom, horizontal squeeze and rotation around the frame centre with the pan, the perspective swing
+    /// about the left edge, then the reveals and shapes. Preview and export share it.
     private static func applyTransition(
         to input: CIImage, transition: RenderTransition, time: Double, bounds: CGRect
     ) -> (CIImage, Double) {
         let progress = transition.progress(at: time)
         let motion = transition.motion ?? TransitionMotion.resolved(kind: transition.kind, motion: nil)
         let value = { (property: String) in motion.value(property, incoming: transition.incoming, at: progress) }
-        var image = input
+        // Only what is in the frame moves: a filled picture wider than the frame would otherwise still cover it
+        // after a whip of one frame width, and a picture zoomed out would show its cut-off sides.
+        var image = input.extent.width.isFinite ? input.cropped(to: bounds) : input
         if let exposure = value("exposure"), exposure != 0 {
             image = image.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: exposure])
         }
@@ -325,6 +327,10 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         if let split = value("rgbSplit"), split * bounds.width >= 0.5 {
             image = Self.splitChannels(image, offset: split * bounds.width)
         }
+        image = Self.blurred(
+            image, soft: (value("blur") ?? 0) * bounds.width, x: (value("blurX") ?? 0) * bounds.width,
+            y: (value("blurY") ?? 0) * bounds.width)
+        image = Self.styled(image, bounds: bounds, value: value)
         let zoom = value("zoom") ?? 1, squeeze = max(0.001, value("scaleX") ?? 1)
         let rotation = (value("rotation") ?? 0) * .pi / 180
         let pan = CGPoint(x: (value("panX") ?? 0) * bounds.width, y: (value("panY") ?? 0) * bounds.height)
@@ -340,6 +346,7 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         if let reveal = value("reveal") {
             image = image.cropped(to: CGRect(x: bounds.minX, y: bounds.minY, width: bounds.width * reveal, height: bounds.height))
         }
+        image = Self.revealed(image, bounds: bounds, value: value)
         let opacity = value("opacity") ?? 1
         return (image, opacity)
     }
