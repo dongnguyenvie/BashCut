@@ -3,7 +3,7 @@ import BashCutProject
 import SwiftUI
 
 /// A secret option (`PluginOptionField`): a password field with Save and Clear. A stored secret shows as dots with
-/// "Saved"; with `check`, Save first asks the plugin and keeps a refused key out of the Keychain unless the user
+/// "Saved"; with `check`, Save first asks the plugin and keeps a refused key out of the secret store unless the user
 /// chooses Save Anyway.
 struct PluginSecretField: View {
     /// The option's value: `{"set": true}` while one is stored; a string to save, empty to clear.

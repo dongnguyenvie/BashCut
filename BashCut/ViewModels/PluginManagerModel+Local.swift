@@ -33,7 +33,7 @@ enum PluginInstallMode: String, CaseIterable, Identifiable {
 
 /// Add Plugin…: plugins from a folder, plugin.json or zip on this Mac, or from a link, instead of the registry (#83).
 extension PluginManagerModel {
-    /// Account under which link access tokens are kept in the Keychain, one per host.
+    /// Account under which link access tokens are kept in the secret store, one per host.
     nonisolated static let linkTokenAccount = "link-token"
 
     /// Add Plugin…: a sheet to paste a link or choose a file or folder.
@@ -151,7 +151,7 @@ extension PluginManagerModel {
     }
 
     /// Downloads a plugin from a link, checks it, then shows the install approval. The access token for the link's
-    /// host comes from the Keychain.
+    /// host comes from the secret store.
     @discardableResult
     func requestLinkInstall(_ link: PluginLink, scope: PluginInstallScope = .user) async throws -> InstalledPlugin {
         try checkCanAdd(scope: scope)
@@ -183,7 +183,7 @@ extension PluginManagerModel {
 
     func hasLinkToken(for host: String) -> Bool { !secrets.read(plugin: Self.linkTokenAccount, option: host).isEmpty }
 
-    /// Saves the access token for `host` in the Keychain; an empty token removes it.
+    /// Saves the access token for `host` in the secret store; an empty token removes it.
     func setLinkToken(_ token: String, for host: String) throws {
         try secrets.write(token.trimmingCharacters(in: .whitespacesAndNewlines), plugin: Self.linkTokenAccount, option: host)
     }

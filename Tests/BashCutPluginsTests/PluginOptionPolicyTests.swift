@@ -43,7 +43,7 @@ struct PluginOptionPolicyTests {
 
     @Test("A key never follows a changed provider or endpoint, nor falls back to a legacy key")
     func binding() throws {
-        let store = PluginSecretStore(keychain: false)
+        let store = PluginSecretStore(file: nil)
         let original = PluginOptionPolicy.secretBinding(options: options, userValues: [:])
         let provider = PluginOptionPolicy.secretBinding(options: options, userValues: ["provider": .string("compatible")])
         let endpoint = PluginOptionPolicy.secretBinding(options: options, userValues: [
@@ -81,7 +81,7 @@ struct PluginOptionPolicyTests {
 
     @Test("Saving a key for new code removes only that installation's older-code keys")
     func staleKeys() throws {
-        let store = PluginSecretStore(keychain: false)
+        let store = PluginSecretStore(file: nil)
         try store.write("old", plugin: "a@root@old", option: "apiKey", binding: "x")
         try store.write("old-token", plugin: "a@root@old", option: "token")
         try store.write("other", plugin: "a@elsewhere@old", option: "apiKey", binding: "x")
