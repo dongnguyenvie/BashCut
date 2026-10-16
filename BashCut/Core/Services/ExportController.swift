@@ -17,6 +17,8 @@ public final class ExportController {
     /// The newest export of this session that failed, until one finishes after it: `export.status` reports it as
     /// `failed` with its error, so a caller polling the status sees the failure instead of the older receipt.
     public private(set) var failure: ExportFailure?
+    /// Plugin export steps running before the exports start (#634); the export counts as running meanwhile.
+    public private(set) var preparing: ExportPreparation?
     @ObservationIgnored private let history: ExportHistoryStore
 
     public init(
@@ -27,8 +29,19 @@ public final class ExportController {
         self.history = history
     }
 
-    public var isRunning: Bool { queue.isRunning }
-    public var progress: Double { queue.progress }
+    public var isRunning: Bool { queue.isRunning || preparing != nil }
+    public var progress: Double {
+        preparing.map { queue.jobs.job($0.job)?.progress ?? 0 } ?? queue.progress
+    }
+    /// The running export step's job, while one runs.
+    public var preparingJob: Job? { preparing.flatMap { queue.jobs.job($0.job) } }
+
+    /// The export steps job `job` runs before exporting `name`; `endPreparing` when it is over.
+    public func beginPreparing(job: String, name: String, steps: [String]) {
+        preparing = ExportPreparation(job: job, name: name, steps: steps)
+    }
+
+    public func endPreparing() { preparing = nil }
 
     /// Queues `request`. When it finishes, the report is recorded first, then `finished` runs with the
     /// outcome; it does not run after `reset`.
@@ -51,11 +64,16 @@ public final class ExportController {
         }
     }
 
-    /// Cancels the running export; queued exports start next.
-    public func cancelActive() { queue.cancelActive() }
+    /// Cancels the running export, or the export steps before it (then nothing is exported); queued exports start
+    /// next.
+    public func cancelActive() {
+        if let preparing { queue.jobs.cancel(preparing.job) } else { queue.cancelActive() }
+    }
 
     /// Drops every export and the report when another project opens.
     public func reset() {
+        if let preparing { queue.jobs.cancel(preparing.job) }
+        preparing = nil
         queue.cancelAll()
         report = nil
         notice = nil
@@ -107,6 +125,15 @@ public final class ExportController {
     public var statusJSON: JSONValue {
         var result: [String: JSONValue] = ["queue": .array(queue.active.map(\.json))]
         let last = report.map(\.json)
+        if let preparing, let job = preparingJob {
+            result["state"] = .string("preparing")
+            result["progress"] = .number(job.progress ?? 0)
+            result["job"] = .string(job.id)
+            result["step"] = job.detail.map(JSONValue.string) ?? .null
+            result["exportSteps"] = .array(preparing.steps.map(JSONValue.string))
+            result["lastExport"] = last.map(JSONValue.object) ?? .null
+            return .object(result)
+        }
         if let job = queue.activeJob, let request = queue.request(for: job) {
             result["state"] = .string("running")
             result["progress"] = .number(progress)
@@ -133,6 +160,13 @@ public final class ExportController {
         result["progress"] = .number(report == nil ? 0 : 1)
         return .object(result.merging(last ?? [:]) { current, _ in current })
     }
+}
+
+/// Plugin export steps running before an export (#634): their job, the export's name and the steps' titles.
+public struct ExportPreparation: Equatable, Sendable {
+    public let job: String
+    public let name: String
+    public let steps: [String]
 }
 
 /// An export that failed (not cancelled): its preset, the file it was writing and the error.

@@ -9,10 +9,11 @@ import Foundation
 /// `library.generate` capabilities and provider `kinds`. Version 7 adds `contributes.skills` (agent skills). Version 8
 /// adds `contributes.container`/`views`, `requires`, `uses` and `features` (`PluginComposition.swift`), version 9 the
 /// `review.check` capability, version 10 the Tools panel (view `kind`, the `tools` placement, `advanced` options), version 11
-/// the `window` view location; since 8 it goes up at most once per release, and smaller additions are features.
+/// the `window` view location, version 12 `contributes.exportSteps` (blocking steps before a final export); since 8 it
+/// goes up at most once per release, and smaller additions are features.
 public enum PluginAPI {
     public static let minimum = 1
-    public static let current = 11
+    public static let current = 12
     /// The chat-agent capability; its requests carry a host channel (API 4).
     public static let agentChat = "agent.chat"
     /// An agent CLI in a dock terminal tab (API 5); its manifest has a `terminal` object.

@@ -256,6 +256,7 @@ public enum CommandCatalog {
                 CommandParameter("normalizeAudio", .boolean, "Run two-pass LUFS normalization with a plugin",
                                  default: .bool(false), cli: .flag("normalize-audio")),
                 exportWithout,
+                exportNoSteps,
             ] + exportFileParameters + exportWaitParameters,
             execution: .approval),
         CommandSpec(

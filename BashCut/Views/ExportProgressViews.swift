@@ -29,7 +29,20 @@ struct ExportProgressPopover: View {
         let exports = document.exports
         VStack(alignment: .leading, spacing: 10) {
             Text("Exporting").font(.headline)
-            if let job = exports.queue.activeJob, let request = exports.queue.request(for: job) {
+            if let preparing = exports.preparing {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(preparing.name).font(.callout.bold()).lineLimit(1).truncationMode(.middle)
+                    Text(String(format: String(localized: "Before exporting: %@"), preparing.steps.joined(separator: ", ")))
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                ProgressView(value: exports.progress)
+                HStack {
+                    if let step = exports.preparingJob?.detail { Text(step).lineLimit(1) }
+                    Spacer()
+                    Text(exports.progress, format: .percent.precision(.fractionLength(0))).monospacedDigit()
+                }
+                .font(.caption).foregroundStyle(.secondary)
+            } else if let job = exports.queue.activeJob, let request = exports.queue.request(for: job) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(request.output.lastPathComponent).font(.callout.bold())
                         .lineLimit(1).truncationMode(.middle)

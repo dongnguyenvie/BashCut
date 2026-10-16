@@ -102,12 +102,11 @@ struct ExportView: View {
                 }
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(action: start) {
+                Button { start() } label: {
                     chosen.count > 1 ? Text("Export \(chosen.count) outputs") : Text("Export")
                 }.keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || directory == nil || suggestedName != nil
-                        || chosen.isEmpty)
+                    .disabled(!canStart)
             }
         }.padding(24).frame(width: 620)
             .onAppear {
@@ -214,21 +213,41 @@ struct ExportView: View {
         }
     }
 
-    /// Draft graphics in a final export (#634): the user may export anyway; the notice names the fix.
+    /// Plugin export steps (plugin API 12) a final export of the chosen outputs would run first.
+    private var steps: [ExportStepRun] {
+        ExportStepRun.matching(
+            document.plugins.plugins.filter(document.plugins.isReady), project: document.project, presets: chosen)
+    }
+
+    /// Draft graphics in a final export (#634): the user may export anyway; the notice names the fix and, when a
+    /// plugin contributes an export step for them, finalises them and exports in one click.
     private var draftNotice: some View {
         let command = WorkflowChecklist.graphicDraftFix(document.project, drafts: drafts)
+        let steps = steps
         return VStack(alignment: .leading, spacing: 4) {
             Label(drafts.count == 1 ? "1 graphic is a draft" : "\(drafts.count) graphics are drafts",
                   systemImage: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
-            Text("Drafts play at fewer frames a second. Ask your agent for the final render, or run:")
-                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if steps.isEmpty {
+                Text("Drafts play at fewer frames a second. Ask your agent for the final render, or run:")
+                    .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text(String(format: String(localized: "Drafts play at fewer frames a second. Finalise and export runs %@ first, then exports."),
+                            steps.map(\.title).joined(separator: ", ")))
+                    .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             HStack(spacing: 8) {
                 Text(verbatim: command).font(.caption.monospaced()).textSelection(.enabled)
                 Button("Copy") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(command, forType: .string)
                 }.controlSize(.small)
+                if !steps.isEmpty {
+                    Spacer()
+                    Button("Finalise and Export") { start(runSteps: true) }
+                        .controlSize(.small).disabled(!canStart)
+                        .help("Run the plugin's export step on the drafts, then export")
+                }
             }
             Text(verbatim: drafts.map(\.name).joined(separator: ", ")).foregroundStyle(.secondary).lineLimit(2)
         }.font(.caption)
@@ -290,7 +309,11 @@ struct ExportView: View {
         if let url = ModalCenter.shared.open(panel, name: "export-directory")?.first { directory = url }
     }
 
-    private func start() {
+    private var canStart: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && directory != nil && suggestedName == nil && !chosen.isEmpty
+    }
+
+    private func start(runSteps: Bool = false) {
         guard let directory else { return }
         var audio = document.project["audio"]?.object ?? [:]
         audio["normalizeEnabled"] = .bool(normalizeAudio)
@@ -312,7 +335,7 @@ struct ExportView: View {
         }
         document.startExport(
             name: name, presets: chosen, directory: directory, includeSubRip: includeSubRip,
-            normalizeAudio: normalizeAudio, withoutRoles: withoutMusic ? [TrackRole.music] : [])
+            normalizeAudio: normalizeAudio, withoutRoles: withoutMusic ? [TrackRole.music] : [], runSteps: runSteps)
     }
 }
 

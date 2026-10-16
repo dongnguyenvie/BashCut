@@ -60,4 +60,27 @@ struct PluginRecipeRunnerTests {
         await #expect(throws: CancellationError.self) { try await task.value }
         #expect(Date().timeIntervalSince(started) < 5)
     }
+
+    @Test("An export step gets its extra environment, fails under its own label and stops at its timeout")
+    func exportStep() async throws {
+        let (plugin, root) = try plugin("echo \"token=${BASHCUT_SESSION_TOKEN} step=${BASHCUT_EXPORT_STEP}\"; exit ${FAIL:-0}")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let lines = Lines()
+        try await PluginRecipeRunner.run(
+            PluginCommand(executable: "bin/setup"), plugin: plugin, directory: plugin.directory,
+            extraEnvironment: ["BASHCUT_SESSION_TOKEN": "t1", "BASHCUT_EXPORT_STEP": "finalise"], output: lines.add)
+        #expect(lines.all == [.line("token=t1 step=finalise")])
+        await #expect(throws: PluginError.invalid("Export step Finalise failed: token= step=")) {
+            try await PluginRecipeRunner.run(
+                PluginCommand(executable: "bin/setup"), plugin: plugin, directory: plugin.directory,
+                extraEnvironment: ["FAIL": "3"], label: "Export step Finalise", output: { _ in })
+        }
+        let (slow, slowRoot) = try self.plugin("sleep 30")
+        defer { try? FileManager.default.removeItem(at: slowRoot) }
+        await #expect(throws: PluginError.invalid("Export step Slow timed out after 1 s")) {
+            try await PluginRecipeRunner.run(
+                PluginCommand(executable: "bin/setup"), plugin: slow, directory: slow.directory, label: "Export step Slow",
+                timeout: 1, output: { _ in })
+        }
+    }
 }

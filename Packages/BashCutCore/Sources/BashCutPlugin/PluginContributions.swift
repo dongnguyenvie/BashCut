@@ -263,11 +263,14 @@ public struct PluginContributions: Codable, Sendable, Equatable {
     public let views: [PluginViewContribution]?
     /// A newer platform table (P1-F1, API 9): a JSON file inside the plugin, in BashCut's `platforms list` format.
     public let platforms: String?
+    /// Blocking steps before a final export (API 12), e.g. rendering draft graphics at full quality.
+    public let exportSteps: [PluginExportStepContribution]?
 
     public init(
         actions: [PluginActionContribution]? = nil, hooks: [PluginHookContribution]? = nil,
         library: [PluginLibraryContribution]? = nil, skills: [PluginSkillContribution]? = nil,
-        container: PluginContainerContribution? = nil, views: [PluginViewContribution]? = nil, platforms: String? = nil
+        container: PluginContainerContribution? = nil, views: [PluginViewContribution]? = nil, platforms: String? = nil,
+        exportSteps: [PluginExportStepContribution]? = nil
     ) {
         self.actions = actions
         self.hooks = hooks
@@ -276,10 +279,12 @@ public struct PluginContributions: Codable, Sendable, Equatable {
         self.container = container
         self.views = views
         self.platforms = platforms
+        self.exportSteps = exportSteps
     }
 
     public var isEmpty: Bool {
-        [actions?.count, hooks?.count, library?.count, skills?.count, views?.count].allSatisfy { ($0 ?? 0) == 0 }
+        [actions?.count, hooks?.count, library?.count, skills?.count, views?.count, exportSteps?.count]
+            .allSatisfy { ($0 ?? 0) == 0 }
             && container == nil && platforms == nil
     }
 }

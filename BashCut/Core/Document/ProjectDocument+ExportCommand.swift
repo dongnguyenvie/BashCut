@@ -17,8 +17,7 @@ extension ProjectDocument {
     func startExportCommand(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
         let presets = try Self.exportPresets(arguments)
         let (asked, directory) = try exportDestination(arguments)
-        guard project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
-        for preset in presets { try checkExportGuards(preset: preset, author: author) }
+        let steps = try exportPreflight(presets, skipSteps: arguments.bool("noSteps"), author: author)
         let includeSubRip = arguments.bool("includeSRT")
         let normalizeAudio = arguments.bool("normalizeAudio")
         let bitRate = arguments.optionalDouble("bitrate").map { Int($0 * 1_000_000) }
@@ -46,21 +45,36 @@ extension ProjectDocument {
                 (presets.count > 1 ? "presets" : "preset"): presets.map(\.title).joined(separator: ", "),
                 "bitrate": bitRate.map { "\(Double($0) / 1_000_000) Mbps" } ?? "preset default",
                 "sound": without.isEmpty ? "full mix" : "without " + without.sorted().joined(separator: ", "),
-            ]
+            ].merging(steps.isEmpty ? [:] : [
+                "export steps": steps.map { "\($0.title) (\($0.plugin.manifest.displayName))" }.joined(separator: ", "),
+            ]) { $1 }
         ) { [weak self] in
             guard let self else { throw RPCFailure(-32000, "Editor closed") }
-            try Self.trash(targets.flatMap(\.replaced))
-            for target in targets {
-                started.ids.append(try startExportAuthorized(
-                    name: target.name, preset: target.preset, directory: directory, includeSubRip: includeSubRip,
-                    normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate, withoutRoles: without))
+            let export: @MainActor @Sendable () throws -> JSONValue = { [unowned self] in
+                if !steps.isEmpty { for preset in presets { try checkExportGuards(preset: preset, author: author) } }
+                try Self.trash(targets.flatMap(\.replaced))
+                for target in targets {
+                    started.ids.append(try startExportAuthorized(
+                        name: target.name, preset: target.preset, directory: directory, includeSubRip: includeSubRip,
+                        normalizeAudio: normalizeAudio, author: author, videoBitRate: bitRate, withoutRoles: without))
+                }
+                return .array(started.ids.map(JSONValue.string))
+            }
+            if steps.isEmpty {
+                _ = try export()
+            } else {
+                started.steps = startExportSteps(steps, name: targets[0].name, author: author, then: export)
             }
         }
         if !approval.autoApproved {
             message = String(localized: "Waiting for approval: export.start")
         }
         var json = approval.json(output: outputs[0]).object
-        json["job"] = started.ids.first.map(JSONValue.string)
+        json["job"] = (started.steps ?? started.ids.first).map(JSONValue.string)
+        if !steps.isEmpty {
+            // The job is the export steps' job; its result names the export jobs it started.
+            json["exportSteps"] = .array(steps.map { $0.json(project) })
+        }
         json["renamedFrom"] = targets[0].name == targets[0].asked ? nil : .string(targets[0].asked)
         let replaced = targets.flatMap(\.replaced)
         json["replaced"] = replaced.isEmpty ? nil : .array(replaced.map { .string($0.path) })
@@ -69,16 +83,27 @@ extension ProjectDocument {
                 var row: [String: JSONValue] = [
                     "preset": .string(target.preset.argument), "output": .string(outputs[index].path),
                 ]
-                row["job"] = index < started.ids.count ? .string(started.ids[index]) : nil
+                row["job"] = index < started.ids.count && started.steps == nil ? .string(started.ids[index]) : nil
                 row["renamedFrom"] = target.name == target.asked ? nil : .string(target.asked)
                 return .object(row)
             })
         }
-        // The queue runs exports in order, so the last one landing means every one has.
-        if let job = started.ids.last, arguments.bool("wait") {
-            json.merge(try await waitForExport(job, save: arguments.bool("save"))) { $1 }
+        if arguments.bool("wait") {
+            json.merge(try await waitForStarted(started, save: arguments.bool("save"))) { $1 }
         }
         return .object(json)
+    }
+
+    /// Refuses an empty timeline, an export while export steps run and a failed guard; returns the plugin export
+    /// steps (#634) to run first. With steps, the draft-graphics guard waits until they have run.
+    private func exportPreflight(_ presets: [ExportPreset], skipSteps: Bool, author: Author) throws -> [ExportStepRun] {
+        guard project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
+        if let preparing = exports.preparing {
+            throw RPCFailure(-32000, "Export steps are running before another export (job \(preparing.job)); wait for it first")
+        }
+        let steps = skipSteps ? [] : exportSteps(for: presets)
+        for preset in presets { try checkExportGuards(preset: preset, author: author, graphics: steps.isEmpty) }
+        return steps
     }
 
     /// `preset`, or the comma-separated `presets` in the given order without repeats; exactly one of them.
@@ -115,9 +140,23 @@ extension ProjectDocument {
         return (name, directory)
     }
 
+    /// `export start --wait` over what started: the export steps' job first when there is one (#634), then the last
+    /// export (the queue runs exports in order, so the last one landing means every one has), within 100 s.
+    private func waitForStarted(_ started: StartedJobs, save: Bool) async throws -> [String: JSONValue] {
+        guard let steps = started.steps else {
+            guard let export = started.ids.last else { return [:] }
+            return try await waitForExport(export, save: save)
+        }
+        let begin = ContinuousClock.now
+        let waited = try await waitForJobDone(steps, seconds: 100).object
+        let left = 100 - Int(begin.duration(to: .now).components.seconds)
+        if let export = started.ids.last, left > 0 { return try await waitForExport(export, save: save, seconds: left) }
+        return ["finished": waited["job"] ?? .null, "timedOut": waited["timedOut"] ?? .bool(true)]
+    }
+
     /// `export start --wait`: the finished job (or `timedOut`), and with `save` the project saved once it landed.
-    private func waitForExport(_ job: String, save: Bool) async throws -> [String: JSONValue] {
-        let waited = try await waitForJobDone(job, seconds: 100).object
+    private func waitForExport(_ job: String, save: Bool, seconds: Int = 100) async throws -> [String: JSONValue] {
+        let waited = try await waitForJobDone(job, seconds: seconds).object
         var result: [String: JSONValue] = ["finished": waited["job"] ?? .null, "timedOut": waited["timedOut"] ?? .bool(false)]
         if save, waited["timedOut"] == .bool(false) {
             if dirty { try await saveNow() }
@@ -161,4 +200,6 @@ extension ProjectDocument {
 @MainActor
 private final class StartedJobs {
     var ids: [String] = []
+    /// The export steps' job when plugin export steps run before the exports (#634).
+    var steps: String?
 }

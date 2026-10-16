@@ -36,10 +36,13 @@ public enum PluginFeature {
     /// The Tools panel: `tools` action placement, `views[].kind: tool` and `advanced` options (API 10).
     public static let tools = "tools"
 
+    /// `contributes.exportSteps`: blocking steps before a final export (API 12, #634).
+    public static let exportSteps = "exportSteps"
+
     /// Features that are not a view component or place.
     static let named = [
         container, views, requires, invoke, optionsSet, voiceMaxTakes, voiceSavedClones, inspectorWhen, viewUpdate,
-        overlays, viewsDrag, skillsOnly, tools,
+        overlays, viewsDrag, skillsOnly, tools, exportSteps,
     ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and
