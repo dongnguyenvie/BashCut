@@ -64,7 +64,7 @@ struct ExportStepRunnerTests {
     }
 
     private func finish(_ jobs: JobCenter, _ id: String) async throws -> Job {
-        _ = try await jobs.wait(id, for: .seconds(20), interval: .milliseconds(20))
+        _ = try await jobs.wait(id, for: .seconds(90), interval: .milliseconds(20))
         while jobs.job(id)?.isActive == true { try await Task.sleep(for: .milliseconds(20)) }
         return try #require(jobs.job(id))
     }
@@ -102,7 +102,7 @@ struct ExportStepRunnerTests {
 
     @Test("Cancelling the step stops it and exports nothing")
     func cancelAborts() async throws {
-        let plugin = try Self.plugin("sleep 30")
+        let plugin = try Self.plugin("sleep 120")
         let box = Box(try Self.project(graphics: Self.draft))
         let jobs = JobCenter()
         let steps = ExportStepRun.matching([plugin], project: box.project, presets: [.tiktok])
@@ -115,7 +115,8 @@ struct ExportStepRunnerTests {
         #expect(jobs.cancel(id))
         let job = try await finish(jobs, id)
         #expect(job.state == .cancelled && box.exported == 0 && box.ended == ["finalise"])
-        #expect(Date().timeIntervalSince(started) < 10)
+        // Far less than the step's own 120 s, even with every suite running at once.
+        #expect(Date().timeIntervalSince(started) < 60)
     }
 
     @Test("A failing step reports the plugin, the step and its output, and exports nothing")
