@@ -133,13 +133,43 @@ extension TimelineReview {
     static func jumpCutIssues(_ project: Project, picture: ReviewPicture, profile: ReviewProfile) -> [ReviewIssue] {
         guard let limit = profile["jumpCutChange"] else { return [] }
         let items = Dictionary(project.tracks.flatMap(\.items).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let main = project.tracks.first { $0.role == TrackRole.main }?.items ?? []
         return ReviewPicture.hardCuts(project).compactMap { cut in
             guard let change = picture.cuts[cut.item], change < limit, let right = items[cut.item] else { return nil }
+            // Two framings of one picture (a punch-in, another part of a dark screen) are a new shot that a flat
+            // picture measures as little change (B7): info, not a jump cut.
+            if let left = main.first(where: { $0.end == right.at }), left.mediaID == right.mediaID,
+                reframed(left, right, width: Double(project.width))
+            {
+                return ReviewIssue(
+                    id: "jump-" + right.id, title: "Cut between two framings of one picture",
+                    detail: String(
+                        format: "The picture changes only %.0f%% across this cut, but the two sides are framed "
+                            + "differently (zoom, pan, crop or keyframes), so it reads as a new shot.", change * 100),
+                    frame: right.at, severity: .info,
+                    facts: ["change": fact(change), "minimum": .number(limit), "reframed": .bool(true)])
+            }
             return ReviewIssue(
                 id: "jump-" + right.id, title: "Jump cut",
                 detail: String(format: "The picture changes only %.0f%% across this cut.", change * 100),
                 frame: right.at, facts: ["change": fact(change), "minimum": .number(limit)])
         }
+    }
+
+    /// Whether two sides of a cut frame the picture differently enough to read as another shot: a zoom 10% apart,
+    /// a pan or tilt a tenth of the width apart, another crop, or framing keyframes on either side.
+    static func reframed(_ left: Item, _ right: Item, width: Double) -> Bool {
+        let framing = { (item: Item) -> (zoom: Double, pan: Double, tilt: Double) in
+            let transform = item["transform"]?.object ?? [:]
+            return (transform["zoom"]?.double ?? 1, transform["pan"]?.double ?? 0, transform["tilt"]?.double ?? 0)
+        }
+        let first = framing(left), second = framing(right)
+        let zoom = max(first.zoom, second.zoom) / max(0.01, min(first.zoom, second.zoom))
+        let moved = max(abs(first.pan - second.pan), abs(first.tilt - second.tilt)) / max(1, width)
+        let keyed = [left, right].contains { item in
+            item["keyframes"]?.object.keys.contains { ["zoom", "pan", "tilt"].contains($0) } == true
+        }
+        return zoom >= 1.1 || moved >= 0.1 || left["crop"] != right["crop"] || keyed
     }
 
     /// Mean sample change inside `from..<to`, nil without samples there.

@@ -114,3 +114,16 @@ struct MixMeasureTests {
         #expect(throws: ProjectError.self) { try LibraryAudio(params: ["landmarks": .object(["start": .number(1)])]) }
     }
 }
+
+/// A stem that cannot be read fails the job with a reason instead of completing with empty readings (B5).
+struct MixMeasureUnreadableTests {
+    @Test("No curve, or a silent curve where the layers hold sound, is unreadable; a quiet stem that should be quiet is not")
+    func unreadable() {
+        let silent = MixMeasure.Curve(momentary: [-120, -120, -120])
+        let heard = MixMeasure.Curve(momentary: [-120, -23, -20])
+        #expect(MixMeasure.unreadable(stem: "music", curve: nil, shouldSound: true)?.contains("no curve") == true)
+        #expect(MixMeasure.unreadable(stem: "speech", curve: silent, shouldSound: true)?.contains("rendered silent") == true)
+        #expect(MixMeasure.unreadable(stem: "speech", curve: silent, shouldSound: false) == nil)
+        #expect(MixMeasure.unreadable(stem: "speech", curve: heard, shouldSound: true) == nil)
+    }
+}

@@ -16,7 +16,9 @@ extension CommandCatalog {
             + "{fixed, new, persisting}. With measure, a revision not measured yet is measured first (review.measure, "
             + "waited for up to 100 s; measured {job, timedOut} says so), so one call measures and reviews. With from/to only "
             + "the issues touching those frames are listed and counted (range in the result; a pass is not the review "
-            + "stage), the check after a quick edit.",
+            + "stage), the check after a quick edit. Issues kept with review accept are left out of the list (their IDs "
+            + "in acceptedHidden with summary; counted as accepted) unless accepted is given, which lists them with "
+            + "accepted {reason}.",
         parameters: [
             CommandParameter("measure", .boolean, "Run review measure first when this revision is not measured, and "
                              + "wait for it", cli: .flag("measure")),
@@ -26,6 +28,8 @@ extension CommandCatalog {
                              choices: ReviewSeverity.allCases.map(\.rawValue), cli: .option("min-severity")),
             CommandParameter("summary", .boolean, "Wrap the issues with counts and a status",
                              cli: .flag("summary")),
+            CommandParameter("accepted", .boolean, "Also list the issues kept with review accept",
+                             cli: .flag("accepted")),
             CommandParameter("from", .integer, "Only issues that touch frames from here (with to: [from, to))",
                              minimum: 0, cli: .option("from")),
             CommandParameter("to", .integer, "Only issues that touch frames before this one", minimum: 1,
@@ -426,9 +430,14 @@ extension CommandCatalog {
                 + "offsets in frames to the nearest cut, beat and word edge; musicBeds per Music layer: ducking false "
                 + "(a fixed bed), or duckDb, minGapSeconds, rises (gaps where it comes back up), shortRises (gaps under "
                 + "2.5 s), movesPerMinute and pumping (over 4 moves a minute); and each stem's integrated loudness. "
-                + "No other verdicts. A job; no levels are changed.",
+                + "No other verdicts. A job; no levels are changed. jobs status shows its progress and the stem and "
+                + "timeline second being rendered; a stem rendered without a curve, or silent although its layers hold "
+                + "sound, fails the job with the reason (musicUnderSpeech null otherwise comes with "
+                + "musicUnderSpeechReason).",
             parameters: [
-                CommandParameter("nearSeconds", .number, "Seconds around an effect read for the voice (default 1)",
+                CommandParameter("nearSeconds", .number,
+                                 "Width in seconds of the window on each side of every sound effect where the voice is "
+                                    + "read (default 1); not a timeline time: the whole timeline is always measured",
                                  range: 0.1...10, cli: .option("near")),
                 provider,
             ],

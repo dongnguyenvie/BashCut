@@ -477,9 +477,9 @@ extension ProjectDocument {
             if !report.available { throw CapabilityUnavailable(report) }
         }
         guard !conflict else { throw RPCFailure(-32003, "The project has a file conflict; retry later", category: .fileConflict) }
-        let jobWork: @MainActor (JobReporter) async throws -> JSONValue = { [weak self] _ in
+        let jobWork: @MainActor (JobReporter) async throws -> JSONValue = { [weak self] reporter in
             guard let self else { throw CancellationError() }
-            return try await work(self)
+            return try await JobReporter.$current.withValue(reporter) { try await work(self) }
         }
         let finished: @MainActor (Result<JSONValue, any Error>) -> Void = { [weak self] outcome in
             guard case .failure(let error) = outcome, !JobCenter.isCancellation(error) else { return }

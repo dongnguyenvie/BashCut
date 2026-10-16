@@ -40,6 +40,17 @@ public struct SourceTranscript: Codable, Sendable, Equatable {
             key: key, language: language, provider: provider, transcribedAt: transcribedAt, phrases: phrases, words: words)
     }
 
+    /// The same transcript with its words kept out of the silences `media.analyze` measured (`SpeechMap.clamp`), and
+    /// how many words moved; every reader of a stored transcript sees these times, so a plan's edges, captions and
+    /// the timeline's words agree (B4).
+    public func clamped(to sound: MediaAnalysis.Sound) -> (transcript: SourceTranscript, moved: Int) {
+        let clamped = SpeechMap.clamp(words, to: SpeechMap.silences(sound))
+        guard clamped.moved > 0 else { return (self, 0) }
+        return (SourceTranscript(
+            key: key, language: language, provider: provider, transcribedAt: transcribedAt, phrases: phrases,
+            words: clamped.words), clamped.moved)
+    }
+
     /// Which facts the provider gave: word times from the provider or none (phrases only), and whether any word
     /// carries a confidence, speaker, event, no-speech probability, average log probability or compression ratio.
     public var precision: JSONValue {

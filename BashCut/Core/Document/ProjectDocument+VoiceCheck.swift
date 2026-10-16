@@ -188,6 +188,7 @@ extension ProjectDocument {
         guard !words.isEmpty else { throw RPCFailure(-32602, "No words to group: transcribe or add captions first") }
         let rule = (arguments.optionalInt("maxChars"), arguments.optionalDouble("maxSeconds"), arguments.optionalDouble("breakGapSeconds"))
         var groups: [[Int]]
+        var mark = CaptionGrouping.manualMark
         switch (arguments["groups"], rule) {
         case (let value?, (nil, nil, nil)):
             groups = try value.array.map { group in
@@ -199,14 +200,17 @@ extension ProjectDocument {
         case (nil, (let chars?, let seconds?, let gap?)):
             let from = arguments.optionalInt("from") ?? 0, to = arguments.optionalInt("to") ?? Int.max
             let inside = words.indices.filter { words[$0].end > from && words[$0].at < to }
-            let rule = CaptionGrouping.Rule(maxChars: chars, maxSeconds: seconds, breakGapSeconds: gap)
-            groups = CaptionGrouping.groups(inside.map { words[$0] }, rule: rule, fps: project.fps.value)
-                .map { $0.map { inside[$0] } }
+            let rule = CaptionGrouping.Rule(
+                maxChars: chars, maxSeconds: seconds, breakGapSeconds: gap, breakAtCuts: arguments.optionalBool("breakAtCuts") ?? true)
+            groups = CaptionGrouping.groups(
+                inside.map { words[$0] }, rule: rule, fps: project.fps.value, cuts: CaptionGrouping.cuts(project)
+            ).map { $0.map { inside[$0] } }
+            mark = rule.json
         default:
             throw RPCFailure(-32602, "Give groups, or all of maxChars, maxSeconds and breakGapSeconds")
         }
         let planned: (operation: EditOperation, cues: [Item])
-        do { planned = try CaptionGrouping.operation(project, words: words, groups: groups, author: author) } catch {
+        do { planned = try CaptionGrouping.operation(project, words: words, groups: groups, author: author, mark: mark) } catch {
             throw RPCFailure.from(error, fallbackCode: -32602)
         }
         let revision = try commit(planned.operation, label: "Group captions", author: author, baseRevision: arguments.int("baseRev"))

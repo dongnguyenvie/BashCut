@@ -82,7 +82,7 @@ extension CommandCatalog {
                 + "reused unless force. Ask right after import: media still being converted are measured when the conversion lands. "
                 + "The job's result lists each media with its key and whether it was reused.",
             parameters: [
-                CommandParameter("media", .string, "Project media ID; every video and audio media by default",
+                CommandParameter("media", .string, "Project media ID, or several as A,B; every video and audio media by default",
                                  cli: .option("media")),
                 CommandParameter("force", .boolean, "Measure again even when a record exists (drops corrections)",
                                  cli: .flag("force")),
@@ -406,7 +406,9 @@ extension CommandCatalog {
                 + "indices (from transcript words, or with source heard from transcript words --heard), each becoming "
                 + "one caption from its first word's start to its last word's end with its words timed; the captions "
                 + "those words fall in are replaced (their style and plan apply marks kept). Rule mode instead (maxChars, maxSeconds and "
-                + "breakGapSeconds, all required; from/to limit it) joins words greedily. Returns rev and facts: cues "
+                + "breakGapSeconds, all required; from/to limit it) joins words greedily and, unless breakAtCuts is false, "
+                + "never across a cut between clips on Main. The cues remember how they were grouped, so a later plan "
+                + "apply that rebuilds the captions groups them the same way. Returns rev and facts: cues "
                 + "[{frames, seconds, chars, cps, text}], gaps and overlaps between cues in frames. No default grouping.",
             parameters: [
                 CommandParameter("groups", .array, "Runs of word indices (CLI: path to groups.json)", cli: .positionalJSONFile),
@@ -418,6 +420,8 @@ extension CommandCatalog {
                                  cli: .option("max-seconds")),
                 CommandParameter("breakGapSeconds", .number, "Rule mode: a pause this long starts a caption",
                                  range: 0...10, cli: .option("break-gap")),
+                CommandParameter("breakAtCuts", .boolean, "Rule mode: start a caption at each cut between clips (default true)",
+                                 cli: .option("break-at-cuts")),
                 CommandParameter("from", .integer, "Rule mode: from this timeline frame", minimum: 0, cli: .option("from")),
                 CommandParameter("to", .integer, "Rule mode: up to this timeline frame", minimum: 0, cli: .option("to")),
                 baseRevision,
@@ -467,7 +471,9 @@ extension CommandCatalog {
             execution: .job),
         CommandSpec(
             "media.transcript", .read,
-            "Read the stored transcript of one media in its own seconds: language, provider, transcribedAt, "
+            "Read the stored transcript of one media in its own seconds (word times kept out of the silences "
+                + "media.analyze measured, as every command reads them; wordsKeptOutOfSilences counts the words moved), "
+                + "with words and phrases counted: language, provider, transcribedAt, "
                 + "speechSeconds, firstSpeech/lastSpeech, precision (wordTimes provider or none, and whether words carry "
                 + "confidence, speakers, events, noSpeechProb, avgLogprob, compressionRatio), then as words: wordList "
                 + "[{index, text, start, end, gapBefore, confidence?, speaker?, event?, noSpeechProb?, avgLogprob?, "

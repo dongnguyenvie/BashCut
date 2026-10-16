@@ -12,8 +12,21 @@ extension ProjectDocument {
         try SourceTranscript.cacheKey(for: url)
     }
 
-    /// The stored transcript of `mediaID` for its file as it is now, or nil.
+    /// The stored transcript of `mediaID` for its file as it is now, or nil, with its words kept out of the silences
+    /// `media.analyze` measured (B4), so plan edges, captions and the timeline's words use one set of word times.
     func storedTranscript(_ mediaID: String) async throws -> SourceTranscript? {
+        try await clampedTranscript(mediaID)?.transcript
+    }
+
+    /// The stored transcript with its words kept out of measured silences, and how many words moved.
+    func clampedTranscript(_ mediaID: String) async throws -> (transcript: SourceTranscript, moved: Int)? {
+        guard let raw = try await rawTranscript(mediaID) else { return nil }
+        guard let sound = (try? storedAnalysis(mediaID))?.record?.sound else { return (raw, 0) }
+        return raw.clamped(to: sound)
+    }
+
+    /// The stored transcript with the word times as the recognizer gave them.
+    func rawTranscript(_ mediaID: String) async throws -> SourceTranscript? {
         let source = try analysisSource(mediaID)
         var urls = [source.url]
         // A converted media (AV1, VP9 → H.264) keeps the sound and timing of its original: a transcript made from the
@@ -101,7 +114,7 @@ extension ProjectDocument {
         }
         handle("media.transcript") { document, arguments, _ in
             let mediaID = try arguments.string("media")
-            guard let transcript = try await document.storedTranscript(mediaID) else {
+            guard let (transcript, moved) = try await document.clampedTranscript(mediaID) else {
                 throw RPCFailure(-32602, "Media \(mediaID) has no transcript: run media transcribe --media \(mediaID) first")
             }
             let format = SourceTranscript.Format(rawValue: arguments.optionalString("as") ?? "phrases") ?? .phrases
@@ -114,6 +127,11 @@ extension ProjectDocument {
                 return transcript.json(format, from: from, to: to)
             }
             result["media"] = .string(mediaID)
+            result["wordsKeptOutOfSilences"] = .integer(moved)
+            if format == .phrases {
+                // words and phrases above are counts (B8).
+                result["wordListHint"] = .string("words and phrases are counts; --as words (or json) lists every word with its times")
+            }
             return .object(result)
         }
     }

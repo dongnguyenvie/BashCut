@@ -69,6 +69,9 @@ public struct JobReporter {
 
     public func detail(_ value: String) { center?.update(id) { $0.detail = value } }
 
+    /// The reporter of the capability job the current task runs for, so deep work can report progress (B5).
+    @TaskLocal public static var current: JobReporter?
+
     /// A thread-safe progress callback for engines that report off the main actor.
     public func progressHandler(range: ClosedRange<Double> = 0...1) -> @Sendable (Double) -> Void {
         let reporter = self

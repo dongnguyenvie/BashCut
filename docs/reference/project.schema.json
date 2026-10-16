@@ -1079,7 +1079,7 @@
               "type" : "number"
             },
             "positionY" : {
-              "description" : "Baseline position from the bottom, as a fraction",
+              "description" : "Baseline height from the frame's bottom (fraction): 0.1 low, 0.86 near the top",
               "maximum" : 1,
               "minimum" : 0,
               "type" : "number"

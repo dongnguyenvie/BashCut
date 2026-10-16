@@ -5,6 +5,8 @@ import Foundation
 /// built cues carry `planCut: "captions"` and `planCaptions`, a digest of what was generated; `captions group` keeps
 /// both on the cues it makes. A later apply that would generate the same cues keeps the ones on the timeline (hand
 /// grouped or not); one that would generate different cues replaces them all, and never stacks a second set (#628).
+/// Cues `captions group` made carry how they were grouped (`captionGroup`); their replacements are grouped the same
+/// way (B3).
 extension PlanCut {
     /// The field holding the digest of the captions an apply generated.
     public static let captionsTag = "planCaptions"
@@ -18,8 +20,10 @@ extension PlanCut {
 
     /// Replaces the captions an earlier apply built (and any cues grouped from them) with the list's, or keeps them
     /// when the list would generate the same cues again. Refuses to lay captions over speech captions it did not
-    /// build, rather than stacking two sets.
-    static func rebuildCaptions(_ spec: Spec, clips: [Resolved], sources: CaptionSources, in planner: inout LayerPlanner) throws {
+    /// build, rather than stacking two sets. `was` is the project before the apply, where the old cues were heard.
+    static func rebuildCaptions(
+        _ spec: Spec, clips: [Resolved], sources: CaptionSources, was: Project, in planner: inout LayerPlanner
+    ) throws {
         let old = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == .string("captions") }
         var scratch = planner
         for item in old { try scratch.add([.delete(item: item.id, ripple: false)]) }
@@ -46,7 +50,58 @@ extension PlanCut {
         for item in added {
             try scratch.add([.setProperties(item: item.id, patch: [captionsTag: .string(digest)])])
         }
+        try regroup(Set(added.map(\.id)), like: old, heardIn: was, in: &scratch)
         planner = scratch
+    }
+
+    /// Groups the rebuilt cues `ids` the way `captions group` grouped the old ones: by the same rule (breaking at the
+    /// new cuts), or, for chosen groups, keeping together the words heard in the stretch of source one old cue held
+    /// (other words keep their generated cue). Does nothing when no old cue was grouped.
+    static func regroup(_ ids: Set<String>, like old: [Item], heardIn was: Project, in planner: inout LayerPlanner) throws {
+        let marks = old.compactMap { $0.fields[CaptionGrouping.field] }
+        guard !marks.isEmpty, let track = planner.project.tracks.first(where: { $0.role == TrackRole.captions }) else { return }
+        let project = planner.project
+        let sources = TimelineTranscript.SourceMap(project)
+        let heard = track.items.filter { ids.contains($0.id) }.sorted { $0.at < $1.at }
+            .flatMap { cue in TimelineTranscript.words(of: cue, sources: sources).map { (cue: cue.id, word: $0) } }
+        guard !heard.isEmpty else { return }
+        let spans = heard.map { ReviewSync.WordSpan(at: $0.word.at, end: $0.word.end, text: $0.word.text) }
+        let groups: [[Int]]
+        let mark: JSONValue
+        if let rule = marks.lazy.compactMap({ CaptionGrouping.Rule(json: $0) }).first {
+            groups = CaptionGrouping.groups(spans, rule: rule, fps: project.fps.value, cuts: CaptionGrouping.cuts(project))
+            mark = rule.json
+        } else {
+            // Where each old grouped cue was heard: its media and the source seconds its words cover.
+            let wasSources = TimelineTranscript.SourceMap(was)
+            let held: [(media: String, start: Double, end: Double)] = old.filter { $0.fields[CaptionGrouping.field] != nil }
+                .compactMap { cue in
+                    let words = TimelineTranscript.words(of: cue, sources: wasSources)
+                    guard let media = words.first?.mediaID else { return nil }
+                    let times = words.compactMap(\.source)
+                    guard let start = times.map(\.start).min(), let end = times.map(\.end).max() else { return nil }
+                    return (media, start, end)
+                }
+            let keys = heard.map { entry -> String in
+                if let media = entry.word.mediaID, let source = entry.word.source {
+                    let middle = (source.start + source.end) / 2
+                    if let index = held.firstIndex(where: { $0.media == media && $0.start <= middle && middle <= $0.end }) {
+                        return "held:\(index)"
+                    }
+                }
+                return "cue:" + entry.cue
+            }
+            var runs: [[Int]] = []
+            for index in keys.indices {
+                if index > 0, keys[index] == keys[index - 1] { runs[runs.count - 1].append(index) } else { runs.append([index]) }
+            }
+            groups = runs
+            mark = CaptionGrouping.manualMark
+        }
+        // Only the rebuilt cues are replaced: hand-made text on the captions layer stays.
+        let grouped = try CaptionGrouping.operation(
+            project, words: spans, groups: groups, author: .agent, mark: mark, replacing: Set(heard.map(\.cue)))
+        try planner.add([grouped.operation])
     }
 
     /// A digest of generated cues that ignores their IDs, stable across runs.

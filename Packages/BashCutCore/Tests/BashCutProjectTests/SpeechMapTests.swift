@@ -77,3 +77,45 @@ struct SpeechMapTests {
         #expect(transcript["wordsCoveredByLevel"] == .number(1))
     }
 }
+
+/// Word times kept out of measured silences, so a plan's edges do not widen across a pause (B4).
+struct SpeechMapClampTests {
+    /// Speech 0–2 s, a 1 s silence, speech 3–5 s, in 0.1 s windows (with a little level wobble).
+    let sound = MediaAnalysis.Sound(
+        window: 0.1,
+        levels: (0..<50).map { (index: Int) -> Double in
+            let wobble = Double(index % 3)
+            return (20..<30).contains(index) ? -60 - wobble : -20 - wobble
+        },
+        peakDb: -3)
+
+    func word(_ text: String, _ start: Double, _ end: Double) -> CaptionWords.Timed {
+        CaptionWords.Timed(text: text, start: start, end: end, confidence: 0.9)
+    }
+
+    @Test("A word running into a silence ends where it starts; one starting inside starts where it ends")
+    func clamps() throws {
+        let silences = SpeechMap.silences(sound)
+        try #require(silences.count == 1)
+        #expect(abs(silences[0].0 - 2) < 1e-9 && abs(silences[0].1 - 3) < 1e-9)
+        let words = [word("khi", 1.8, 2.9), word("con", 2.5, 3.4), word("ừm", 2.2, 2.6), word("đi", 1.0, 1.5),
+                     word("dài", 1.6, 3.2)]
+        let (clamped, moved) = SpeechMap.clamp(words, to: silences)
+        #expect(moved == 3)
+        #expect(clamped[0].start == 1.8 && clamped[0].end == 2)
+        #expect(clamped[1].start == 3 && clamped[1].end == 3.4 && clamped[1].confidence == 0.9)
+        #expect(clamped[2] == words[2] && clamped[3] == words[3])
+        // Across the whole silence: the side holding more of the word.
+        #expect(clamped[4].start == 1.6 && clamped[4].end == 2)
+    }
+
+    @Test("Without a clear split of speech and floor nothing is clamped")
+    func noSeparation() {
+        let flat = MediaAnalysis.Sound(window: 0.1, levels: (0..<50).map { (index: Int) -> Double in -20 - Double(index % 3) }, peakDb: -3)
+        #expect(SpeechMap.silences(flat).isEmpty)
+        let transcript = SourceTranscript(
+            key: "k", language: "vi", provider: [:], transcribedAt: "", phrases: [], words: [word("khi", 1.8, 2.9)])
+        #expect(transcript.clamped(to: flat).moved == 0)
+        #expect(transcript.clamped(to: sound).transcript.words[0].end == 2)
+    }
+}

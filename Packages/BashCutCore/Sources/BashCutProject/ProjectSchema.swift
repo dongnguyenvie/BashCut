@@ -54,7 +54,7 @@ public struct ItemProperty: Sendable {
         .init("crop", "radius", .number(0...0.5),
               "Video picture: corner radius as a fraction of the visible part's shorter side (0.5 = circle or pill)"),
         .init("textStyle", "size", .number(0.005...1), "Font size as a fraction of the frame's short side (shrunk to fit 90% of the width)"),
-        .init("textStyle", "positionY", .number(0...1), "Baseline position from the bottom, as a fraction"),
+        .init("textStyle", "positionY", .number(0...1), "Baseline height from the frame's bottom (fraction): 0.1 low, 0.86 near the top"),
         .init("textStyle", "strokeWidth", .number(0...50), "Outline width in points"),
         .init("textStyle", "font", .text(maxLength: 128), "Font PostScript name (fonts list); missing fonts draw as Helvetica"),
         .init("textStyle", "fill", .color, "Text colour, #RRGGBB (the preset's by default)"),

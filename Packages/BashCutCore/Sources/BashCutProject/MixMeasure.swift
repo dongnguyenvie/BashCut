@@ -79,6 +79,17 @@ public enum MixMeasure {
         return (0..<blocks).map { (speech?.level($0) ?? -100) > silenceLUFS }
     }
 
+    /// Why a rendered stem cannot be read (B5): no curve came back, or it is silent although its layers hold sound
+    /// (`shouldSound`), which means the render failed rather than that the stem is quiet. Nil when it can be read.
+    public static func unreadable(stem: String, curve: Curve?, shouldSound: Bool) -> String? {
+        guard let curve else {
+            return "The loudness provider returned no curve for the \(stem) stem, so nothing can be read against speech"
+        }
+        guard shouldSound, !curve.momentary.contains(where: { $0 > silenceLUFS }) else { return nil }
+        return "The \(stem) stem rendered silent although its layers hold sound: the render may have failed (retry; if "
+            + "it repeats, export the sound, or look for clips at high speed from long recordings)"
+    }
+
     public static func json(
         _ project: Project, speech: Curve?, music: Curve?, effects: Curve?, words: [ReviewSync.WordSpan],
         nearSeconds: Double = 1
