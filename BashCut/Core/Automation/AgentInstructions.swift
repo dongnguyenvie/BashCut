@@ -35,6 +35,8 @@ extension CommandCatalog {
         // Batch pipelines (P2-C1): batch run and status are listed; cancelling and saving presets are the user's
         // (the batch window, P2-C2), still callable by name.
         "batch.cancel", "batch.presets",
+        // Batch fixes (P2-C3): captions style is the batch window's step; agents restyle with patchItems.
+        "captions.style",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first

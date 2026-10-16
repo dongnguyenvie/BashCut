@@ -27,6 +27,7 @@ extension ProjectDocument {
         registerRampCommands()
         registerMotionCommands()
         registerCaptionWordCommands()
+        registerBatchFixCommands()
         registerAdjustmentCommands()
         registerImportCommands()
         registerProxyCommands()

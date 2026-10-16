@@ -122,6 +122,17 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
         selectedStep = pipeline.steps.count - 1
     }
 
+    /// A step from the core catalog (`BatchStepCatalog`), labelled with its localized title.
+    func addEntry(_ entry: BatchStepCatalog.Entry, title: String) {
+        var step = entry.step
+        step.label = title
+        if entry.action == BatchRunner.exportAction, step.params["presets"] == nil {
+            step = BatchRunner.newStep(entry.action, label: title, pipeline: pipeline)
+        }
+        pipeline.steps.append(step)
+        selectedStep = pipeline.steps.count - 1
+    }
+
     func removeStep(_ index: Int) {
         guard pipeline.steps.indices.contains(index) else { return }
         pipeline.steps.remove(at: index)

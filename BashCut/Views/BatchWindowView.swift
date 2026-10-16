@@ -213,6 +213,13 @@ private struct BatchPipelineColumn: View {
         let document = model.document
         let areas = Dictionary(grouping: BatchRunner.stepCommands) { $0.cliWords.first ?? "" }
         return Menu {
+            ForEach(BatchStepCatalog.Group.allCases, id: \.self) { group in
+                Section(Self.title(group)) {
+                    ForEach(BatchStepCatalog.entries.filter { $0.group == group }, id: \.action) { entry in
+                        Button(Self.title(entry)) { model.addEntry(entry, title: Self.title(entry)) }
+                    }
+                }
+            }
             Section("Tools") {
                 ForEach(document.toolEntries) { tool in
                     if let action = Self.stepAction(tool) {
@@ -220,7 +227,6 @@ private struct BatchPipelineColumn: View {
                     }
                 }
             }
-            Button("Export") { model.addStep(BatchRunner.exportAction) }
             Section("Commands") {
                 ForEach(areas.keys.sorted(), id: \.self) { area in
                     Menu(area) {
@@ -244,6 +250,20 @@ private struct BatchPipelineColumn: View {
             Label("Add step", systemImage: "plus")
         }
         .accessibilityIdentifier("batch-add-step")
+    }
+
+    /// The catalog's English title, localized here (the core list has no strings of its own).
+    static func title(_ entry: BatchStepCatalog.Entry) -> String {
+        String(localized: String.LocalizationValue(entry.title))
+    }
+
+    static func title(_ group: BatchStepCatalog.Group) -> String {
+        switch group {
+        case .build: String(localized: "Build")
+        case .fix: String(localized: "Fix")
+        case .check: String(localized: "Check")
+        case .export: String(localized: "Export")
+        }
     }
 
     private static func stepAction(_ tool: ToolListEntry) -> String? {

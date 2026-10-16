@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 244 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 247 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -904,6 +904,28 @@ Where words are said on the timeline: every place the text's words come in order
 - Mode: read · Runs: immediately · MCP: `bashcut_captions_find`
 - `text`: string, required. Words to find
 
+### `bashcut captions replace <find> [--with <with>] [--match-case] [--whole-word <wholeWord>] [--dry-run] --base-rev <baseRev>`
+
+Find and replace in captions. Every caption on the caption layers, as one undoable edit. Case is ignored unless matchCase; wholeWord (default true) skips matches inside a longer word. Word timings stay when the word count is unchanged, else they are estimated from word length (retimed). No match is not an error: replaced 0. Returns rev, replaced (matches), items [{id, before, after, count, retimed}]; dryRun returns the same without editing.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_captions_replace`
+- `find`: string, required. Text to find
+- `with`: string. Replacement text; left out, the matches are removed
+- `matchCase`: boolean, default false. Match upper and lower case exactly
+- `wholeWord`: boolean, default true. Only whole words
+- `dryRun`: boolean, default false. List the changes without editing
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
+### `bashcut captions style [--preset <preset>] [<style.json>] [--word-style <wordStyle>] --base-rev <baseRev>`
+
+Restyle every caption on the caption layers as one undoable edit: preset (a library text preset, as library apply: its preset, textStyle, brand roles and animation), then style (textStyle fields: font, size, fill, stroke, strokeWidth, positionY, align, highlight, uppercase…; null removes one) merged over each caption's, then wordStyle (highlight, karaoke, reveal or none). Give at least one. Returns rev and items.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_captions_style`
+- `preset`: string. Library text preset ID, or scope:id
+- `style`: object. textStyle fields (CLI: path to style.json)
+- `wordStyle`: string, one of highlight, karaoke, reveal, none. Show words as they are spoken (see captions.words)
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
+
 ### `bashcut captions group [<groups.json>] [--source <source>] [--max-chars <maxChars>] [--max-seconds <maxSeconds>] [--break-gap <breakGapSeconds>] [--break-at-cuts <breakAtCuts>] [--from <from>] [--to <to>] --base-rev <baseRev>`
 
 Re-cut captions from word groups you choose, as one undoable edit: groups is a list of runs of word indices (from transcript words, or with source heard from transcript words --heard), each becoming one caption from its first word's start to its last word's end with its words timed; the captions those words fall in are replaced (their style and plan apply marks kept). Rule mode instead (maxChars, maxSeconds and breakGapSeconds, all required; from/to limit it) joins words greedily and, unless breakAtCuts is false, never across a cut between clips on Main. The cues remember how they were grouped, so a later plan apply that rebuilds the captions groups them the same way. Returns rev and facts: cues [{frames, seconds, chars, cps, text}], gaps and overlaps between cues in frames. No default grouping.
@@ -1530,6 +1552,19 @@ Saved pipelines in the user store (Application Support/BashCut/Batch/Presets): l
 - `keepInputs`: boolean, default false. Save the pipeline's inputs too
 - `get`: string. Preset name to return
 - `remove`: string. Preset name to delete
+
+## music
+
+### `bashcut music replace [--media <media>] [--library <library>] [--from <from>] [--loop <loop>] --base-rev <baseRev>`
+
+Swap the music bed for a new sound. The clips on the Music layers go and the new sound covers their span (first clip's start to last clip's end) on the first clip's layer, so its ducking stays, as one undoable edit, with the old level (volumeDb, muted) and fades. Shorter than the span, it repeats back to back unless loop is false. Give media (project media ID, such as {media} after a media import step) or library (a library audio item, copied into the project's music/ folder). Returns rev, track, removed, items, at, duration, looped and shortened.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_music_replace`
+- `media`: string. Project media ID of the new music
+- `library`: string. Library audio item ID, or scope:id
+- `from`: number, 0…86400. Start this many seconds into the new music
+- `loop`: boolean, default true. Repeat the new music to cover the bed (default true)
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ## speech
 

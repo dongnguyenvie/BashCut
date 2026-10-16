@@ -5,12 +5,6 @@ import Foundation
 /// Word-by-word captions (Inspector › Text › Word by word, Auto Captions, `captions words`): one undoable edit sets
 /// `wordStyle` (and optionally the highlight colour) on one text item or on every caption.
 extension ProjectDocument {
-    /// Text items on caption layers, in timeline order.
-    var captionItems: [Item] {
-        project.tracks.filter { $0.kind == TrackKind.text && $0.role == TrackRole.captions }.flatMap(\.items)
-            .sorted { $0.at < $1.at }
-    }
-
     /// Sets the word style — a style name, or `{spoken, upcoming, past}` states; nil: words shown all at once — on
     /// `ids`, or on every caption when `ids` is nil.
     @discardableResult
@@ -32,7 +26,7 @@ extension ProjectDocument {
                 }
                 return item
             }
-        } ?? captionItems
+        } ?? project.captionItems
         guard !targets.isEmpty else { throw ProjectError.invalid("There are no captions to change") }
         let operations = targets.map { item -> EditOperation in
             var patch: [String: JSONValue] = ["wordStyle": style ?? .null]

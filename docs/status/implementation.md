@@ -354,8 +354,13 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   steps over files, folders and projects, one project per input; the app-wide `BatchRunner` opens each item in the
   editor, runs every step through the CLI's handlers as a job and records per-item, per-step state. Verified by
   `BatchRunnerTests` (import, test-provider captions, export over 3 generated clips → 3 projects, 3 files) and live
-  in a dev copy with the Whisper plugin. Items run one at a time; batch-fix actions (P2-C3) and the Vietsub preset
-  (P2-C4) are next. No headless runs.
+  in a dev copy with the Whisper plugin. Items run one at a time; the Vietsub preset (P2-C4) is next. No headless
+  runs.
+- Batch-fix actions (#598, P2-C3): `captions replace`, `captions style` and `music replace` (core
+  `CaptionReplace`, `captionStyleOperations`, `musicReplacePlan`), each one undoable edit and a valid batch step;
+  brand kits (`library apply`) and re-export (the `export` step) already were. Core `BatchStepCatalog` lists the
+  built-in steps for the window's Add step. Verified by `BatchFixTests`, `BatchFixCommandTests`, `BatchFixStepTests`
+  and live in a dev copy: a pipeline over 3 projects replaced a caption word and re-exported each.
 - Batch window (#597, P2-C2): File ▸ Batch… and a tool card's Run on › Many projects / files…. Inputs, steps (from
   `BatchRunner.stepCommands`, the tools, export and plugin actions), the selected step in a `ToolCard`, batch
   settings, and the queue (step, progress, files, review issues, Open to fix / Reveal / Cancel); presets save and
