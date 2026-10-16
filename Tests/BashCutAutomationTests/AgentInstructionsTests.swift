@@ -22,7 +22,8 @@ struct AgentInstructionsTests {
         // 38k since library favorite and library list --favorites|--recent (P1-9).
         // 38.25k since clip volume (#628: the one-liner for clip gain agents kept hunting for in timeline apply).
         // 38.3k since captions group --break-at-cuts and review run --accepted (crash report B6, B7).
-        #expect(text.count < 38_300)
+        // 38.4k since plan check --save (#631: agents scripted by-ID patches into whole lists before graphics).
+        #expect(text.count < 38_400)
         for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
             #expect(text.contains(rule), "\(rule)")
         }

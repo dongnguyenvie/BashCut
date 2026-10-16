@@ -47,6 +47,8 @@ struct FailedRequest {
     private var switchedProject: [String: String] = [:]
     /// Reads that show an agent the open project; any one of them ends the gate after a switch.
     static let projectReads: Set<String> = ["context.get", "timeline.get", "project.get"]
+    /// Reads that edit when the named flag is set; they then need a session token like any edit.
+    static let editingFlags: [String: String] = ["plan.check": "save"]
     /// Commands that switch the project; their result shows the new project to the caller.
     static let projectSwitches: Set<String> = ["project.open", "project.create", "project.close", "edl.import"]
     private let audit: @Sendable (AuditEvent) -> Void
@@ -164,7 +166,8 @@ struct FailedRequest {
             else {
                 throw RPCFailure(-32601, "Unknown command: \(request.method)")
             }
-            if spec.mode != .read {
+            let edits = Self.editingFlags[request.method].map { request.params[$0] == .bool(true) } ?? false
+            if spec.mode != .read || edits {
                 guard author != nil else {
                     throw RPCFailure(-32001, "A live agent session token is required")
                 }

@@ -250,10 +250,22 @@ extension CommandCatalog {
                     + "while an error stands. Voiceover lines report at, seconds, take and the take's similarity; "
                     + "graphics their at, seconds and track (also before they have media, so a graphics plugin renders "
                     + "each to its span; words adds the voiceover words heard during each, in seconds from its start). "
+                    + "save keeps the list (cut, or patch merged by entry ID) as plan.cut without building it, as one "
+                    + "undoable edit, when its only errors are ones a later stage resolves ("
+                    + PlanCut.stagePending.sorted().joined(separator: ", ") + "); else it refuses with the problems. "
+                    + "The result is the check's with rev and saved. "
                     + shape,
-                parameters: [cut, patch, CommandParameter(
-                    "words", .boolean, "Per graphic, the voiceover words heard during it (seconds from its start)",
-                    cli: .flag("words"))]),
+                parameters: [
+                    cut, patch,
+                    CommandParameter(
+                        "words", .boolean, "Per graphic, the voiceover words heard during it (seconds from its start)",
+                        cli: .flag("words")),
+                    CommandParameter(
+                        "save", .boolean, "Save the list as plan.cut without building (needs baseRev)", cli: .flag("save")),
+                    CommandParameter(
+                        "baseRev", .integer, "With save: the current project revision, or \"last\"", minimum: 0,
+                        cli: .option("base-rev")),
+                ]),
             CommandSpec(
                 "plan.apply", .edit,
                 "Build the edit list as one undoable edit: clips on Main in order (sound linked on the dialogue "
@@ -265,7 +277,7 @@ extension CommandCatalog {
                     + "as they are while the list would make the same ones (captionsKept: true); when it would not they are "
                     + "replaced, and the new ones grouped as captions group grouped the old (the same rule, or the same "
                     + "words together); speech captions it did not build where its captions go are an error, never a "
-                    + "second set. Refuses while plan.check has an error. "
+                    + "second set. Refuses while plan.check has an error (plan check --save keeps a list not ready to build). "
                     + "With cut or patch, the list is also saved as plan.cut in the same edit (a revision: --patch with "
                     + "only what changes, then nothing else to write); plan.cut.review is merged into the project's "
                     + "review in the same edit. dryRun returns the check. The "

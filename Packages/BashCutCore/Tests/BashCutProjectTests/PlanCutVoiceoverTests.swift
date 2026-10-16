@@ -124,6 +124,36 @@ struct PlanCutVoiceoverTests {
         #expect(problems["picture-gap"] != nil, "Main is black after the card")
     }
 
+    @Test("plan check --save keeps a by-ID patch before the graphics and voice stages, never over a real error (#631)")
+    func saveBeforeStages() throws {
+        let stored = try JSONDecoder().decode(JSONValue.self, from: Data(#"""
+            {"voiceover":[{"id":"l1","text":"Xin chào"},{"id":"l2","text":"Ba cây số"},{"id":"l3","text":"Bốn"}],
+             "graphics":[{"id":"g1","on":"l1","render":{"title":"A"}},{"id":"g2","on":"l2"}],
+             "review":{"minShotSeconds":0.5}}
+            """#.utf8))
+        let patched = try PlanCut.patch(stored, with: .object([
+            "voiceover": .object(["l1": .object(["pause": .number(0.8)])]),
+            "review": .object(["captionLineChars": .integer(22)]),
+        ]))
+        let lines = patched.object["voiceover"]?.array.map(\.object) ?? []
+        #expect(lines.map { $0["id"] } == [.string("l1"), .string("l2"), .string("l3")], "the other lines stay, in order")
+        #expect(lines[0]["pause"] == .number(0.8) && lines[0]["text"] == .string("Xin chào"))
+        #expect(lines[1] == stored.object["voiceover"]?.array[1].object, "an entry the patch does not name is untouched")
+        #expect(patched.object["graphics"] == stored.object["graphics"])
+        #expect(patched.object["review"] == .object(["minShotSeconds": .number(0.5), "captionLineChars": .integer(22)]))
+
+        let cut = try PlanCut.decode(patched)
+        let built = try PlanCut.build(cut, clips: [], on: project(), takes: takes)
+        let facts = PlanCut.lineAndGraphicFacts(cut, takes: takes, placements: built.placements, on: built.planner.project)
+        #expect(Set(facts.problems.filter { $0.severity == "error" }.map(\.id)) == ["graphic-no-media", "no-take"])
+        #expect(PlanCut.saveBlockers(facts.problems).isEmpty, "only stage-pending errors: the list may be saved")
+
+        let wrong = PlanCut.Problem(id: "unknown-media", severity: "error", entry: "g1", detail: "No graphic media x")
+        #expect(PlanCut.saveBlockers(facts.problems + [wrong]).map(\.id) == ["unknown-media"], "a real error refuses")
+        let warning = PlanCut.Problem(id: "graphic-short", severity: "warning", entry: "g1", detail: "Short")
+        #expect(PlanCut.saveBlockers([warning]).isEmpty)
+    }
+
     @Test("plan check names the built edit's review errors as one problem, so captions under a caption bar show early")
     func reviewErrorsProblem() throws {
         let issues = [
