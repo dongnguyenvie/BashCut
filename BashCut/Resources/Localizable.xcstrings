@@ -7538,7 +7538,11 @@
     "News story": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "News story" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tin" } } } },
     "Survey the project footage and summarize missing coverage.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Survey the project footage and summarize missing coverage." } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn bộ footage của project và tóm tắt những cảnh còn thiếu." } } } },
     "Draft voiceover without overlapping real speech.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Draft voiceover without overlapping real speech." } }, "vi": { "stringUnit": { "state": "translated", "value": "Viết nháp lời đọc, không chồng lên tiếng nói thật." } } } },
-    "Not ready": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not ready" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa sẵn sàng" } } } }
+    "Not ready": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not ready" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa sẵn sàng" } } } },
+    "Waiting for approval: batch.run": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Waiting for approval: batch.run" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang chờ phê duyệt: batch.run" } } } },
+    "Batch cancelled": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Batch cancelled" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã huỷ chạy hàng loạt" } } } },
+    "Batch stopped: %lld of %lld items done": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Batch stopped: %lld of %lld items done" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã dừng chạy hàng loạt: xong %1$lld/%2$lld mục" } } } },
+    "Batch finished: %lld of %lld items done": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Batch finished: %lld of %lld items done" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chạy hàng loạt xong: %1$lld/%2$lld mục" } } } }
   },
   "version": "1.0"
 }

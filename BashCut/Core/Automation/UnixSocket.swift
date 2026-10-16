@@ -86,7 +86,7 @@ private enum SocketIO {
 public enum UnixRPCClient {
     /// How long to wait for the answer: `jobs.wait` holds the request up to its `timeout` (at most
     /// `JobWaitDefaults.maximum`), `checkpoint.status`
-    /// up to its `wait`, `agent.ask`
+    /// and `batch.status` up to their `wait`, `agent.ask`
     /// until the user answers or its `timeout` passes; `project.create --import`, `review.run --measure` and
     /// `export.start --wait` while they import, measure or export; `color.measure` while it renders the edit;
     /// `review.verify` while it re-samples the picture. Other calls get 30 s: the app can be busy on the main actor
@@ -95,6 +95,7 @@ public enum UnixRPCClient {
         switch request.method {
         case "jobs.wait": min(JobWaitDefaults.maximum, max(1, request.params["timeout"]?.int ?? JobWaitDefaults.seconds)) + 10
         case "checkpoint.status": min(JobWaitDefaults.maximum, max(0, request.params["wait"]?.int ?? 0)) + 10
+        case "batch.status": min(JobWaitDefaults.maximum, max(0, request.params["wait"]?.int ?? 0)) + 10
         case "project.create": request.params["importFootage"] == .bool(true) ? 120 : 30
         case "review.run": request.params["measure"] == .bool(true) ? 115 : 30
         case "export.start": request.params["wait"] == .bool(true) ? 115 : 30

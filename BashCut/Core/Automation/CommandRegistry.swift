@@ -49,6 +49,9 @@ struct FailedRequest {
     static let projectReads: Set<String> = ["context.get", "timeline.get", "project.get"]
     /// Commands that switch the project; their result shows the new project to the caller.
     static let projectSwitches: Set<String> = ["project.open", "project.create", "project.close", "edl.import"]
+    /// Commands that never edit the open project, so the read-after-switch gate does not hold them: a batch switches
+    /// projects for every item, and its caller must still be able to cancel it or save presets.
+    static let switchIndependent: Set<String> = ["batch.run", "batch.cancel", "batch.presets"]
     private let audit: @Sendable (AuditEvent) -> Void
     /// The last failed requests, newest last (P2-G2), so `context get` can show an agent what keeps failing.
     private var failures: [FailedRequest] = []
@@ -168,7 +171,9 @@ struct FailedRequest {
                 guard author != nil else {
                     throw RPCFailure(-32001, "A live agent session token is required")
                 }
-                if let token = request.token, let name = switchedProject[token] {
+                if let token = request.token, let name = switchedProject[token],
+                    !Self.switchIndependent.contains(request.method)
+                {
                     throw RPCFailure(
                         -32002, "The open project changed to \"\(name)\". Read it first (context get or timeline get), "
                             + "then retry with its revision.")

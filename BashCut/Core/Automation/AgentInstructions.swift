@@ -32,6 +32,9 @@ extension CommandCatalog {
         "voice.clone-list", "voice.clone-remove",
         // Generated pictures (#550): image generate returns them; the list is for checking later.
         "image.generate-list",
+        // Batch pipelines (P2-C1): batch run and status are listed; cancelling and saving presets are the user's
+        // (the batch window, P2-C2), still callable by name.
+        "batch.cancel", "batch.presets",
     ]
 
     /// Instructions given to terminal agents, rendered from the command specs: each command's usage and first

@@ -1040,6 +1040,83 @@ by default) overrides it; no command can change either. When you turn it on, req
   at its start, then the largest drops of the whole curve. Values the file lacks stay `null`; nothing is called good
   or bad.
 
+## Batch pipelines
+
+A batch runs the same steps over many inputs. Each input becomes its own project (decision D4), so every result
+can be opened and fixed: a media file becomes a new project made from the pipeline's template, with the file's
+folder linked as `footage`; a project input is that project, and the steps run on it in place.
+
+```sh
+bashcut batch run pipeline.json                 # asks the user once, returns the batch ID
+bashcut batch status --wait 100                 # holds until an item or step changes
+bashcut batch status BATCH_ID                   # every item's steps, jobs, errors and outputs
+bashcut batch cancel                            # the running batch and its running step's job
+bashcut batch presets pipeline.json --name "Captions draft"
+bashcut batch run --preset "Captions draft" --inputs ~/Movies/shoot,~/Movies/old-edit
+```
+
+```json
+{
+  "name": "Captions draft",
+  "inputs": ["clips", {"path": "~/Movies/BashCut/w555-widgets", "kind": "project"}],
+  "template": {"canvas": "portrait", "resolution": "1080", "fps": "30", "language": "en",
+               "brand": "my-brand", "outputs": ["tiktok", "shorts"]},
+  "steps": [
+    {"action": "media.import", "params": {"path": "{input}", "place": true}, "label": "Import"},
+    {"action": "captions.generate", "params": {"media": "{media}"}, "label": "Auto captions"},
+    {"action": "export", "label": "Export"}
+  ],
+  "onFailure": "skip",
+  "concurrency": 1,
+  "outputName": "{name}-{preset}",
+  "projectsFolder": "~/Movies/BashCut/batch"
+}
+```
+
+- **Inputs** are paths of media files, folders or projects (or `{path, kind}` with kind `file`, `folder` or
+  `project`). A folder gives its video, audio and image files and the project folders directly inside it, in name
+  order; the same input twice runs once. Relative paths resolve against the pipeline file's folder (the CLI passes
+  it as `base`); over MCP give absolute paths or `base`.
+- **Template** holds the New Project settings of `project create` (`canvas`, `resolution`, `fps`, `language`,
+  `brand`) and `outputs`, the export presets the project is made for (`project format --outputs`). Fields left out
+  take `project create`'s defaults. New projects go to `projectsFolder` (the projects folder by default), named
+  after the input, with ` 2`, ` 3`… when the folder is taken.
+- **Steps** run in order on the item's open project. `action` is a command ID or an installed plugin action ID
+  (`plugins actions`), with `params` as that command takes them; `baseRev` is filled with the current revision when
+  the command takes one. String parameters may use `{input}` (the input's path), `{name}`, `{project}` (the project
+  file) and `{media}` (the media ID the last step returned, such as `media import`'s, else the project's first media).
+  Only commands that run immediately or as a job are allowed: a command that needs approval (`export start`,
+  `export otio`), one that opens or closes projects, and the batch commands are refused before anything runs,
+  as is an ID that is neither a command nor a plugin action.
+- **Export step.** `{"action": "export", "params": {"presets": ["tiktok"], "includeSRT": true}}` exports each preset
+  of `presets` (a list or comma-separated), else the template's `outputs`, to the project's `render/` folder, named
+  by `outputName` (`{name}`, `{preset}`, `{index}` — the item's 1-based position — and `{pipeline}`; it must hold
+  `{name}` or `{index}`). `normalizeAudio`, `bitrate` (Mbps) and `without` (sound roles) work as on `export start`.
+  It is covered by the batch's one approval; the graphics-draft guard still applies, the draft-audit guard does not
+  (each result is a project to open and review).
+- **Approval.** `batch run` is a privileged command: the app shows one approval sheet with the item count, the steps,
+  the exports per item and where new projects go; the result says `approved` (true when agent actions are approved
+  without asking). A refused batch ends `denied`. Only one batch runs at a time.
+- **Running.** Items run one at a time, because every step acts on the editor's one open project; `concurrency` is
+  kept in the file and `batch status` reports `{asked, used}` (used is 1 today). Each immediate step runs as a
+  `batch.step` job in the job center, a job command (`captions generate`, `plugins run`, exports) as its own job, and
+  the step records that job. After its steps (also after a failed one) the project is saved. A step that fails ends
+  its item (`failed`, later steps `skipped`); `onFailure: "skip"` goes on with the next item, `"stop"` ends the batch
+  `failed` with the rest `skipped`. Opening the first item needs `--save-current` or `--discard-current` when the
+  open project has unsaved changes, like `project open`. If the user opens another project during a batch, the next
+  step fails instead of editing the wrong project.
+- **Status.** A batch is `awaiting_approval`, `running`, then `completed` (items may have failed or been skipped),
+  `failed`, `cancelled` or `denied`. Each item has `input`, `kind`, `project`, `state`, `step` (1-based, while
+  running), `outputs` and `steps` [{`action`, `state`, `job`, `error`, `errorCategory`, `outputs`, `result`}].
+  Runs are kept for this app session (the last 10 finished); opening another project clears the job list but not
+  the batches. `batch status --all` lists them.
+- **Presets** are pipelines saved in the user store, `~/Library/Application Support/BashCut/Batch/Presets/<name>.json`.
+  `batch presets` lists them; `batch presets FILE [--name N] [--keep-inputs]` saves one (inputs are dropped unless
+  kept); `--get N` returns one and `--remove N` deletes it. `batch run --preset N --inputs A,B` runs one on new inputs.
+- **The app must stay open.** Batches run inside the running BashCut, through the same command handlers as the CLI;
+  there are no headless runs without the app. `batch run`, `batch cancel` and `batch presets` are not held by the
+  read-after-switch rule, so the agent that started a batch can still cancel it while its items open.
+
 ## Model APIs
 
 The dock no longer has a model-API tab (removed 2026-10-04): it generated a script or one timeline proposal per
