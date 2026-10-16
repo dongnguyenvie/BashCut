@@ -148,4 +148,22 @@ struct CaptionWordTests {
         let placed = project.placedCues([cue], in: project.audibleClips("m"), words: words)
         #expect(placed.map(\.text) == ["c d"])
     }
+
+    @Test("A clip starting a frame early, inside the end of the word before, does not show that word")
+    func frameEarlyStart() throws {
+        // 59.94 fps source: the quote starts at 8.70 s, its first frame 521 is at 8.692 s, inside "But" (8.66–8.70).
+        let words = [CaptionWords.Timed(text: "But", start: 8.66, end: 8.7), .init(text: "today's", start: 8.7, end: 9),
+                     .init(text: "all", start: 9, end: 9.12)]
+        let cue = SubRip.Cue(start: 8.66, end: 9.12, text: "But today's all")
+        let clip = Item(id: "a", media: "m", at: 0, duration: 15, sourceIn: 521)
+        let project = try Project(name: "Words", fps: FrameRate(30, 1)).applying(.group(
+            label: "Setup", author: .user, ops: [
+                .addMedia(ProjectFixtures.media(
+                    "m", path: "m.mov", frames: 1200, fps: FrameRate(60000, 1001), kind: "audio", hasAudio: true)),
+                .insert(track: "a1", item: clip),
+            ])).project
+        let placed = try #require(project.placedCues([cue], in: project.audibleClips("m"), words: words).first)
+        #expect(placed.text == "today's all")
+        #expect(placed["words"]?.array.compactMap { $0.object["text"]?.string } == ["today's", "all"])
+    }
 }

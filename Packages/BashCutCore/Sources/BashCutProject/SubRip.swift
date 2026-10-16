@@ -244,8 +244,11 @@ extension Project {
         for (clip, asset) in clips {
             let source = sourceSpan(of: clip, media: asset)
             let sourceStart = source.lowerBound, sourceEnd = source.upperBound
-            // Words heard inside this clip only, mapped through it like the cue.
-            let heard = words.filter { $0.end > sourceStart && $0.start < sourceEnd }.sorted { $0.start < $1.start }
+            // Words heard inside this clip only (their middle in its source span, before clamping, as
+            // transcript words --heard): a clip starting on a frame a few ms before its first word, inside the end
+            // of the word before, must not show that word. Mapped through the clip like the cue.
+            let middle = { (word: CaptionWords.Timed) in (word.start + word.end) / 2 }
+            let heard = words.filter { source.contains(middle($0)) }.sorted { $0.start < $1.start }
             let longest = heard.map { $0.end - $0.start }.max() ?? 0
             for cue in cues where cue.end > sourceStart && cue.start < sourceEnd {
                 let frame = { (seconds: Double) in self.frame(atSource: seconds, in: clip, media: asset) }
@@ -257,7 +260,11 @@ extension Project {
                 let near = first < last ? Array(heard[first..<last]) : []
                 // A cue the clip plays only part of says only the words heard inside the clip, not the whole line.
                 var text = cue.text
-                if cue.start < sourceStart - 0.05 || cue.end > sourceEnd + 0.05, !near.isEmpty {
+                let cutsWord = words.contains {
+                    let mid = middle($0)
+                    return mid >= cue.start && mid <= cue.end && !source.contains(mid)
+                }
+                if cue.start < sourceStart - 0.05 || cue.end > sourceEnd + 0.05 || cutsWord, !near.isEmpty {
                     let low = max(cue.start, sourceStart), high = min(cue.end, sourceEnd)
                     let inside = near.filter { (($0.start + $0.end) / 2) >= low && (($0.start + $0.end) / 2) <= high }
                     guard !inside.isEmpty else { continue }
