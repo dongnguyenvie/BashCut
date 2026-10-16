@@ -62,9 +62,13 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     public let bindsSecrets: Bool?
     /// An action parameter the tool card keeps under "Advanced" instead of showing with the main fields (API 10).
     public let advanced: Bool?
+    /// A `secret` the plugin checks before it is saved: Settings sends it in an `options.check` request and shows
+    /// the plugin's answer (host feature `options.check`).
+    public let check: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, title, help, type, choices, minimum, maximum, maxLength, scope, choiceLabels, fileTypes, bindsSecrets, advanced
+        case check
         case defaultValue = "default"
     }
 
@@ -73,7 +77,7 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         default defaultValue: JSONValue? = nil, choices: [String]? = nil, minimum: Double? = nil,
         maximum: Double? = nil, maxLength: Int? = nil, scope: Scope? = nil,
         choiceLabels: [String: LocalizedText]? = nil, fileTypes: [String]? = nil, bindsSecrets: Bool? = nil,
-        advanced: Bool? = nil
+        advanced: Bool? = nil, check: Bool? = nil
     ) {
         self.id = id
         self.title = title
@@ -89,7 +93,11 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
         self.scope = scope
         self.bindsSecrets = bindsSecrets
         self.advanced = advanced
+        self.check = check
     }
+
+    /// True for a secret the plugin checks before Settings saves it.
+    public var isChecked: Bool { type == .secret && check == true }
 
     /// True for a parameter listed under "Advanced" (default false).
     public var isAdvanced: Bool { advanced ?? false }
@@ -137,6 +145,9 @@ public struct PluginOption: Codable, Sendable, Equatable, Identifiable {
     private func validateBounds() throws {
         if type == .secret, effectiveScope != .user || defaultValue != nil {
             throw PluginError.invalid("Secret option \(id) must have user scope and no default")
+        }
+        if check == true, type != .secret {
+            throw PluginError.invalid("Option \(id) check is for secret options")
         }
         if bindsSecrets == true, type == .secret || type == .file {
             throw PluginError.invalid("Option \(id) cannot bind secrets: use a string, enum, number or bool option")
@@ -494,5 +505,16 @@ enum PluginIdentifier {
 
     static func isKey(_ value: String) -> Bool {
         value.range(of: "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$", options: .regularExpression) != nil
+    }
+}
+
+/// A plugin's answer to `options.check`: whether the value works, and a short line saying why.
+public struct PluginOptionCheck: Sendable, Equatable {
+    public let ok: Bool
+    public let message: String?
+
+    public init(ok: Bool, message: String?) {
+        self.ok = ok
+        self.message = message
     }
 }

@@ -35,6 +35,8 @@ public struct ItemProperty: Sendable {
     public static let all: [ItemProperty] = [
         .init(nil, "speed", .number(0.01...100), "Source frames per timeline frame; the timeline duration is kept"),
         .init(nil, "opacity", .number(0...1), "Picture opacity"),
+        .init(nil, "blur", .number(0...0.2),
+              "Video or image picture: Gaussian blur radius as a share of the picture's short side, after the crop (0.02 softens, 0.04 hides text)"),
         .init(nil, "volumeDb", .number(Project.volumeDbRange), "Clip gain in dB"),
         .init(nil, "muted", .boolean, "Silences the clip"),
         .init(nil, "preservePitch", .boolean, "Keeps pitch when speed changes (default true)"),
