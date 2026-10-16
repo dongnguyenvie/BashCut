@@ -1,4 +1,5 @@
 import BashCutAutomation
+import BashCutDocument
 import BashCutEngine
 import BashCutPlugin
 import BashCutProject
@@ -39,15 +40,18 @@ extension ProjectDocument {
         return copy
     }
 
-    /// Renders `project`'s sound to a scratch file and measures it with its loudness curve.
-    func measureRendered(_ project: Project, provider: String?) async throws -> LoudnessMeasurement {
+    /// Renders `project`'s sound to a scratch file and measures it with its loudness curve; `progress` hears the
+    /// render's share done.
+    func measureRendered(
+        _ project: Project, provider: String?, progress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws -> LoudnessMeasurement {
         guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Open a saved project first") }
         let folder = ProjectCache.url(.loudness, projectRoot: root)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let file = folder.appendingPathComponent(UUID().uuidString).appendingPathExtension("caf")
         defer { try? FileManager.default.removeItem(at: file) }
         let snapshot = try await engine.build(project, root: root, workspace: settings.workspace, purpose: .export)
-        _ = try await engine.exportAudio(snapshot, to: file) { _ in }
+        _ = try await engine.exportAudio(snapshot, to: file, progress: progress)
         return try await plugins.running("audio.loudness") {
             try await plugins.service.analyzeLoudness(
                 mediaURL: file, bands: false, curve: true,
@@ -72,18 +76,36 @@ extension ProjectDocument {
         return .object(fields)
     }
 
-    /// `audio.mix-measure`: one stem per role, measured and read against the words.
+    /// `audio.mix-measure`: one stem per role, measured and read against the words. The job reports its progress
+    /// and the stem and timeline second it renders; a stem that comes back without a curve, or silent although its
+    /// layers hold sound, fails the job with the reason instead of completing with empty readings (B5).
     func measureMix(provider: String?, nearSeconds: Double) async throws -> JSONValue {
         guard project.duration > 0 else { throw RPCFailure(-32602, "The timeline is empty") }
         var curves: [Stem: MixMeasure.Curve] = [:]
         var loudness: [String: JSONValue] = [:]
-        for stem in Stem.allCases where project.tracks.contains(where: { stem.keeps($0) && !$0.items.isEmpty }) {
-            let measured = try await measureRendered(stemProject(stem), provider: provider)
-            curves[stem] = Self.curve(measured)
+        let stems = Stem.allCases.filter { stem in project.tracks.contains { stem.keeps($0) && !$0.items.isEmpty } }
+        let reporter = JobReporter.current
+        let seconds = Double(project.duration) / project.fps.value
+        for (index, stem) in stems.enumerated() {
+            let share = 1 / Double(stems.count), base = Double(index) * share, name = stem.rawValue
+            reporter?.progress(base, detail: "Rendering the \(name) stem")
+            let measured = try await measureRendered(stemProject(stem), provider: provider) { done in
+                Task { @MainActor in
+                    reporter?.progress(
+                        base + done * share * 0.9,
+                        detail: String(format: "Rendering the %@ stem at %.1f of %.1f s", name, done * seconds, seconds))
+                }
+            }
+            let curve = Self.curve(measured)
+            if let reason = MixMeasure.unreadable(stem: name, curve: curve, shouldSound: audible(stem)) {
+                throw RPCFailure(-32603, reason)
+            }
+            curves[stem] = curve
             loudness[stem.rawValue] = .object([
                 "integratedLUFS": .number(measured.integratedLUFS), "truePeakDbTP": .number(measured.truePeakDbTP),
             ])
         }
+        reporter?.progress(0.95, detail: "Reading the stems against the words")
         let words = await syncWords()
         var result = MixMeasure.json(
             project, speech: curves[.speech], music: curves[.music], effects: curves[.effects],
@@ -92,6 +114,23 @@ extension ProjectDocument {
         result["stems"] = .object(loudness)
         result["revision"] = .integer(project.revision)
         result["wordSource"] = .string(words.source)
+        if result["musicUnderSpeech"] == .null, curves[.music] != nil {
+            result["musicUnderSpeechReason"] = .string(
+                curves[.speech] == nil ? "The timeline has no speech layer with sound"
+                    : "Music and speech never sound at the same time")
+        }
         return .object(result)
+    }
+
+    /// Whether `stem` keeps an item that should sound: media with sound (a picture's sound counted on its linked
+    /// item), not muted or at −120 dB, on a layer that is not muted.
+    func audible(_ stem: Stem) -> Bool {
+        let sounding = Set(project.media.filter { $0.hasAudio == true && !$0.isImage }.map(\.id))
+        return project.tracks.contains { track in
+            stem.keeps(track) && !track.isMuted && track.items.contains { item in
+                item.mediaID.map(sounding.contains) == true && item["linkedAudio"] == nil && item["muted"] != .bool(true)
+                    && (item["volumeDb"]?.double ?? 0) > -100
+            }
+        }
     }
 }

@@ -150,6 +150,47 @@ public enum SpeechMap {
         return .object(result)
     }
 
+    /// The quiet stretches longer than `bridgeSeconds` the sound measured (B4), sorted; none when the calibration
+    /// does not separate speech from the floor (a guess would make up silences).
+    public static func silences(_ sound: MediaAnalysis.Sound, parameters: Parameters = Parameters()) -> [(Double, Double)] {
+        let calibration = calibrate(sound.levels)
+        guard let threshold = parameters.thresholdDb
+            ?? calibration.flatMap({ $0.separationDb >= parameters.minSeparationDb ? $0.thresholdDb : nil })
+        else { return [] }
+        let spans = MediaAnalysis.activeSpans(sound, over: threshold, bridge: parameters.bridgeSeconds)
+            .filter { $0.1 - $0.0 >= parameters.minSpeechSeconds }
+        guard !spans.isEmpty else { return [] }
+        return gaps(between: spans, total: Double(sound.levels.count) * sound.window)
+            .filter { $0.1 - $0.0 > parameters.bridgeSeconds }
+    }
+
+    /// Words kept out of the measured `silences` (B4): a recognizer often stretches a word over the pause next to
+    /// it, which then widens any range snapped to word edges. A word that runs into a silence ends where it starts;
+    /// one that starts inside one starts where it ends; one across a whole silence keeps the side holding more of
+    /// it. A word wholly inside a silence (soft speech the level missed) stays as heard. Returns the words and how
+    /// many moved.
+    public static func clamp(_ words: [CaptionWords.Timed], to silences: [(Double, Double)]) -> (words: [CaptionWords.Timed], moved: Int) {
+        guard !silences.isEmpty else { return (words, 0) }
+        var moved = 0
+        let result = words.map { word -> CaptionWords.Timed in
+            var start = word.start, end = word.end
+            for (from, to) in silences where start < to && end > from {
+                let before = from - start, after = end - to
+                if before > 0, after > 0 {
+                    if before >= after { end = from } else { start = to }
+                } else if before > 0 {
+                    end = from
+                } else if after > 0 {
+                    start = to
+                }
+            }
+            guard end - start >= 0.04, start != word.start || end != word.end else { return word }
+            moved += 1
+            return word.retimed(text: word.text, start: start, end: end)
+        }
+        return (result, moved)
+    }
+
     /// Spans joined across gaps up to `bridge` seconds, sorted.
     static func joined(_ spans: [(Double, Double)], bridge: Double) -> [(Double, Double)] {
         var result: [(Double, Double)] = []

@@ -27,8 +27,17 @@ struct PlanCutCaptionsTests {
     }
 
     /// The built captions regrouped by hand into "các bạn ơi" and "giá năm chục", as `captions group` does.
-    func regrouped(_ project: Project) throws -> Project {
-        let words = cues(project).flatMap { cue in
+    func regrouped(_ project: Project, mark: JSONValue? = nil) throws -> Project {
+        let words = spans(project)
+        try #require(words.count == 6)
+        let grouped = try CaptionGrouping.operation(
+            project, words: words, groups: [[0, 1, 2], [3, 4, 5]], author: .agent, mark: mark)
+        return try project.applying(grouped.operation).project
+    }
+
+    /// The words of the captions in timeline frames.
+    func spans(_ project: Project) -> [ReviewSync.WordSpan] {
+        cues(project).flatMap { cue in
             (cue["words"]?.array ?? []).compactMap { word -> ReviewSync.WordSpan? in
                 guard let at = word.object["at"]?.int, let dur = word.object["dur"]?.int,
                     let text = word.object["text"]?.string
@@ -36,9 +45,52 @@ struct PlanCutCaptionsTests {
                 return ReviewSync.WordSpan(at: cue.at + at, end: cue.at + at + dur, text: text)
             }
         }
-        try #require(words.count == 6)
-        let grouped = try CaptionGrouping.operation(project, words: words, groups: [[0, 1, 2], [3, 4, 5]], author: .agent)
-        return try project.applying(grouped.operation).project
+    }
+
+    /// "xin chào" and "các bạn ơi giá năm chục" as two clips, with the given captions.
+    func twoClips(captions: String = #"{"from":"speech","maxChars":24}"#, volume: Double = -6) -> String {
+        #"""
+        {"clips":[{"id":"b","media":"m","quote":"xin chào"},{"id":"a","media":"m","quote":"các bạn ơi giá năm chục"}],
+        "captions":\#(captions),"music":{"media":"song","volumeDb":\#(volume)}}
+        """#
+    }
+
+    @Test("Chosen groups survive an apply that changes the clips: words heard in one grouped cue stay together (B3)")
+    func keepsChosenGroupsWhenClipsChange() throws {
+        let grouped = try regrouped(try apply(list(), on: base.project()), mark: CaptionGrouping.manualMark)
+        let after = try apply(twoClips(), on: grouped)
+        #expect(cues(after).map(\.text) == ["xin chào", "các bạn ơi", "giá năm chục"])
+        #expect(cues(after).allSatisfy { $0[CaptionGrouping.field] == CaptionGrouping.manualMark && $0[PlanCut.tag] != nil })
+        // The grouped cues keep the digest of what was generated, so the next unchanged apply keeps them as they are.
+        let again = try apply(twoClips(volume: -3), on: after)
+        #expect(cues(again) == cues(after))
+    }
+
+    @Test("Rule groups survive an apply that changes the clips: the rule runs again and breaks at the new cut (B3, B6)")
+    func keepsRuleGroupsWhenClipsChange() throws {
+        let built = try apply(list(), on: base.project())
+        let rule = CaptionGrouping.Rule(maxChars: 100, maxSeconds: 10, breakGapSeconds: 5)
+        let words = spans(built)
+        let groups = CaptionGrouping.groups(words, rule: rule, fps: built.fps.value, cuts: CaptionGrouping.cuts(built))
+        let grouped = try built.applying(
+            CaptionGrouping.operation(built, words: words, groups: groups, author: .agent, mark: rule.json).operation).project
+        #expect(cues(grouped).map(\.text) == ["các bạn ơi giá năm chục"])
+        let after = try apply(twoClips(), on: grouped)
+        #expect(cues(after).map(\.text) == ["xin chào", "các bạn ơi giá năm chục"])
+        #expect(cues(after).allSatisfy { CaptionGrouping.Rule(json: $0[CaptionGrouping.field]) == rule })
+    }
+
+    @Test("Rule grouping breaks at cuts between clips unless told not to (B6)")
+    func breaksAtCuts() throws {
+        let built = try apply(twoClips(), on: base.project())
+        let words = spans(built)
+        let cuts = CaptionGrouping.cuts(built)
+        #expect(cuts.count == 1)
+        let joined = CaptionGrouping.Rule(maxChars: 100, maxSeconds: 10, breakGapSeconds: 5, breakAtCuts: false)
+        #expect(CaptionGrouping.groups(words, rule: joined, fps: built.fps.value, cuts: cuts).count == 1)
+        var split = joined
+        split.breakAtCuts = true
+        #expect(CaptionGrouping.groups(words, rule: split, fps: built.fps.value, cuts: cuts).map(\.count) == [2, 6])
     }
 
     @Test("A music-only apply keeps hand-grouped captions as they are, with no second set")

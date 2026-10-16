@@ -10,6 +10,8 @@ public enum PlanCut {
     public static let tag = "planCut"
     /// The section a built clip opened or belongs to, so the next apply removes its marker too.
     static let sectionTag = "planSection"
+    /// The picture fields (`pictureKeys`) the list set on a built item, so a later apply tells them from hand edits.
+    static let pictureTag = "planPicture"
 
     public struct Clip: Sendable {
         public var id: String
@@ -32,6 +34,11 @@ public enum PlanCut {
         public var transform: [String: JSONValue] = [:]
         /// The cut transition into the clip from the one before it (#623).
         public var transition: Edge?
+        /// `backdrop`, `crop`, `keyframes`, `fill`, `color` of its own picture, as item fields; null clears one set
+        /// by hand (which a later apply otherwise keeps).
+        public var picture: [String: JSONValue] = [:]
+        /// Pictures over the clip on an overlay layer that move with it (picture-in-picture).
+        public var overlays: [Overlay] = []
     }
 
     /// A picture laid over a clip's sound: source seconds `from` of `media`, for `seconds` (the last: the rest).
@@ -40,6 +47,7 @@ public enum PlanCut {
         public var from: Double
         public var seconds: Double?
         public var transform: [String: JSONValue] = [:]
+        public var picture: [String: JSONValue] = [:]
     }
 
     public struct Title: Sendable {
@@ -184,7 +192,7 @@ public enum PlanCut {
 
     static let clipKeys: Set<String> = [
         "id", "media", "quote", "words", "from", "to", "seconds", "section", "speed", "volumeDb", "role", "cover", "facts",
-        "transition",
+        "transition", "overlays",
     ]
     static let coverKeys: Set<String> = ["media", "from", "seconds"]
     static let soundKeys: Set<String> = ["id", "media", "on", "section", "at", "offset", "seconds", "volumeDb", "facts"]
@@ -228,7 +236,7 @@ public enum PlanCut {
                     + known.sorted().joined(separator: ", "),
                 facts: ["fields": .array(keys.map(JSONValue.string))]))
         }
-        let picture = Set(transformKeys.keys)
+        let picture = Set(transformKeys.keys).union(pictureKeys)
         for (index, value) in clips.enumerated() {
             let row = value.object
             let entry = index < ids.count ? ids[index] : "c\(index + 1)"
@@ -237,6 +245,10 @@ public enum PlanCut {
             for shot in row["cover"]?.array ?? [] {
                 warn(entry, shot.object.keys.filter { !coverKeys.contains($0) && !picture.contains($0) && !noteKeys.contains($0) }
                     .sorted(), coverKeys.union(picture))
+            }
+            for overlay in row["overlays"]?.array ?? [] {
+                warn(entry, overlay.object.keys.filter { !overlayKeys.contains($0) && !picture.contains($0) && !noteKeys.contains($0) }
+                    .sorted(), overlayKeys.union(picture))
             }
         }
         for (index, value) in titles.enumerated() {
@@ -326,26 +338,22 @@ public enum PlanCut {
         }
         if let seconds, seconds <= 0 { throw ProjectError.invalid("Clip \(id): seconds must be above 0") }
         let speed = row["speed"]?.double ?? 1
-        guard Project.speedRange.contains(speed) else { throw ProjectError.invalid("Clip \(id): speed 0.1…16") }
+        guard Project.speedRange.contains(speed) else {
+            throw ProjectError.invalid(
+                "Clip \(id): speed 0.1…16. For a faster time-lapse, keep less of the source: several short clips "
+                    + "(a second or two each) at up to 16× read as one sped-up stretch")
+        }
         let cover = try (row["cover"]?.array ?? []).map { try decodeCover($0.object, clip: id) }
         let role = row["role"]?.string
         if let role, !roles.contains(role) { throw ProjectError.invalid("Clip \(id): role is \(roles.joined(separator: ", "))") }
         guard cover.isEmpty || speed == 1 else { throw ProjectError.invalid("Clip \(id): a covered clip plays at 1×") }
+        let overlays = try decodeOverlays(row, clip: id, media: media, speed: speed)
         return Clip(
             id: id, media: media, quote: quote, words: words, from: from, to: to, seconds: seconds,
             section: row["section"]?.string, speed: speed, volumeDb: row["volumeDb"]?.double,
             role: role ?? (quote != nil || words != nil ? "speech" : nil), cover: cover,
-            transform: try decodeTransform(row, entry: "Clip \(id)"))
-    }
-
-    static func decodeCover(_ shot: [String: JSONValue], clip id: String) throws -> Cover {
-        guard let media = shot["media"]?.string, let from = shot["from"]?.double, from >= 0 else {
-            throw ProjectError.invalid("Clip \(id): each cover needs media and from (source seconds)")
-        }
-        if let length = shot["seconds"]?.double, length <= 0 { throw ProjectError.invalid("Clip \(id): cover seconds above 0") }
-        return Cover(
-            media: media, from: from, seconds: shot["seconds"]?.double,
-            transform: try decodeTransform(shot, entry: "Clip \(id) cover"))
+            transform: try decodeTransform(row, entry: "Clip \(id)"), picture: try decodePicture(row, entry: "Clip \(id)"),
+            overlays: overlays)
     }
 
     static func decodeTitle(_ row: [String: JSONValue], id: String, entries: [String], sections: Set<String>) throws -> Title {

@@ -117,6 +117,13 @@ struct ReviewPictureTests {
         #expect(jump.fix == nil && jump.facts["change"] == .number(0.02) && jump.kind == "jump")
         #expect(issues.contains { $0.id == "jump-c" })
         #expect(!issues.contains { $0.id == "jump-d" || $0.id.hasPrefix("framing-") })
+        #expect(issues.first { $0.id == "jump-c" }?.severity == .warning)
+        // Another framing of the same picture (a punch-in on a dark screen) is a new shot: info, not a warning (B7).
+        let main = try #require(project.tracks.firstIndex { $0.role == TrackRole.main })
+        let c = try #require(project.tracks[main].items.firstIndex { $0.id == "c" })
+        project.tracks[main].items[c]["transform"] = .object(["zoom": .number(1.4), "pan": .number(300)])
+        let reframed = try #require(TimelineReview.run(project, context: ReviewContext(picture: measured)).first { $0.id == "jump-c" })
+        #expect(reframed.severity == .info && reframed.facts["reframed"] == .bool(true))
     }
 
     @Test("Shot length: nothing without limits; with them, long still shots warn")

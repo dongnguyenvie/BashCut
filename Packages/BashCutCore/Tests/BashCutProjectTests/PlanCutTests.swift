@@ -273,7 +273,7 @@ struct PlanCutTests {
     func framing() throws {
         let cut = try spec(#"""
             {"clips":[{"id":"a","media":"m","from":0,"to":2,"zoom":1.2,"why":"punch-in"},
-            {"id":"b","media":"m","from":5,"to":7,"scale":2,"cover":[{"media":"m","from":13,"tilt":-40,"crop":1}]}],
+            {"id":"b","media":"m","from":5,"to":7,"scale":2,"cover":[{"media":"m","from":13,"tilt":-40,"blur":1}]}],
             "titles":[{"id":"t","text":"Hi","clip":"a","postion":0.8}]}
             """#)
         let built = try PlanCut.build(cut, clips: PlanCut.resolve(cut, project: project(), transcripts: [:]).clips, on: project())
@@ -283,7 +283,7 @@ struct PlanCutTests {
         #expect(items.first { $0.id == "plan-b-cover1" }?["transform"]?.object["tilt"] == .number(-40))
         let warned = PlanCut.resolve(cut, project: project(), transcripts: [:]).problems.filter { $0.id == "unknown-field" }
         #expect(warned.map { $0.entry ?? "" } == ["b", "b", "t"])
-        #expect(warned.map { $0.facts["fields"] } == [.array([.string("scale")]), .array([.string("crop")]), .array([.string("postion")])])
+        #expect(warned.map { $0.facts["fields"] } == [.array([.string("scale")]), .array([.string("blur")]), .array([.string("postion")])])
         #expect(throws: ProjectError.self) { try spec(#"{"clips":[{"media":"m","from":0,"to":1,"zoom":0}]}"#) }
     }
 

@@ -4,7 +4,8 @@ extension PlanCut {
     /// `plan.check --patch` / `plan.apply --patch`: `patch` merged over the edit list, so a revision names only
     /// what changes. Objects merge key by key (null removes the key). A list of entries with `id` (clips, titles)
     /// takes an object keyed by ID: each value merges into that entry, null removes it, an unknown ID adds an entry
-    /// at the end (in ID order). Anything else replaces the value.
+    /// at the end (in ID order). An entry's `after` or `before` (another entry's ID) puts it there instead, new or
+    /// moved (B8); neither is kept in the list. Anything else replaces the value.
     public static func patch(_ list: JSONValue, with patch: JSONValue) throws -> JSONValue {
         guard case .object = list else { throw ProjectError.invalid("plan.cut must be an object to patch") }
         guard case .object = patch else { throw ProjectError.invalid("patch must be an object, such as {clips: {c2: {from: 12}}}") }
@@ -36,7 +37,17 @@ extension PlanCut {
 
     static func mergeEntries(_ entries: [JSONValue], _ byID: [String: JSONValue]) -> [JSONValue] {
         var entries = entries
+        var placed: [(id: String, anchor: String, after: Bool)] = []
         for (id, change) in byID.sorted(by: { $0.key < $1.key }) {
+            var change = change
+            if case .object(var fields) = change {
+                if let anchor = fields["after"]?.string ?? fields["before"]?.string {
+                    placed.append((id, anchor, fields["after"]?.string != nil))
+                }
+                fields["after"] = nil
+                fields["before"] = nil
+                change = .object(fields)
+            }
             let index = entries.firstIndex { $0.object["id"]?.string == id }
             switch (index, change) {
             case (let index?, .null): entries.remove(at: index)
@@ -46,6 +57,19 @@ extension PlanCut {
                 entries.append(stripNulls(.object(fields)))
             default: break
             }
+        }
+        // Moves in the patch's ID order, each next to its anchor as the list stands then; an unknown anchor leaves
+        // the entry where it is.
+        for move in placed {
+            guard let from = entries.firstIndex(where: { $0.object["id"]?.string == move.id }), move.anchor != move.id else {
+                continue
+            }
+            let entry = entries.remove(at: from)
+            guard let anchor = entries.firstIndex(where: { $0.object["id"]?.string == move.anchor }) else {
+                entries.insert(entry, at: from)
+                continue
+            }
+            entries.insert(entry, at: move.after ? anchor + 1 : anchor)
         }
         return entries
     }

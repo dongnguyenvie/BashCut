@@ -75,14 +75,17 @@ extension ProjectDocument {
                 x: (bounds["x"]?.double ?? 0) / width, y: (bounds["y"]?.double ?? 0) / height,
                 width: (bounds["width"]?.double ?? 0) / width, height: (bounds["height"]?.double ?? 0) / height)
             let id = fields["id"]?.string
+            let ownPlate = plate(id)
             if let first = with[at], let second = without[at],
-                let measured = MediaStills.contrast(
+                let measured = ownPlate.flatMap({
+                    MediaStills.plateContrast(fills: $0.fills, plate: $0.color, opacity: $0.opacity, without: second, rect: rect)
+                }) ?? MediaStills.contrast(
                     withText: first, without: second, rect: rect, plate: plated(id), outlined: outlined(id))
             {
                 fields["contrast"] = .object([
                     "ratio": .number((measured.ratio * 100).rounded() / 100), "frame": .integer(at),
                     "meanRatio": .number((measured.meanRatio * 100).rounded() / 100),
-                    "basis": .string(plated(id) ? "plate" : outlined(id) ? "outline" : "mean"),
+                    "basis": .string(ownPlate != nil ? "ownPlate" : plated(id) ? "plate" : outlined(id) ? "outline" : "mean"),
                     "textLuminance": .number((measured.text * 1_000).rounded() / 1_000),
                     "backgroundLuminance": .number((measured.background * 1_000).rounded() / 1_000),
                     "textPixels": .integer(measured.pixels),
@@ -100,6 +103,17 @@ extension ProjectDocument {
     func outlined(_ id: String?) -> Bool {
         guard let id, let item = project.tracks.flatMap(\.items).first(where: { $0.id == id }) else { return false }
         return (item["textStyle"]?.object["strokeWidth"]?.double ?? 0) > 0
+    }
+
+    /// The colours of text item `id` and the box it stands on (`textStyle.background` at opacity 0.5 or more): its
+    /// fill (and the word-state fills when it shows words as spoken), the box colour and opacity (B7).
+    func plate(_ id: String?) -> (fills: [String], color: String, opacity: Double)? {
+        guard plated(id), let id, let item = project.tracks.flatMap(\.items).first(where: { $0.id == id }) else { return nil }
+        let style = item["textStyle"]?.object ?? [:]
+        let box = style["background"]?.object ?? [:]
+        var fills = [style["fill"]?.string ?? TextPresetStyle.fill(item.textPreset)]
+        fills += (item.wordStates ?? [:]).sorted { $0.key < $1.key }.compactMap { $0.value["fill"]?.string }
+        return (fills, box["color"]?.string ?? "#000000", box["opacity"]?.double ?? 1)
     }
 
     /// Whether text item `id` stands on its own box (`textStyle.background` at opacity 0.5 or more).

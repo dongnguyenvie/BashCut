@@ -101,6 +101,9 @@ extension ProjectDocument {
         if let minimum = arguments.optionalString("minSeverity").flatMap(ReviewSeverity.init(rawValue:)) {
             issues = issues.filter { $0.severity <= minimum }
         }
+        // Accepted issues (review.accept) are settled: listed only when asked for, counted in the summary (B7).
+        let hidden = arguments.bool("accepted") ? [] : issues.filter { $0.accepted != nil }.map(\.id)
+        issues = issues.filter { !hidden.contains($0.id) }
         let list = JSONValue.array(issues.map(\.json))
         guard arguments.bool("summary") || previous != nil else { return list }
         let checks = TimelineReview.coverage(project, context: reviewContext())
@@ -113,6 +116,7 @@ extension ProjectDocument {
             "issues": list, "summary": summary.json, "rev": .integer(project.revision),
             "round": .integer(reviewRounds.count), "checks": checks,
         ]
+        if !hidden.isEmpty { result["acceptedHidden"] = .array(hidden.map(JSONValue.string)) }
         if let range { result["range"] = .object(["from": .integer(range.lowerBound), "to": .integer(range.upperBound)]) }
         if let previous, let previous {
             var diff = ReviewRounds.diff(before: previous.issues, after: all).object

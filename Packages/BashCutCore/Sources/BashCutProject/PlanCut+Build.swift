@@ -35,7 +35,7 @@ extension PlanCut {
         placements += lines
         let total = max(placements.map(\.end).max() ?? 0, lineEnd(spec.voiceover, placements: lines, fps: planner.project.fps.value))
         let sources = CaptionSources(transcripts: transcripts, takes: takes, textPresets: textPresets)
-        try rebuildCaptions(spec, clips: clips, sources: sources, in: &planner)
+        try rebuildCaptions(spec, clips: clips, sources: sources, was: project, in: &planner)
         var sections: [String: Placement] = [:]
         let sectioned = clips.map { ($0.clip.id, $0.clip.section) } + spec.voiceover.map { ($0.id, $0.section) }
         for (id, section) in sectioned {
@@ -55,6 +55,7 @@ extension PlanCut {
             try planner.add([.setTrackProperties(track: track.id, patch: musicTrackPatch(music, track: track, fps: planner.project.fps.value))])
         }
         try applyEdges(spec, kept: handSet, in: &planner)
+        try restorePictures(spec, kept: handSet, in: &planner)
         let others = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == nil }.map(\.id)
         return (planner, placements, others)
     }
@@ -109,6 +110,7 @@ extension PlanCut {
             let end = clip.cover.isEmpty
                 ? try placeOwn(clip, media: media, slot: slot, main: main, in: &planner)
                 : try placeCovered(clip, media: media, slot: slot, main: main, in: &planner)
+            try placeOverlays(clip, media: media, slot: slot, end: end, in: &planner)
             placements.append(Placement(id: clip.id, at: cursor, end: end))
             cursor = end
         }
@@ -131,7 +133,7 @@ extension PlanCut {
         if clip.speed != 1 { try planner.add([.setSpeed(item: id, speed: clip.speed, keepDuration: false)]) }
         var patch = slot.patch
         if let volume = clip.volumeDb { patch["volumeDb"] = .number(volume) }
-        var picture = patch
+        var picture = patch.merging(pictureFields(clip.picture)) { $1 }
         if !clip.transform.isEmpty { picture["transform"] = .object(clip.transform) }
         try planner.add([.setProperties(item: id, patch: picture)])
         let placed = planner.project.tracks.flatMap(\.items).first { $0.id == id }
@@ -159,11 +161,44 @@ extension PlanCut {
             for (key, value) in slot.patch { item[key] = value }
             item["tag"] = .object(["role": .string("broll")])
             if !shot.transform.isEmpty { item["transform"] = .object(shot.transform) }
+            for (key, value) in pictureFields(shot.picture) { item[key] = value }
             if picture.hasAudio == true { item["muted"] = .bool(true) }
             try planner.place(item, on: main)
             cursor += length
         }
         return end
+    }
+
+    /// The picture fields a row sets, and `planPicture` naming them, so a later apply tells them from hand edits.
+    static func pictureFields(_ picture: [String: JSONValue]) -> [String: JSONValue] {
+        var fields = picture.filter { $0.value != .null }
+        if !fields.isEmpty { fields[pictureTag] = .array(fields.keys.sorted().map(JSONValue.string)) }
+        return fields
+    }
+
+    /// A clip's overlays on an overlay layer (muted), tagged with the clip so they are rebuilt, and move, with it.
+    /// The clip's own media plays in sync with the clip unless the overlay gives `from`.
+    static func placeOverlays(_ clip: Clip, media clipMedia: Media, slot: Slot, end: Int, in planner: inout LayerPlanner) throws {
+        guard !clip.overlays.isEmpty else { return }
+        let fps = planner.project.fps.value
+        let track = try overlayTrack(in: &planner)
+        for (index, overlay) in clip.overlays.enumerated() {
+            guard let media = planner.project.media.first(where: { $0.id == overlay.media }) else { continue }
+            let at = slot.at + Int((overlay.offset * fps).rounded())
+            let from = overlay.from
+                ?? (clipMedia.isImage ? 0 : Double(slot.sourceIn) / clipMedia.fps.value) + (media.isImage ? 0 : overlay.offset)
+            let available = media.isImage ? end - at : Int(((media.durationSeconds - from) * fps).rounded(.down))
+            let length = min(overlay.seconds.map { Int(($0 * fps).rounded()) } ?? end - at, end - at, available)
+            guard length > 0 else { continue }
+            var item = Item(
+                id: "plan-\(clip.id)-overlay\(index + 1)", media: media.id, at: at, duration: length,
+                sourceIn: media.isImage ? 0 : Int((from * media.fps.value).rounded(.down)))
+            for (key, value) in slot.patch where key != "tag" { item[key] = value }
+            if !overlay.transform.isEmpty { item["transform"] = .object(overlay.transform) }
+            for (key, value) in pictureFields(overlay.picture) { item[key] = value }
+            if media.hasAudio == true { item["muted"] = .bool(true) }
+            try planner.place(item, on: track)
+        }
     }
 
     /// Titles on the captions layer (spilling onto another text layer where one is already shown): the renderer

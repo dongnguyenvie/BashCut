@@ -126,7 +126,7 @@ public enum MediaStills {
     }
 
     /// RGBA bytes of `image` drawn at `width × height`, top row first.
-    private static func pixels(_ image: CGImage, width: Int, height: Int) -> [UInt8]? {
+    static func pixels(_ image: CGImage, width: Int, height: Int) -> [UInt8]? {
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         let drawn = bytes.withUnsafeMutableBytes { raw -> Bool in
             guard let context = CGContext(
@@ -140,7 +140,7 @@ public enum MediaStills {
         return drawn ? bytes : nil
     }
 
-    private static func luminance(_ bytes: [UInt8], _ offset: Int) -> Double {
+    static func luminance(_ bytes: [UInt8], _ offset: Int) -> Double {
         let linear = { (value: UInt8) -> Double in
             let channel = Double(value) / 255
             return channel <= 0.040_45 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)

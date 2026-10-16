@@ -27,7 +27,7 @@ extension ProjectDocument {
         return (source.root, MediaAnalyzer.load(key: key, projectRoot: source.root))
     }
 
-    /// Measures the listed media (every video and audio media when nil) one after another, reusing stored records
+    /// Measures the listed media (one ID or a comma list; every video and audio media when nil) one after another, reusing stored records
     /// unless `force`. Images are skipped. Media still being converted are measured once their conversion lands, so
     /// the agent can ask right after import and work from the transcript meanwhile.
     func startMediaAnalyze(mediaID: String?, force: Bool, rate: Double?, author: Author) throws -> JSONValue {
@@ -35,7 +35,9 @@ extension ProjectDocument {
         if let running = jobs.jobs.first(where: { $0.method == "media.analyze" && $0.isActive }) {
             return .object(["job": .string(running.id), "state": .string("running")])
         }
-        let selected = try mediaID.map { [try analysisSource($0).media] } ?? project.media.filter { !$0.isImage }
+        // One ID or a comma list (B8), like jobs wait takes.
+        let ids = mediaID?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let selected = try ids.map { try $0.map { try analysisSource($0).media } } ?? project.media.filter { !$0.isImage }
         let workspace = settings.workspace
         let id = jobs.start("media.analyze", author: author, work: { [weak self] reporter in
             while let self, let converting = selected.lazy.compactMap({ self.conversionJob(of: $0) }).first {
@@ -126,7 +128,8 @@ extension ProjectDocument {
                 bridgeSeconds: arguments.optionalDouble("bridgeSeconds") ?? defaults.bridgeSeconds,
                 minSpeechSeconds: arguments.optionalDouble("minSpeechSeconds") ?? defaults.minSpeechSeconds,
                 minSeparationDb: arguments.optionalDouble("minSeparationDb") ?? defaults.minSeparationDb)
-            let words = try await document.storedTranscript(mediaID)?.words
+            // The words as the recognizer timed them: the map is what other readers' word times are kept out of.
+            let words = try await document.rawTranscript(mediaID)?.words
             var result = SpeechMap.json(sound: sound, words: words, parameters: parameters).object
             result["media"] = .string(mediaID)
             return .object(result)

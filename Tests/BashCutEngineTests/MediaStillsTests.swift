@@ -91,6 +91,27 @@ struct MediaStillsTests {
         #expect(mixed.ratio < plated.ratio / 4)
     }
 
+    @Test("Text on its own plate over a dark screen is rated by its colours on the plate laid over the picture (B7)")
+    func ownPlateContrast() throws {
+        // A dark screen recording with bright interface lines behind the block.
+        let context = try #require(CGContext(
+            data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 400,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(CGColor(srgbRed: 0.1, green: 0.1, blue: 0.12, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+        context.setFillColor(CGColor(srgbRed: 0.95, green: 0.95, blue: 0.95, alpha: 1))
+        for row in stride(from: 0, to: 100, by: 10) { context.fill(CGRect(x: 0, y: row, width: 100, height: 2)) }
+        let without = try #require(context.makeImage())
+        let rect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        let yellow = try #require(MediaStills.plateContrast(
+            fills: ["#FFD400"], plate: "#000000", opacity: 0.92, without: without, rect: rect))
+        #expect(yellow.ratio > 7, "yellow on a 92% black plate reads clearly: \(yellow.ratio)")
+        let both = try #require(MediaStills.plateContrast(
+            fills: ["#FFD400", "#333333"], plate: "#000000", opacity: 0.92, without: without, rect: rect))
+        #expect(both.ratio < 2 && both.lightRatio == yellow.ratio)
+        #expect(MediaStills.plateContrast(fills: ["nope"], plate: "#000000", opacity: 1, without: without, rect: rect) == nil)
+    }
+
     @Test("Outlined text is rated by the part that stands apart from the picture, not the mean (#507-17)")
     func outlinedContrast() throws {
         // White letters with a thick black outline over a bright picture: the mean sits near the picture.
