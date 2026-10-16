@@ -12,13 +12,16 @@ extension BashCutCompositor {
         guard extent.width.isFinite, extent.height.isFinite, !extent.isEmpty else { return image }
         var result = image
         if let pixelate = properties["pixelate"]?.double, pixelate * side >= 2 {
-            // CIPixellate takes each cell's middle pixel: blurred first, a cell carries its average colour, so thin
-            // letters leave no bright cells that still spell them.
+            // Shrunk to one pixel a cell (each the average of its area, so thin letters leave no bright cells that
+            // still spell them), then grown back without smoothing. CIPixellate takes a cell's middle pixel, and
+            // after a blur Core Image halves its cells.
             let cell = min(0.1, pixelate) * side
-            result = result.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: cell / 2])
-                .applyingFilter("CIPixellate", parameters: [
-                    kCIInputScaleKey: cell, kCIInputCenterKey: CIVector(x: extent.midX, y: extent.midY),
-                ]).cropped(to: extent)
+            let small = result.clampedToExtent()
+                .transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY))
+                .applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: 1 / cell, kCIInputAspectRatioKey: 1])
+                .cropped(to: CGRect(x: 0, y: 0, width: (extent.width / cell).rounded(.up), height: (extent.height / cell).rounded(.up)))
+            result = small.samplingNearest().transformed(by: CGAffineTransform(scaleX: cell, y: cell))
+                .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY)).cropped(to: extent)
         }
         if let blur = properties["blur"]?.double, blur > 0 {
             result = blurred(result, soft: min(0.2, blur) * side, x: 0, y: 0)

@@ -137,7 +137,7 @@ struct ClipBlurTests {
     @Test("pixelate makes square cells of one colour, opaque to the edges")
     func pixelates() {
         let cells = BashCutCompositor.obscured(ramp, properties: ["pixelate": .number(0.1)], side: 100)
-        // 10-pixel cells centred on the picture: x 101 and 109 share a cell, 111 is the next one.
+        // 10-pixel cells from the picture's corner: x 101 and 109 share a cell, 111 is the next one.
         #expect(rgba(cells, 101, 50) == rgba(cells, 109, 50))
         #expect(rgba(cells, 101, 50) != rgba(cells, 111, 50))
         #expect(rgba(cells, 1, 1)[3] == 255)
