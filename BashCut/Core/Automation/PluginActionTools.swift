@@ -19,7 +19,7 @@ public enum PluginActionTools {
     /// Tools for the `plugins.actions` result. MCP tool names allow `[A-Za-z0-9_-]` and 64 characters; longer
     /// names keep a stable hash suffix.
     public static func tools(from actions: JSONValue) -> [Tool] {
-        (actions.array ?? []).compactMap { action -> Tool? in
+        actions.array.compactMap { action -> Tool? in
             let fields = action.object
             guard let id = fields["id"]?.string else { return nil }
             let title = fields["title"]?.string ?? id
@@ -38,7 +38,7 @@ public enum PluginActionTools {
     public static func listed(from actions: JSONValue, budget: Int = budget) -> [Tool] {
         let all = tools(from: actions)
         guard all.count > budget else { return all }
-        let fields = Dictionary((actions.array ?? []).compactMap { action in
+        let fields = Dictionary(actions.array.compactMap { action in
             action.object["id"]?.string.map { ($0, action.object) }
         }, uniquingKeysWith: { first, _ in first })
         func rank(_ tool: Tool) -> (Bool, String) {

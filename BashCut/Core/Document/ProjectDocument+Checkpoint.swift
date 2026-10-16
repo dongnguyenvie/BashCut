@@ -332,7 +332,7 @@ extension ProjectDocument {
         }
         let mode = settings.gateMode(gate)
         if mode == .ask, checkpoint != nil { throw RPCFailure(-32003, "Another checkpoint is waiting for the user", category: .busyApproval) }
-        var request = CheckpointRequest(
+        let request = CheckpointRequest(
             id: String(UUID().uuidString.prefix(8)).lowercased(), gate: gate, summary: try arguments.string("summary"),
             attachments: attachments, revision: project.revision, author: author,
             status: mode == .ask ? .awaitingUser : mode == .notify ? .notified : .skipped)

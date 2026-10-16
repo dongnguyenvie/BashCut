@@ -23,7 +23,7 @@ struct SourceViewer: View {
                         Text("\(width) × \(height)")
                     }
                     Text(String(format: "%.2f fps", media.fps.value))
-                    Text(Timecode.string(media.frames ?? 0, fps: media.fps))
+                    Text(Timecode.string(media.frames, fps: media.fps))
                     if media.hasAudio == true { Label("Audio", systemImage: "speaker.wave.2") }
                     Spacer()
                 }
