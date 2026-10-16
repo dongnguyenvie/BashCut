@@ -121,7 +121,7 @@ the lower of the plugin's `apiVersion` and the host's current version.
 ### Host features
 
 Host features (API 8) are names for what a BashCut can do, so a plugin asks for exactly what it uses instead of a whole
-API version: `container`, `views`, `requires`, `invoke`, `options.set` (the `plugins.option` host call), `options.check` (a secret's `check`), `clip.blur` (the item field `blur`), and `views.<component>` for each view component (`views.list`,
+API version: `container`, `views`, `requires`, `invoke`, `options.set` (the `plugins.option` host call), `options.check` (a secret's `check`), `clip.blur` (the item field `blur`), `clip.mosaic` (`pixelate` and `feather`), and `views.<component>` for each view component (`views.list`,
 `views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins list --views` lists them.
 A manifest's `features` names the ones the plugin cannot work without; a BashCut without one lists the plugin as
 outdated ("Update BashCut"). For optional features, read `features` from `hello` and adapt instead.

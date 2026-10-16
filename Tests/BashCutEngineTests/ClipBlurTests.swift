@@ -117,4 +117,37 @@ struct ClipBlurTests {
             #expect(pixel[3] == 255, "y \(y): \(pixel)")
         }
     }
+
+    private func rgba(_ image: CIImage, _ x: Double, _ y: Double) -> [UInt8] {
+        var pixel = [UInt8](repeating: 0, count: 4)
+        CIContext().render(
+            image, toBitmap: &pixel, rowBytes: 4, bounds: CGRect(x: x, y: y, width: 1, height: 1), format: .RGBA8,
+            colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
+        return pixel
+    }
+
+    /// A horizontal ramp from black to white, 200×100.
+    private var ramp: CIImage {
+        CIFilter(name: "CILinearGradient", parameters: [
+            "inputPoint0": CIVector(x: 0, y: 0), "inputPoint1": CIVector(x: 200, y: 0),
+            "inputColor0": CIColor(red: 0, green: 0, blue: 0), "inputColor1": CIColor(red: 1, green: 1, blue: 1),
+        ])!.outputImage!.cropped(to: CGRect(x: 0, y: 0, width: 200, height: 100))
+    }
+
+    @Test("pixelate makes square cells of one colour, opaque to the edges")
+    func pixelates() {
+        let cells = BashCutCompositor.obscured(ramp, properties: ["pixelate": .number(0.1)], side: 100)
+        // 10-pixel cells centred on the picture: x 101 and 109 share a cell, 111 is the next one.
+        #expect(rgba(cells, 101, 50) == rgba(cells, 109, 50))
+        #expect(rgba(cells, 101, 50) != rgba(cells, 111, 50))
+        #expect(rgba(cells, 1, 1)[3] == 255)
+    }
+
+    @Test("feather fades the edges and keeps the middle opaque")
+    func feathers() {
+        let soft = BashCutCompositor.obscured(ramp, properties: ["feather": .number(0.4)], side: 100)
+        #expect(rgba(soft, 100, 50)[3] == 255)
+        #expect(rgba(soft, 100, 1)[3] < 80, "\(rgba(soft, 100, 1))")
+        #expect(rgba(soft, 1, 50)[3] < 80)
+    }
 }

@@ -45,10 +45,13 @@ public enum PluginFeature {
     /// The item field `blur` on video and image clips (a cropped, blurred copy hides one area of a picture).
     public static let clipBlur = "clip.blur"
 
+    /// The item fields `pixelate` (a mosaic) and `feather` (edges fading out) on video and image clips.
+    public static let clipMosaic = "clip.mosaic"
+
     /// Features that are not a view component or place.
     static let named = [
         container, views, requires, invoke, optionsSet, voiceMaxTakes, voiceSavedClones, inspectorWhen, viewUpdate,
-        overlays, viewsDrag, skillsOnly, tools, exportSteps, optionsCheck, clipBlur,
+        overlays, viewsDrag, skillsOnly, tools, exportSteps, optionsCheck, clipBlur, clipMosaic,
     ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and

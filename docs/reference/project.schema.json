@@ -315,6 +315,12 @@
           "minimum" : 0,
           "type" : "integer"
         },
+        "feather" : {
+          "description" : "Video or image picture: its edges fade out over this share of its shorter side (after crop, mosaic and blur)",
+          "maximum" : 0.5,
+          "minimum" : 0,
+          "type" : "number"
+        },
         "fill" : {
           "description" : "Fill the frame (cropping) instead of fitting inside it; the project's clipFill by default",
           "type" : "boolean"
@@ -927,6 +933,12 @@
         "opacity" : {
           "description" : "Picture opacity",
           "maximum" : 1,
+          "minimum" : 0,
+          "type" : "number"
+        },
+        "pixelate" : {
+          "description" : "Video or image picture: mosaic cell size as a share of the picture's short side, after the crop and before the blur",
+          "maximum" : 0.1,
           "minimum" : 0,
           "type" : "number"
         },
