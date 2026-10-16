@@ -10,46 +10,87 @@ extension ProjectDocument {
     }
 
     /// The window as a dialog (`ui dialog`, `ui respond --dialog sheet:batch`): the pipeline in the message, and Add
-    /// inputs, Save preset, Run, Cancel, and Open/Reveal for each finished item of the queue.
+    /// inputs, Add step (`add-step:<action>`), Remove and Move for each step, Load for each saved preset, Save preset,
+    /// Run, Cancel, and Open/Reveal for each finished item of the queue.
     func batchWindowSheet() -> ModalSheet? {
         let model = batchWindow
         guard model.isOpen else { return nil }
-        var options = [
-            ModalOption("add-inputs", String(localized: "Add…")), ModalOption("save-preset", String(localized: "Save Preset")),
-        ]
-        options.append(model.running ? ModalOption("cancel", String(localized: "Cancel Batch"))
-                                     : ModalOption("run", String(localized: "Run")))
+        var options = [BatchWindowOption.addInputs]
+        if !model.running {
+            options += BatchWindowOption.editing(steps: model.pipeline.steps.count,
+                                                 presets: batchPresets.list().compactMap(\.name))
+        }
+        options += [.savePreset, model.running ? .cancel : .run]
         let finished = model.run?.items.enumerated().filter { $0.element.project != nil && $0.element.state.isFinished } ?? []
         if !model.running {
-            for (index, _) in finished {
-                options.append(ModalOption("open-\(index + 1)", String(format: String(localized: "Open item %lld"), index + 1)))
-                options.append(ModalOption("reveal-\(index + 1)", String(format: String(localized: "Reveal item %lld"), index + 1)))
-            }
+            for (index, _) in finished { options += [.openItem(index + 1), .revealItem(index + 1)] }
         }
-        options.append(ModalOption("close", String(localized: "Close")))
-        return ModalSheet(name: "batch", title: "Batch", message: batchWindowSummary(), options: options, window: true,
-                          id: "batch") { [weak self] option in self?.answerBatchWindow(option) }
+        options.append(.close)
+        return ModalSheet(name: "batch", title: "Batch", message: batchWindowSummary(),
+                          options: options.map { ModalOption($0.id, batchOptionTitle($0)) }, window: true,
+                          id: "batch") { [weak self] option in try self?.answerBatchWindow(option) }
+    }
+
+    private func batchOptionTitle(_ option: BatchWindowOption) -> String {
+        switch option {
+        case .addInputs: String(localized: "Add…")
+        case .savePreset: String(localized: "Save Preset")
+        case .run: String(localized: "Run")
+        case .cancel: String(localized: "Cancel Batch")
+        case .close: String(localized: "Close")
+        case .addStep(let action):
+            String(format: String(localized: "Add step: %@"), BatchStepCatalog.entry(action)?.localizedTitle ?? action)
+        case .loadPreset(let name): String(format: String(localized: "Load preset %@"), name)
+        default: batchNumberedOptionTitle(option)
+        }
+    }
+
+    private func batchNumberedOptionTitle(_ option: BatchWindowOption) -> String {
+        switch option {
+        case .removeStep(let number): String(format: String(localized: "Remove step %lld"), number)
+        case .moveStep(let number, true): String(format: String(localized: "Move step %lld up"), number)
+        case .moveStep(let number, false): String(format: String(localized: "Move step %lld down"), number)
+        case .openItem(let number): String(format: String(localized: "Open item %lld"), number)
+        case .revealItem(let number): String(format: String(localized: "Reveal item %lld"), number)
+        default: option.id
+        }
     }
 
     /// Answers after the request, from the run loop like a click: Add… opens a file panel (`ui respond --path`
-    /// answers it), and Run or Open may ask about unsaved changes in an alert.
-    private func answerBatchWindow(_ option: String) {
+    /// answers it), and Run or Open may ask about unsaved changes in an alert. Step edits apply at once, so the next
+    /// `ui dialog` lists them.
+    private func answerBatchWindow(_ id: String) throws {
+        guard let option = BatchWindowOption(id), try !editBatchPipeline(option) else { return }
         let model = batchWindow
         RunLoop.main.perform(inModes: [.default]) {
             MainActor.assumeIsolated {
                 switch option {
-                case "add-inputs": model.chooseInputs()
-                case "save-preset": model.savePreset()
-                case "run": model.start()
-                case "cancel": model.cancel()
-                case "close": model.close()
-                default:
-                    let parts = option.split(separator: "-")
-                    guard parts.count == 2, let number = Int(parts[1]) else { return }
-                    if parts[0] == "open" { model.openItem(number - 1) } else { model.revealItem(number - 1) }
+                case .addInputs: model.chooseInputs()
+                case .savePreset: model.savePreset()
+                case .run: model.start()
+                case .cancel: model.cancel()
+                case .close: model.close()
+                case .openItem(let number): model.openItem(number - 1)
+                case .revealItem(let number): model.revealItem(number - 1)
+                default: break
                 }
             }
         }
+    }
+
+    /// Applies a step or preset option to the pipeline; false for the other options.
+    private func editBatchPipeline(_ option: BatchWindowOption) throws -> Bool {
+        let model = batchWindow
+        switch option {
+        case .addStep(let action):
+            guard let entry = BatchStepCatalog.entry(action) else { throw ModalError("No batch step \(action)") }
+            model.addEntry(entry, title: entry.localizedTitle)
+        case .removeStep(let number): model.removeStep(number - 1)
+        case .moveStep(let number, let up): model.moveStep(number - 1, by: up ? -1 : 1)
+        case .loadPreset(let name): model.loadPreset(try batchPresets.load(name))
+        default: return false
+        }
+        return true
     }
 
     /// The window's state in one paragraph for `ui dialog`.

@@ -216,7 +216,7 @@ private struct BatchPipelineColumn: View {
             ForEach(BatchStepCatalog.Group.allCases, id: \.self) { group in
                 Section(Self.title(group)) {
                     ForEach(BatchStepCatalog.entries.filter { $0.group == group }, id: \.action) { entry in
-                        Button(Self.title(entry)) { model.addEntry(entry, title: Self.title(entry)) }
+                        Button(entry.localizedTitle) { model.addEntry(entry, title: entry.localizedTitle) }
                     }
                 }
             }
@@ -250,11 +250,6 @@ private struct BatchPipelineColumn: View {
             Label("Add step", systemImage: "plus")
         }
         .accessibilityIdentifier("batch-add-step")
-    }
-
-    /// The catalog's English title, localized here (the core list has no strings of its own).
-    static func title(_ entry: BatchStepCatalog.Entry) -> String {
-        String(localized: String.LocalizationValue(entry.title))
     }
 
     static func title(_ group: BatchStepCatalog.Group) -> String {

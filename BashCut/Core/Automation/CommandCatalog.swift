@@ -270,7 +270,8 @@ public enum CommandCatalog {
             "Read the open dialogs (alerts, file panels, sheets), topmost last, with their option IDs."),
         CommandSpec(
             "ui.respond", .ui,
-            "Answer the topmost dialog like the user: choose an option ID or title, or give a path to a file panel.",
+            "Answer the topmost dialog like the user: choose an option ID or title, or give a path to a file panel. A window "
+            + "is answered only with --dialog (sheet:batch add-step:captions.replace, load-preset:NAME, run; see ui dialog).",
             parameters: [
                 CommandParameter("option", .string, "Option ID or title", cli: .positional),
                 CommandParameter("path", .string, "File or folder for an open/save panel", isPath: true,
