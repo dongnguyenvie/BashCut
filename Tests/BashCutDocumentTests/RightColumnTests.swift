@@ -2,64 +2,49 @@ import BashCutDocument
 import Foundation
 import Testing
 
+/// Inspector and Agent are separate columns (they were two tabs of one right column, P1-6): each is shown or hidden
+/// on its own, so selecting a timeline item while the agent works never takes the agent away.
 @MainActor
 struct RightColumnTests {
-    @Test("The column opens on the Agent tab, and the Inspector flag selects the Inspector tab (P1-6)")
-    func tabs() {
+    @Test("A project opens with both columns, and each pane's toggle leaves the other as it is")
+    func independentToggles() {
         let ui = EditorUIState()
-        #expect(ui.rightTab == .agent && ui.rightColumnVisible)
-        ui.selectRightTab(.inspector)
-        #expect(ui.rightTab == .inspector && ui.showInspector)
-        ui.showAgentDock = true
-        #expect(ui.rightTab == .agent && ui.rightColumnVisible)
-    }
-
-    @Test("Cmd+J hides the column while the Agent tab shows, otherwise shows that tab")
-    func toggleAgent() {
-        let ui = EditorUIState()
-        ui.selectRightTab(.inspector)
-        ui.toggleAgentTab()
-        #expect(ui.rightTab == .agent && ui.rightColumnVisible)
-        ui.toggleAgentTab()
-        #expect(!ui.rightColumnVisible)
-        ui.toggleAgentTab()
-        #expect(ui.rightTab == .agent && ui.rightColumnVisible)
+        #expect(ui.inspectorShown && ui.agentColumnShown)
         ui.toggleInspectorTab()
-        #expect(ui.rightTab == .inspector && ui.rightColumnVisible)
+        #expect(!ui.inspectorShown && ui.agentColumnShown)
+        ui.toggleAgentTab()
+        #expect(!ui.inspectorShown && !ui.agentColumnShown)
         ui.toggleInspectorTab()
-        #expect(!ui.rightColumnVisible)
+        #expect(ui.inspectorShown && !ui.agentColumnShown)
+        ui.toggleAgentTab()
+        #expect(ui.inspectorShown && ui.agentColumnShown)
     }
 
-    @Test("Selecting an item brings the Inspector forward unless the Agent tab was picked in the last 2 s")
-    func selectionSwitch() {
+    @Test("ui view --right-tab shows that pane and never hides the other")
+    func rightTabShowsPane() {
         let ui = EditorUIState()
-        let now = Date()
-        ui.selectRightTab(.agent, now: now)
-        ui.itemSelected(now: now.addingTimeInterval(1))
-        #expect(ui.rightTab == .agent)
-        ui.itemSelected(now: now.addingTimeInterval(EditorUIState.agentTabHold + 1))
-        #expect(ui.rightTab == .inspector)
-    }
-
-    @Test("A hidden column stays hidden when an item is selected")
-    func hiddenStaysHidden() {
-        let ui = EditorUIState()
-        ui.showAgentDock = true
+        ui.showInspector = false
+        ui.selectRightTab(.inspector)
+        #expect(ui.inspectorShown && ui.agentColumnShown)
         ui.showAgentDock = false
-        ui.itemSelected(now: Date().addingTimeInterval(10))
-        #expect(!ui.rightColumnVisible)
+        ui.selectRightTab(.agent)
+        #expect(ui.inspectorShown && ui.agentColumnShown)
     }
 
-    @Test("A popped-out agent leaves the Inspector in the column, and its tab still opens")
+    @Test("Opening the agent (a new terminal, a question) shows its column and keeps the Inspector")
+    func openingAgentKeepsInspector() {
+        let ui = EditorUIState()
+        ui.showAgentDock = false
+        ui.showAgentDock = true
+        #expect(ui.inspectorShown && ui.agentColumnShown)
+    }
+
+    @Test("A popped-out agent has no column in the editor window until it comes back")
     func poppedOut() {
         let ui = EditorUIState()
-        ui.showAgentDock = true
-        ui.showAgentDock = false
         ui.setAgentPoppedOut(true)
-        ui.selectRightTab(.agent)
-        #expect(ui.rightTab == .agent && ui.rightColumnVisible)
+        #expect(!ui.agentColumnShown && ui.inspectorShown)
         ui.setAgentPoppedOut(false)
-        ui.showAgentDock = true // what `attach()` does
-        #expect(ui.rightTab == .agent && ui.rightColumnVisible)
+        #expect(ui.agentColumnShown)
     }
 }

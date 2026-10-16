@@ -1830,7 +1830,7 @@ Run an editor action like the user: by ID (timeline.split, timeline.zoom-in, pla
 
 ### `bashcut ui view [--zoom <zoom>] [--zoom-anchor <zoomAnchor>] [--snap <snap>] [--safe-area <safeArea>] [--viewer-zoom <viewerZoom>] [--compare <compare>] [--agent-dock <agentDock>] [--right-tab <rightTab>] [--reveal <reveal>] [--inspector <inspector>] [--chat-draft <chatDraft>] [--settings-section <settingsSection>] [--settings-search <settingsSearch>] [--knowledge-section <knowledgeSection>] [--plugins-tab <pluginsTab>] [--plugins-category <pluginsCategory>] [--media-source <mediaSource>] [--library-query <libraryQuery>] [--library-pack <libraryPack>] [--library-tag <libraryTag>] [--library-scope <libraryScope>] [--library-source <librarySource>] [--library-collection <libraryCollection>] [--library-width <libraryWidth>] [--library-wide <libraryWide>] [--library-layout <libraryLayout>] [--library-tile-size <libraryTileSize>]`
 
-Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock and chat message, right column tab, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.
+Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, color compare, agent dock and chat message, side panes, inspector tab, Settings section and search, Knowledge section, Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_view`
 - `zoom`: integer, 1…600. Timeline zoom in pixels per second
@@ -1839,8 +1839,8 @@ Read the editor view state, or change it: timeline zoom (pixels per second), vie
 - `safeArea`: boolean. Safe-area overlay on or off
 - `viewerZoom`: string, one of fit, 25, 50, 100, 200. Viewer zoom: fit, or a percentage of the output size
 - `compare`: boolean. Color before/after compare on or off
-- `agentDock`: boolean. Agent tab of the right column shown or hidden
-- `rightTab`: string, one of inspector, agent. Right column tab to show
+- `agentDock`: boolean. Agent column shown or hidden
+- `rightTab`: string, one of inspector, agent. Side pane to show; the other stays
 - `reveal`: integer, ≥ 0. Scroll the timeline so this frame is visible
 - `inspector`: string, one of video, audio, text, color, speed. Inspector tab
 - `chatDraft`: string. Text in the shown chat agent's message box, as if typed

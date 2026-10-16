@@ -44,12 +44,12 @@ struct EditorView: View {
                 }
             } else {
                 // Not a split view: a split view keeps its pane's last width and would not let the window shrink
-                // below it (#528). The right column has one width per window size (P1-6).
+                // below it (#528). Each side column has one width per window size (P1-6).
                 HStack(spacing: 0) {
                     editorColumn
                     if agentColumn {
                         Divider()
-                        rightColumn
+                        agentPane
                     }
                 }
             }
@@ -57,7 +57,6 @@ struct EditorView: View {
             StatusBarView(document: document)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windowHeight = $0 }
-        .onChange(of: document.selectedID) { if document.selectedID != nil { document.ui.itemSelected() } }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: { windowWidth = $0 })
         .ignoresSafeArea(.container, edges: .top)
         .background(Color(red: 0.065, green: 0.07, blue: 0.08)).preferredColorScheme(.dark).tint(.cyan)
