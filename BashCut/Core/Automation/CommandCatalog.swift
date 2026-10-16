@@ -255,7 +255,7 @@ public enum CommandCatalog {
                                  cli: .flag("include-srt")),
                 CommandParameter("normalizeAudio", .boolean, "Run two-pass LUFS normalization with a plugin",
                                  default: .bool(false), cli: .flag("normalize-audio")),
-                exportWithout,
+                exportWithout, exportNoSteps,
             ] + exportFileParameters + exportWaitParameters,
             execution: .approval),
         CommandSpec(

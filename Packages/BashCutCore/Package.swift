@@ -25,7 +25,7 @@ let package = Package(
         // `swift run -c release bashcut-core-bench`: core edit, validation and history cost at scale.
         .executableTarget(name: "bashcut-core-bench", dependencies: ["BashCutProject"], path: "Benchmarks/CoreBench"),
         .testTarget(name: "BashCutProjectTests", dependencies: ["BashCutProject", "BashCutProjectFixtures"]),
-        .testTarget(name: "BashCutPluginTests", dependencies: ["BashCutPlugin", "BashCutProject"]),
+        .testTarget(name: "BashCutPluginTests", dependencies: ["BashCutPlugin", "BashCutProject", "BashCutProjectFixtures"]),
         .testTarget(name: "BashCutImportTests", dependencies: ["BashCutImport", "BashCutProject"]),
         .testTarget(name: "BashCutInterchangeTests", dependencies: ["BashCutInterchange", "BashCutImport", "BashCutProject"]),
     ]

@@ -16,18 +16,21 @@ public enum PluginRecipeOutput: Sendable, Equatable {
     }
 }
 
-/// Runs a dependency install recipe the user approved: the plugin's filtered environment (no app secrets), its
-/// own process group, stdout and stderr streamed line by line, and cancellation that stops the whole group
-/// (pip, curl and other helpers included).
+/// Runs a dependency install recipe the user approved, or a plugin's export step (API 12): the plugin's filtered
+/// environment (no app secrets; an export step adds its own short-lived automation token), its own process group,
+/// stdout and stderr streamed line by line, and cancellation or `timeout` that stops the whole group (pip, curl and
+/// other helpers included). A failure starts with `label` and ends with the last output.
 public enum PluginRecipeRunner {
     public static func run(
         _ command: PluginCommand, plugin: InstalledPlugin, directory: URL,
         inheritedEnvironment: [String: String] = ProcessInfo.processInfo.environment,
+        extraEnvironment: [String: String] = [:], label: String = "Dependency install", timeout: TimeInterval? = nil,
         output: @escaping @Sendable (PluginRecipeOutput) -> Void
     ) async throws {
         let (executable, arguments) = try resolve(command, directory: directory)
         var environment = PluginProcessRunner.environment(for: plugin, inheriting: inheritedEnvironment)
         environment["BASHCUT_PLUGIN_DIR"] = directory.path
+        environment.merge(extraEnvironment) { _, extra in extra }
         let pipe = Pipe()
         let pid = try spawn(
             executable: executable, arguments: arguments, directory: directory, environment: environment,
@@ -57,30 +60,42 @@ public enum PluginRecipeRunner {
         }
         reader.start()
 
-        var status: Int32 = 0
-        while true {
-            let result = waitpid(pid, &status, WNOHANG)
-            if result == pid { break }
-            if result < 0 { break }
-            if Task.isCancelled {
-                _ = kill(-pid, SIGTERM)
-                for _ in 0..<40 where waitpid(pid, &status, WNOHANG) == 0 {
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                }
-                _ = kill(-pid, SIGKILL)
-                _ = waitpid(pid, &status, 0)
-                throw CancellationError()
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
+        let status = try await waitForExit(pid, label: label, timeout: timeout)
         // Helpers the recipe left running belong to it.
         _ = kill(-pid, SIGKILL)
         let exited = status & 0x7f == 0 ? (status >> 8) & 0xff : 128 + (status & 0x7f)
         guard exited == 0 else {
             let detail = tail.text.trimmingCharacters(in: .whitespacesAndNewlines)
             throw PluginError.invalid(
-                detail.isEmpty ? "Dependency install failed with status \(exited)" : "Dependency install failed: \(detail)")
+                detail.isEmpty ? "\(label) failed with status \(exited)" : "\(label) failed: \(detail)")
         }
+    }
+
+    /// Waits for the recipe's leader to exit and returns its raw status; on cancellation or after `timeout` it stops
+    /// the whole group first and throws.
+    private static func waitForExit(_ pid: pid_t, label: String, timeout: TimeInterval?) async throws -> Int32 {
+        var status: Int32 = 0
+        let deadline = timeout.map { Date().addingTimeInterval($0) }
+        while true {
+            let result = waitpid(pid, &status, WNOHANG)
+            if result == pid { break }
+            if result < 0 { break }
+            let timedOut = deadline.map { Date() >= $0 } ?? false
+            if Task.isCancelled || timedOut {
+                _ = kill(-pid, SIGTERM)
+                for _ in 0..<40 where waitpid(pid, &status, WNOHANG) == 0 {
+                    try? await Task.sleep(nanoseconds: 50_000_000)
+                }
+                _ = kill(-pid, SIGKILL)
+                _ = waitpid(pid, &status, 0)
+                if timedOut, !Task.isCancelled {
+                    throw PluginError.invalid("\(label) timed out after \(Int(timeout ?? 0)) s")
+                }
+                throw CancellationError()
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return status
     }
 
     static func resolve(_ command: PluginCommand, directory: URL) throws -> (URL, [String]) {
@@ -90,7 +105,7 @@ public enum PluginRecipeRunner {
         let executable = directory.appendingPathComponent(command.executable).standardizedFileURL
         guard executable.path.hasPrefix(directory.standardizedFileURL.path + "/"),
             FileManager.default.isExecutableFile(atPath: executable.path)
-        else { throw PluginError.invalid("Install recipe \(command.executable) is missing or not executable") }
+        else { throw PluginError.invalid("\(command.executable) is missing from the plugin or not executable") }
         return (executable, command.arguments)
     }
 

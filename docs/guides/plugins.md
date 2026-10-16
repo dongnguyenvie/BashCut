@@ -97,7 +97,7 @@ and dependency names stay plain strings.
 
 ## API versions
 
-The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (11); changes are
+The host serves every plugin API version from `PluginAPI.minimum` (1) to `PluginAPI.current` (12); changes are
 additive, so older manifests keep working. Version 2 adds `options`, `contributes` and the `session` transport.
 Version 3 adds option `choiceLabels` and the `file` option type, the `BASHCUT_PLUGIN_DATA`/`BASHCUT_PLUGIN_CACHE`
 folders and `::progress` lines from install recipes. Version 4 adds the `secret` option type, the session host
@@ -107,7 +107,8 @@ and the manifest's `terminal` object. Version 6 adds `contributes.library` (libr
 `contributes.container` and `contributes.views` (a panel in the left rail with declarative views), `requires`, `uses`
 with the `plugins.invoke` host call, the host channel for views and session actions, and `features`. Version 9 adds
 the `review.check` capability. Version 10 adds the Tools panel: `views[].kind`, the `tools` action placement and
-`advanced` options. Version 11 adds the `window` view location. From version 8
+`advanced` options. Version 11 adds the `window` view location. Version 12 adds
+[`contributes.exportSteps`](#export-steps) (blocking steps before a final export). From version 8
 on, the API version goes up at most once per BashCut release; smaller differences between hosts are
 [host features](#host-features). A manifest
 that uses a feature with an older `apiVersion` is
@@ -422,6 +423,9 @@ plugin a user trusts can already write anywhere the user can. One plugin's venv 
 other plugins are not told about. `PATH`
 gains `/opt/homebrew/bin` and `/usr/local/bin`, since an app opened from Finder starts with only
 `/usr/bin:/bin:/usr/sbin:/sbin`. Probes and install recipes get the same environment. They never receive other app environment variables, credentials, the automation socket or a session token.
+The one exception is an [export step](#export-steps) (API 12): it also gets `BASHCUT_SOCKET`, a
+`BASHCUT_SESSION_TOKEN` that edits as the plugin and is revoked when the step ends, `BASHCUT_CLI` (the app's own
+`bashcut`), `BASHCUT_PROJECT` and `BASHCUT_EXPORT_STEP` (the step's id).
 Provider credentials will need an explicit permission and credential contract rather than ambient
 environment access.
 
@@ -1298,6 +1302,50 @@ BashCut keeps the request folder under `~/Library/Caches/BashCut/LibraryCandidat
 library with its source, license, the provider as `provenance` and the plugin in `createdBy.plugin`. Agents saving to
 the user library wait for approval. Network access is the plugin's own: BashCut only starts it, as for any capability.
 Use a provider `timeoutSeconds` for slow generation, and report progress over the session transport.
+
+## Export steps
+
+`contributes.exportSteps` (API 12, host feature `exportSteps`, #634) lets a plugin run a blocking step before a final
+export, e.g. HyperFrames rendering its draft graphics again at full quality. Hooks cannot do this: they are
+notify-only, and `export.started` fires after the export began.
+
+```json
+"exportSteps": [{
+  "id": "finalise-graphics",
+  "title": {"en": "Finalise draft graphics", "vi": "Hoàn thiện đồ hoạ nháp"},
+  "command": {"executable": "bin/graphic", "arguments": ["rerender", "--all", "--final"]},
+  "when": "media.data.graphics.draft",
+  "timeoutSeconds": 1800
+}]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Unique key within the plugin |
+| `title` | Shown in the Export panel, the progress popover and the approval (at most 60 characters per language) |
+| `command` | A file inside the plugin (`bin/…`) and its arguments; never a shell string or a tool on `PATH` |
+| `when` | `media.data.<key>[.<key>…]`: the step is needed when a media file that at least one timeline item uses has a truthy value there (true, a non-zero number, a non-empty string, list or object). Media no item uses, and media without that data, never count |
+| `timeoutSeconds`? | 60–7200, default 1800; the step fails after it |
+
+At most 8 steps per plugin. Only ready plugins' steps run, by plugin id and then in declared order.
+
+**When they run.** Before a final export (any preset but `quick-draft`) whose `when` holds:
+
+- `export start` (agents and the CLI) runs them first unless `--no-steps`. The approval lists them; the result's `job`
+  is then the steps' job (method `export.steps`, `exportSteps` lists the steps) and its result names the export jobs
+  it started; `--wait` waits through both. The draft-graphics guard (`graphics_draft`) is skipped while steps will
+  run and checked again, with the other export guards, once they finished.
+- The Export panel's "N graphics are drafts" notice gets **Finalise and Export** when a matching step exists. The
+  plain **Export** button exports as is.
+
+**How they run.** Like an install recipe: the plugin's environment (plus the [export-step variables](#process-environment)),
+its own process group, stdout and stderr streamed, `::progress <0…1> [message]` lines moving the export's progress
+(the toolbar ring, the progress popover, `export status` with `state: preparing`). **Cancel Export** (or
+`jobs cancel`) stops the whole group and nothing is exported. The step changes the project itself through
+`$BASHCUT_CLI`, normally with one `timeline apply`, so its change is one undo step attributed to the plugin. Afterwards
+BashCut reads the project again: if the step's `when` still holds, the export fails ("finished, but N media still
+match …"). A step that exits non-zero fails the export with "Export step <title> (<plugin>) failed: <last output>".
+Nothing is exported in either case.
 
 ## Hooks
 

@@ -72,10 +72,11 @@ extension ProjectDocument {
 
     /// Before a final export by an agent (spec 13 §7), whatever agentPermissions say; quick drafts and the user are
     /// never blocked. No graphic rendered as a draft (#634), checked first because finalising changes the timeline;
-    /// then a passing draft audit of this timeline or the user's G5 approval.
-    func checkExportGuards(preset: ExportPreset, author: Author) throws {
+    /// then a passing draft audit of this timeline or the user's G5 approval. `graphics: false` leaves the drafts to
+    /// plugin export steps that run first; the guard runs again after them.
+    func checkExportGuards(preset: ExportPreset, author: Author, graphics: Bool = true) throws {
         guard author != .user, preset != .quickDraft else { return }
-        if let failure = WorkflowChecklist.graphicsDraftGuard(project) { throw Self.guardFailure(failure) }
+        if graphics, let failure = WorkflowChecklist.graphicsDraftGuard(project) { throw Self.guardFailure(failure) }
         if let log = runLog, let failure = WorkflowChecklist.draftGuard(project, entries: log.entries()) {
             throw Self.guardFailure(failure)
         }

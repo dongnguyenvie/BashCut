@@ -1,10 +1,11 @@
 import Foundation
 
 extension PluginManifest {
-    /// What APIs 9, 10 and 11 added to the manifest.
+    /// What APIs 9, 10, 11 and 12 added to the manifest.
     func validateLatestAPI() throws {
         try validatePlatformTable()
         try validateTools()
+        try validateExportSteps()
         guard !views.contains(where: { $0.place == .window }) || apiVersion >= 11 else {
             throw PluginError.invalid("location window needs apiVersion 11")
         }

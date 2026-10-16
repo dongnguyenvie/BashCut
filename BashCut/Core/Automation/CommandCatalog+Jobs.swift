@@ -80,7 +80,16 @@ extension CommandCatalog {
     /// `export.start`'s graphics guard (#634), part of its summary.
     static let exportGraphicsDraftNote = "It also refuses graphics a plugin rendered as drafts (media "
         + "data.graphics.draft): else graphics_draft, listing them and the plugin's final render (bin/graphic plan "
-        + "--final or rerender --all --final)."
+        + "--final or rerender --all --final). When a ready plugin contributes an export step whose when holds (plugin "
+        + "API 12, e.g. HyperFrames finalising draft graphics), a final export runs it first unless no-steps: job is "
+        + "then the steps' job (exportSteps lists them; its result names the export jobs), the step applies its own "
+        + "change in one undo step, and the guards run again before exporting; a failed or cancelled step exports "
+        + "nothing."
+
+    /// Leaves out plugin export steps (#634): the draft-graphics guard then refuses drafts as before.
+    static let exportNoSteps = CommandParameter(
+        "noSteps", .boolean, "Do not run plugin export steps first (a final export over draft graphics is then refused)",
+        default: .bool(false), cli: .flag("no-steps"))
 
     /// One output (`preset`) or several in one request (`presets`, #593): give exactly one.
     static let exportPresetParameters = [

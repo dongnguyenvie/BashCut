@@ -26,15 +26,24 @@ extension ProjectDocument {
     /// The Export sheet: one queued export per checked output (#593), named `name-<preset>` when there are several.
     func startExport(
         name: String, presets: [ExportPreset], directory: URL, includeSubRip: Bool,
-        normalizeAudio: Bool = false, withoutRoles: Set<String> = []
+        normalizeAudio: Bool = false, withoutRoles: Set<String> = [], runSteps: Bool = false
     ) {
-        do {
-            for preset in presets {
-                try startExportAuthorized(
+        let export: @MainActor @Sendable () throws -> JSONValue = { [unowned self] in
+            .array(try presets.map { preset in
+                .string(try startExportAuthorized(
                     name: ExportRequest.outputName(name, preset: preset, among: presets), preset: preset,
                     directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
-                    withoutRoles: withoutRoles)
-            }
+                    withoutRoles: withoutRoles))
+            })
+        }
+        // Finalise and export (#634): the plugins' export steps first, then the exports.
+        let steps = runSteps ? exportSteps(for: presets) : []
+        if !steps.isEmpty {
+            startExportSteps(steps, name: name, author: .user, then: export)
+            return
+        }
+        do {
+            _ = try export()
         } catch {
             message = error.localizedDescription
         }
