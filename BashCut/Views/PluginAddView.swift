@@ -77,7 +77,7 @@ struct PluginAddView: View {
                 if saved { Button("Remove", role: .destructive) { token = ""; saveToken(host: host) } }
                 Button("Cancel") { editingToken = false; token = "" }
             }
-            Text("Kept in the Keychain on this Mac and sent only to \(host). Needed for private repos and links.")
+            Text("Kept on this Mac and sent only to \(host). Needed for private repos and links.")
                 .font(.caption2).foregroundStyle(.secondary)
         } else {
             HStack {
