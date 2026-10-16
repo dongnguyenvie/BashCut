@@ -258,6 +258,31 @@ public enum StickerPosition: Sendable, Equatable {
     }
 }
 
+// MARK: Emoji stickers
+
+extension LibrarySticker {
+    /// `textStyle` fields that place an emoji sticker like an image sticker: `size` of the frame width wide (the
+    /// sticker's own, else `defaultSize`) with its centre at `position` (the sticker's own, else the centre) on a
+    /// `width`×`height` frame. An emoji is about as wide and tall as its font size, and sits a little above the baseline.
+    /// Without these an emoji took its text preset's size and place, which is where the captions are.
+    public func emojiTextStyle(
+        size: Double? = nil, position: StickerPosition? = nil, width: Int, height: Int
+    ) throws -> [String: JSONValue] {
+        let size = size ?? self.size ?? Self.defaultSize
+        guard Self.sizeRange.contains(size) else {
+            throw ProjectError.invalid("size must be from \(Self.sizeRange.lowerBound) to 1 (of the frame width)")
+        }
+        let glyph = size * Double(width)
+        let glyphHeight = glyph / Double(height)
+        let center = (position ?? self.position ?? .named("center"))
+            .center(stickerWidth: size, stickerHeight: glyphHeight, width: width, height: height)
+        return [
+            "size": Self.rounded(glyph / Double(min(width, height))), "align": .string("center"),
+            "positionX": Self.rounded(center.x), "positionY": Self.rounded(1 - center.y - 0.4 * glyphHeight),
+        ]
+    }
+}
+
 // MARK: Placing
 
 /// Where `library place` put an image, animated or video sticker (#64).
