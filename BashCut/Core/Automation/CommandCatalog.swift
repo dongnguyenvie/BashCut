@@ -245,11 +245,9 @@ public enum CommandCatalog {
                 + "wait with jobs wait JOB --done, or pass wait to get the finished job (up to 100 s; save also saves "
                 + "the project once it lands). An agent's export with any preset but quick-draft needs "
                 + "a draft audit with verdict pass of the current timeline (run append audit --point draft) or the "
-                + "user's G5 approval at this revision: else audit_missing. " + exportGraphicsDraftNote
+                + "user's G5 approval at this revision: else audit_missing. " + exportGraphicsDraftNote + exportPresetsNote
                 + exportNameOverwriteAndWithout,
-            parameters: [
-                CommandParameter("preset", .string, "Export preset", required: true, choices: exportPresets,
-                                 cli: .option("preset")),
+            parameters: exportPresetParameters + [
                 outputName,
                 outputDirectory,
                 CommandParameter("includeSRT", .boolean, "Also write a SubRip file", default: .bool(false),

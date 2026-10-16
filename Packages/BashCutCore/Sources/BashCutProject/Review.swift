@@ -93,7 +93,7 @@ extension ReviewIssue {
         "text-overlap", "text-face", "platform-none", "output-shape", "output-length", "plan-section", "brief-length",
         "brief-outputs", "must-keep", "overlap", "coverage", "hook", "voice-text-changed", "captions-source-changed",
         "beats-source-changed", "ai-media", "ai-undisclosed", "delivered-black", "delivered-drift", "delivered-fps", "delivered-silence",
-        "delivered-size", "unsourced-claim",
+        "delivered-size", "unsourced-claim", "graphic-draft",
     ].sorted { $0.count > $1.count }
 
     /// The longest built-in kind the ID is or starts with (then a hyphen); a plugin's `provider:id` up to the colon
@@ -255,6 +255,7 @@ public enum TimelineReview {
         issues += provenanceIssues(project, context: context)
         issues += rightsIssues(project, context: context)
         issues += disclosureIssues(project)
+        issues += graphicDraftIssues(project)
         if let plugins = context.pluginIssues, plugins.revision == project.revision { issues += plugins.issues }
         if project.duration > 0, let minimum = profile["minSpeechCoverage"] {
             let coverage = speechCoverage(project, transcripts: context.transcripts)

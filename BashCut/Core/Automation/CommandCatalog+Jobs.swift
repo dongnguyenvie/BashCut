@@ -82,6 +82,19 @@ extension CommandCatalog {
         + "data.graphics.draft): else graphics_draft, listing them and the plugin's final render (bin/graphic plan "
         + "--final or rerender --all --final)."
 
+    /// One output (`preset`) or several in one request (`presets`, #593): give exactly one.
+    static let exportPresetParameters = [
+        CommandParameter("preset", .string, "Export preset (one output; or give presets)", choices: exportPresets,
+                         cli: .option("preset")),
+        CommandParameter("presets", .string, "Several export presets, comma separated (tiktok,shorts): one job each",
+                         cli: .option("presets")),
+    ]
+
+    /// `export.start`'s several outputs (#593), part of its summary.
+    static let exportPresetsNote = " With presets, one approval queues an export per preset, each named "
+        + "name-<preset> (trip-tiktok, trip-shorts); the result lists them in exports (preset, output, job) and wait "
+        + "waits for the last."
+
     static let exportWaitParameters = [
         CommandParameter("wait", .boolean, "When it starts at once, wait up to 100 s for it to finish and return the job",
                          default: .bool(false), cli: .flag("wait")),

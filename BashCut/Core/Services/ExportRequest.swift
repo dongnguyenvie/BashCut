@@ -122,6 +122,37 @@ public struct ExportRequest: Sendable {
         return "\(stem)-\(number)"
     }
 
+    /// The file name of `preset`'s export when one request exports `presets` (#593): `name` alone, else
+    /// `name-<preset>` (`trip-tiktok`, `trip-shorts`) so outputs that share an extension do not collide.
+    public static func outputName(_ name: String, preset: ExportPreset, among presets: [ExportPreset]) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return presets.count > 1 ? "\(trimmed)-\(preset.argument)" : trimmed
+    }
+
+    /// `name` when every output of `presets` is free under it, otherwise the first free `name-2`, `name-3`…; one
+    /// preset is `availableName(_:preset:…)`.
+    public static func availableName(
+        _ name: String, presets: [ExportPreset], directory: URL, includeSubRip: Bool, reserved: Set<URL> = []
+    ) -> String {
+        guard presets.count > 1 else {
+            return availableName(
+                name, preset: presets.first ?? .quickDraft, directory: directory, includeSubRip: includeSubRip,
+                reserved: reserved)
+        }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        func free(_ base: String) -> Bool {
+            presets.allSatisfy { preset in
+                !nameIsTaken(
+                    outputName(base, preset: preset, among: presets), preset: preset, directory: directory,
+                    includeSubRip: includeSubRip, reserved: reserved)
+            }
+        }
+        guard !free(trimmed) else { return trimmed }
+        var number = 2
+        while !free("\(trimmed)-\(number)") { number += 1 }
+        return "\(trimmed)-\(number)"
+    }
+
     private static func isTaken(_ url: URL, reserved: Set<URL>) -> Bool {
         FileManager.default.fileExists(atPath: url.path) || reserved.contains(url)
     }
