@@ -193,6 +193,11 @@ private final class AcceptLoop: @unchecked Sendable {
             reply(RPCResponse(id: .null, error: RPCFailure(-32600, "Invalid JSON-RPC request").typed), client)
             return
         }
+        // App Nap throttles a BashCut in the background: without this, a call waited up to 3 s while an export or
+        // its checks used the CPU (#350). Socket traffic does not count as activity by itself.
+        let activity = ProcessInfo.processInfo.beginActivity(
+            options: .userInitiatedAllowingIdleSystemSleep, reason: "Automation request")
+        defer { ProcessInfo.processInfo.endActivity(activity) }
         let box = ResponseBox()
         let done = DispatchSemaphore(value: 0)
         Task {

@@ -144,6 +144,7 @@ struct ExportToast: View {
         case .finished:
             Button("Open") { document.run(.openExportOutput) }.action(.openExportOutput, in: document)
             Button("Reveal") { document.run(.revealExportOutput) }.action(.revealExportOutput, in: document)
+            if document.exports.report != nil { Button("Report") { document.ui.showExportReport = true } }
         default:
             EmptyView()
         }

@@ -125,7 +125,7 @@ extension ProjectDocument {
                 "rev": .integer(request.source.revision),
             ])
             message = String(localized: "Export complete")
-            if !exports.isRunning, !showsRunResult(author) { ui.showExportReport = true }
+            if !exports.isRunning, opensReport(author) { ui.showExportReport = true }
             return
         }
         // The export's loudness gain stays in the file it wrote: storing it in the project bumped the revision (the
@@ -142,15 +142,18 @@ extension ProjectDocument {
         ])
         message = String(localized: "Export complete")
         // Keep the report for later when more exports are waiting.
-        if !exports.isRunning, !showsRunResult(author) { ui.showExportReport = true }
+        if !exports.isRunning, opensReport(author) { ui.showExportReport = true }
     }
 
-    /// An agent's export while the run panel shows: the panel turns into the result card instead of a sheet over
-    /// the editor (#448).
-    private func showsRunResult(_ author: Author) -> Bool {
-        guard author != .user else { return false }
-        runPanel.refresh()
-        return runPanel.tracksRun
+    /// Only the user's own export opens the report sheet. An agent's export shows the toast (its Report button opens
+    /// the sheet) or, during a run, the run panel's result card (#448): the sheet's open animation runs a nested run
+    /// loop that holds the main actor and the agent's next call with it (#350).
+    private func opensReport(_ author: Author) -> Bool {
+        guard author == .user else {
+            runPanel.refresh()
+            return false
+        }
+        return true
     }
 
     /// Measures the written file in the background (P1-E6); review reads it for the revision it shows.

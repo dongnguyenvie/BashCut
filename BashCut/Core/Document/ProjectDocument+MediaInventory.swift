@@ -136,15 +136,10 @@ extension ProjectDocument {
 
     /// For `context.get`: running analysis jobs and the media without a record, transcript or description.
     func analysisReadiness() async -> JSONValue {
-        var unmeasured: [JSONValue] = [], untranscribed: [JSONValue] = [], undescribed: [JSONValue] = []
-        for media in project.media {
-            if media.kind != "audio", media.fields["description"] == nil { undescribed.append(.string(media.id)) }
-            guard !media.isImage else { continue }
-            if (try? storedAnalysis(media.id))?.record == nil { unmeasured.append(.string(media.id)) }
-            if media.hasAudio != false, (try? await storedTranscript(media.id)) == nil {
-                untranscribed.append(.string(media.id))
-            }
-        }
+        let stored = await Self.unanalyzed(
+            project.media, root: fileURL?.deletingLastPathComponent(), workspace: settings.workspace)
+        let undescribed = project.media.filter { $0.kind != "audio" && $0.fields["description"] == nil }
+            .map { JSONValue.string($0.id) }
         let running = jobs.jobs.filter { $0.isActive && Self.analysisJobMethods.contains($0.method) }.map { job in
             JSONValue.object([
                 "id": .string(job.id), "method": .string(job.method), "state": .string(job.state.rawValue),
@@ -152,8 +147,35 @@ extension ProjectDocument {
             ])
         }
         return .object([
-            "jobs": .array(running), "media": .integer(project.media.count), "unmeasured": .array(unmeasured),
-            "untranscribed": .array(untranscribed), "undescribed": .array(undescribed),
+            "jobs": .array(running), "media": .integer(project.media.count),
+            "unmeasured": .array(stored.unmeasured.map(JSONValue.string)),
+            "untranscribed": .array(stored.untranscribed.map(JSONValue.string)), "undescribed": .array(undescribed),
         ])
+    }
+
+    /// The media without an analysis record, and the sounding ones without a transcript. The file reads (content keys,
+    /// cache records) run off the main actor in one hop: done per media with a hop back each, `context.get` took
+    /// 150 ms while an export kept the main thread busy (#350).
+    nonisolated private static func unanalyzed(_ media: [Media], root: URL?, workspace: URL?) async
+        -> (unmeasured: [String], untranscribed: [String])
+    {
+        var unmeasured: [String] = [], untranscribed: [String] = []
+        for media in media where !media.isImage {
+            let url = root.flatMap { sourceURL(media, root: $0, workspace: workspace) }
+            guard let root, let url else {
+                unmeasured.append(media.id)
+                if media.hasAudio != false { untranscribed.append(media.id) }
+                continue
+            }
+            if (try? MediaAnalyzer.key(for: url)).flatMap({ MediaAnalyzer.load(key: $0, projectRoot: root) }) == nil {
+                unmeasured.append(media.id)
+            }
+            if media.hasAudio != false,
+                (try? await rawTranscript(media, url: url, root: root, workspace: workspace)) == nil
+            {
+                untranscribed.append(media.id)
+            }
+        }
+        return (unmeasured, untranscribed)
     }
 }
