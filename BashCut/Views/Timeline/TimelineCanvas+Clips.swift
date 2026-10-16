@@ -4,29 +4,18 @@ import BashCutDocument
 import BashCutEngine
 import BashCutProject
 
-/// Colors, fonts and icons for clips, one look per kind of layer.
+/// Colors, fonts and icons for clips: the fill says what the clip is (`ClipKind`), a stripe says which layer role.
 @MainActor enum ClipStyle {
-    static func color(track: Track, item: Item) -> NSColor {
-        switch track.role {
-        case TrackRole.main: return mainColor(item)
-        case TrackRole.overlay: return NSColor(srgbRed: 0.30, green: 0.36, blue: 0.80, alpha: 1)
-        case TrackRole.dialogue: return NSColor(srgbRed: 0.20, green: 0.58, blue: 0.32, alpha: 1)
-        case TrackRole.voiceover: return NSColor(srgbRed: 0.10, green: 0.50, blue: 0.75, alpha: 1)
-        case TrackRole.music: return NSColor(srgbRed: 0.55, green: 0.30, blue: 0.70, alpha: 1)
-        case TrackRole.sfx: return NSColor(srgbRed: 0.75, green: 0.30, blue: 0.50, alpha: 1)
-        default:
-            if track.isAdjustment { return NSColor(srgbRed: 0.62, green: 0.45, blue: 0.20, alpha: 1) }
-            if track.kind == "text" { return NSColor(srgbRed: 0.85, green: 0.50, blue: 0.15, alpha: 1) }
-            return track.kind == "audio" ? NSColor(srgbRed: 0.20, green: 0.58, blue: 0.32, alpha: 1) : .systemTeal
-        }
+    static func color(track: Track, item: Item, media: Media?) -> NSColor {
+        nsColor(ClipKind(item: item, track: track, media: media).color)
     }
 
-    private static func mainColor(_ item: Item) -> NSColor {
-        switch item["tag"]?.object["role"]?.string {
-        case "speech": NSColor(srgbRed: 0.18, green: 0.45, blue: 0.85, alpha: 1)
-        case "underVO": NSColor(srgbRed: 0.45, green: 0.32, blue: 0.78, alpha: 1)
-        default: NSColor(srgbRed: 0.10, green: 0.55, blue: 0.58, alpha: 1)
-        }
+    static func stripe(track: Track, item: Item) -> NSColor? {
+        ClipKind.roleStripe(track: track, item: item).map(nsColor)
+    }
+
+    private static func nsColor(_ rgb: ClipKind.RGB) -> NSColor {
+        NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
     }
 
     static let titleText: [NSAttributedString.Key: Any] = [
@@ -67,7 +56,8 @@ extension NSImage {
 extension TimelineCanvas {
     func drawClip(_ item: Item, in rect: CGRect, row: TimelineLayout.Row, dirtyRect: CGRect, root: URL?) {
         let track = row.track
-        let base = ClipStyle.color(track: track, item: item)
+        let media = item.mediaID.flatMap { mediaByID[$0] }
+        let base = ClipStyle.color(track: track, item: item, media: media)
         let fade = track.isHidden ? 0.35 : track.isMuted ? 0.5 : 1
         let hovered = item.id == hoveredItemID
         let primary = item.id == selectedID
@@ -88,6 +78,11 @@ extension TimelineCanvas {
         if filmstrip {
             NSColor.black.withAlphaComponent(0.45).setFill()
             CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: 15).fill()
+        }
+        if let stripe = ClipStyle.stripe(track: track, item: item) {
+            // Lightened so it still shows on a clip of the same colour.
+            (stripe.blended(withFraction: 0.3, of: .white) ?? stripe).withAlphaComponent(fade).setFill()
+            CGRect(x: rect.minX, y: rect.maxY - 2, width: rect.width, height: 2).fill()
         }
         if track.isLocked { drawLockStripes(rect) }
         if hovered && !selected {
@@ -124,24 +119,29 @@ extension TimelineCanvas {
             ClipStyle.icon(name)?.drawFlipped(in: CGRect(x: x, y: y + 1, width: 10, height: 10))
             x += 12
         }
-        let filename = item.mediaID.flatMap { mediaByID[$0] }.map(\.fileName) ?? item.id
         let duration = Timecode.duration(item.duration, fps: project.fps)
         let durationWidth = (duration as NSString).size(withAttributes: ClipStyle.durationText).width
         let showsDuration = rect.width > durationWidth + 60
         let titleWidth = rect.maxX - x - 4 - (showsDuration && compact ? durationWidth + 6 : 0)
-        var title = track.isAdjustment
-            ? String(localized: String.LocalizationValue(item.adjustmentTitle(in: project)))
-            : item.text.isEmpty ? filename : item.text
-        title = Self.speedBadge(item) + title
         if titleWidth > 8 {
-            (title as NSString).draw(
-                with: CGRect(x: x, y: y, width: titleWidth, height: 13),
-                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: ClipStyle.titleText)
+            // Cut in the middle so a file name keeps its ending ("…canvas.mov"); the tooltip has all of it.
+            let name = clipTitle(item, track: track).replacingOccurrences(of: "\n", with: " ")
+            let title = ClipKind.truncatingMiddle(Self.speedBadge(item) + name) {
+                ($0 as NSString).size(withAttributes: ClipStyle.titleText).width <= titleWidth
+            }
+            (title as NSString).draw(at: CGPoint(x: x, y: y), withAttributes: ClipStyle.titleText)
         }
         guard showsDuration else { return }
         let durationY = compact ? rect.midY - 6 : rect.maxY - 13
         (duration as NSString).draw(
             at: CGPoint(x: rect.maxX - durationWidth - 5, y: durationY), withAttributes: ClipStyle.durationText)
+    }
+
+    /// The clip's full name: its text, its media's file name or its adjustment's look, else its ID.
+    func clipTitle(_ item: Item, track: Track) -> String {
+        if track.isAdjustment { return String(localized: String.LocalizationValue(item.adjustmentTitle(in: project))) }
+        if !item.text.isEmpty { return item.text }
+        return item.mediaID.flatMap { mediaByID[$0] }.map(\.fileName) ?? item.id
     }
 
     /// A diamond near the bottom edge for each frame with a key, like the Inspector's, drawn over the trim handles;

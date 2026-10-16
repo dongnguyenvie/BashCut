@@ -45,7 +45,7 @@ struct InspectorHeader: View {
 
     private var barColor: Color {
         guard let track else { return .teal }
-        return Color(nsColor: ClipStyle.color(track: track, item: item))
+        return Color(nsColor: ClipStyle.color(track: track, item: item, media: media))
     }
 
     /// The text, the media's file name, the adjustment's look; never the ID.
