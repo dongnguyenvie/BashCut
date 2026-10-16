@@ -366,6 +366,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   settings, and the queue (step, progress, files, review issues, Open to fix / Reveal / Cancel); presets save and
   load there. Verified by `BatchStepCatalogTests` and live in a dev copy: a pipeline built, saved, run (3 clips → 3
   projects, 3 files), a review preset run over the projects with issues and Open to fix in the queue.
+- Batch window automation (#658): `ui respond --dialog sheet:batch` adds catalog steps (`add-step:<action>`),
+  removes and moves steps, and loads presets (`load-preset:<name>`), so the window is driven through MCP/CLI alone;
+  the batch's English messages (pipeline checks, runner failures) show in the app's language through
+  `BatchMessage`. Verified by `BatchWindowAutomationTests` and live in a dev copy (VI UI).
 
 ### Plugins
 
