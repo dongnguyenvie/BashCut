@@ -65,8 +65,8 @@ plugin → app lines. Today that means `agent.chat`.
 ### 3.2 `secret` option type
 
 `"type": "secret"` (API 4): a string the user enters in Settings › Plugins, such as an API key.
-- It is stored in the Keychain (service `app.bashcut.plugin-secret`, account `<plugin id>/<option id>`), never in
-  `plugin-trust.json` or the project. Its scope must be `user`.
+- It is stored as plain JSON in `~/Library/Application Support/BashCut/plugin-secrets.json` (mode 0600, key
+  `<plugin id>/<option id>`), never in `plugin-trust.json` or the project; not the Keychain for now. Its scope must be `user`.
 - It is sent to the plugin in the request's `options` like other values.
 - It is never returned by `plugins options` and never written to the debug log. Listings show `"set": true|false`.
 - Only the user sets it, in Settings. `plugins option` refuses secrets with "Set secrets in Settings", so no agent
