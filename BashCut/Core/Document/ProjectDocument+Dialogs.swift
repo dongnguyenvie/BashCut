@@ -96,7 +96,7 @@ extension ProjectDocument {
         closing("plugins", "Plugins", when: ui.showPlugins) { [weak self] in self?.ui.showPlugins = false }
         closing("settings", "Settings", when: ui.showSettings) { [weak self] in self?.ui.showSettings = false }
         closing("doctor", "Doctor", when: ui.showDoctor) { [weak self] in self?.ui.showDoctor = false }
-        if let updates = appUpdateSheet() { sheets.append(updates) }
+        sheets.append(contentsOf: [appUpdateSheet(), batchWindowSheet()].compactMap { $0 })
         closing("knowledge", "Knowledge", when: agents.showKnowledge) { [weak self] in
             self?.agents.closeKnowledge()
         }
@@ -324,7 +324,7 @@ extension ProjectDocument {
         guard CommandCatalog.dialogs.contains(dialog) else {
             throw RPCFailure(-32602, "Unknown dialog \(dialog); use " + CommandCatalog.dialogs.joined(separator: ", "))
         }
-        try openDialog(dialog)
+        if dialog == "batch" { openBatch() } else { try openDialog(dialog) }
         return .bool(true)
     }
 

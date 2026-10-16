@@ -21,6 +21,10 @@ struct ToolCard<Main: View, Advanced: View, Result: View>: View {
     /// 0…1 when the running job reports it.
     var progress: Double?
     var message = ""
+    /// False in the batch window, where the card is a step's settings and the batch runs it.
+    var showsRunRow = true
+    /// "Many projects / files…" under Run on: opens the batch window with this tool and its settings as the first step.
+    var runOnMany: (() -> Void)?
     let run: () -> Void
     @ViewBuilder let main: Main
     @ViewBuilder let advanced: Advanced
@@ -49,8 +53,10 @@ struct ToolCard<Main: View, Advanced: View, Result: View>: View {
                     Text("Advanced (\(advancedCount))").font(.callout)
                 }
             }
-            Divider()
-            runRow
+            if showsRunRow {
+                Divider()
+                runRow
+            }
             if !message.isEmpty {
                 Text(message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
@@ -59,11 +65,24 @@ struct ToolCard<Main: View, Advanced: View, Result: View>: View {
         }
     }
 
+    private static var manyTarget: String { "many" }
+
+    /// The target picker's choice: a target, or "many", which opens the batch window and keeps the target.
+    private var targetChoice: Binding<String> {
+        Binding(get: { target.rawValue }, set: { choice in
+            if let picked = ToolTarget(rawValue: choice) { target = picked } else { runOnMany?() }
+        })
+    }
+
     private var runRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if targets.count > 1 {
-                Picker("Run on", selection: $target) {
-                    ForEach(targets) { Text(verbatim: $0.title).tag($0) }
+            if targets.count > 1 || runOnMany != nil {
+                Picker("Run on", selection: targetChoice) {
+                    ForEach(targets) { Text(verbatim: $0.title).tag($0.rawValue) }
+                    if runOnMany != nil {
+                        Divider()
+                        Text("Many projects / files…").tag(Self.manyTarget)
+                    }
                 }
             } else if let only = targets.first {
                 LabeledContent("Run on") { Text(verbatim: only.title).foregroundStyle(.secondary) }
@@ -84,12 +103,13 @@ extension ToolCard where Advanced == EmptyView, Result == EmptyView {
     init(
         title: String, icon: String, provider: String? = nil, info: LocalizedStringKey? = nil, targets: [ToolTarget],
         target: Binding<ToolTarget>, runTitle: String, canRun: Bool = true, running: Bool = false, progress: Double? = nil,
-        message: String = "", run: @escaping () -> Void, @ViewBuilder main: () -> Main
+        message: String = "", runOnMany: (() -> Void)? = nil, run: @escaping () -> Void, @ViewBuilder main: () -> Main
     ) {
         self.init(
             title: title, icon: icon, provider: provider, info: info, targets: targets, target: target,
             advancedCount: 0, runTitle: runTitle, canRun: canRun, running: running, progress: progress,
-            message: message, run: run, main: main, advanced: { EmptyView() }, result: { EmptyView() })
+            message: message, runOnMany: runOnMany, run: run, main: main, advanced: { EmptyView() },
+            result: { EmptyView() })
     }
 }
 

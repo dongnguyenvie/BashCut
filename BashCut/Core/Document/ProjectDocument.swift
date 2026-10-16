@@ -60,8 +60,7 @@ final class ProjectDocument {
     var reviewLoudness: ReviewLoudness?
     var lastRender: (url: URL, revision: Int)? // The last export's file and revision (`review.sync --rendered`).
     let voiceClone = VoiceCloneDraft() // The Voice panel's Clone a voice sheet (#532).
-    /// The last picture measurement (`review.measure`, #432), for review; also in the cache.
-    var reviewPicture: ReviewPicture?
+    var reviewPicture: ReviewPicture? // The last picture measurement (`review.measure`, #432), for review; also in the cache.
     /// What plugin review checks reported on the last `review.measure` (#451); not saved.
     var reviewPluginIssues: ReviewPluginIssues?
     /// Stored transcripts of the media the timeline plays, loaded by `review.run` for cuts inside words (P1-E1).
@@ -88,6 +87,7 @@ final class ProjectDocument {
     @ObservationIgnored lazy var activity = AgentActivityModel(document: self) // What agents are doing (#534).
     @ObservationIgnored lazy var plugins = PluginManagerModel(settings: { [unowned self] in settings })
     @ObservationIgnored lazy var pluginViews = PluginViews(document: self)
+    @ObservationIgnored lazy var batchWindow = BatchWindowModel(document: self) // The batch runner window (P2-C2).
     @ObservationIgnored lazy var pluginHooks = PluginHookDispatcher(document: self)
     /// The plugin whose proposal is being committed, so its own hooks do not hear about it.
     @ObservationIgnored var pluginEditSource: String?

@@ -9,6 +9,7 @@ public enum CommandCatalog {
         "new-project", "export", "export-report", "agent-changes", "review", "history", "plugins", "settings",
         "doctor", "knowledge", "ask", "sections", "external-changes", "plugin-proposals", "commands", "shortcuts",
         "add-plugin", "library-search", "library-generate", "quick-edit", "recents", "voice-clone", "assets",
+        "batch",
     ]
     public static let exportPresets = OutputPresetName.all
 
