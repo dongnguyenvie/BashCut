@@ -4,7 +4,8 @@ import BashCutProject
 import Foundation
 import Observation
 
-/// The tabs of the right column (P1-6); the raw values are what `ui view --right-tab` takes.
+/// The editor's side panes, Inspector and Agent; the raw values are what `ui view --right-tab` takes. They were the two
+/// tabs of one right column (P1-6) and are now separate columns, each shown or hidden on its own.
 public enum RightColumnTab: String, CaseIterable, Sendable { case inspector, agent }
 
 /// Editor view state that is not part of the project: timeline zoom and scroll requests, toggles, the
@@ -50,45 +51,26 @@ public final class EditorUIState {
     public var showSafeArea = false
     /// nil fits the frame in the viewer; otherwise the output's scale (see `EditorViewerZoom`).
     public var viewerZoom: Double?
-    /// The Agent tab of the right column is open. Setting it to true selects that tab.
-    public var showAgentDock = true {
-        didSet { if showAgentDock { pick(.agent) } }
-    }
+    /// The agent dock: a column of its own at the window's right edge, the full height beside the timeline too (a
+    /// terminal needs the height). Independent of the Inspector, so selecting or editing never hides it.
+    public var showAgentDock = true
     /// The library panel left of the viewer and the right column beside it; hidden to give a small window room (#528).
     public var showLibraryPanel = true
-    /// The Inspector tab of the right column is open. Setting it to true selects that tab.
-    public var showInspector = true {
-        didSet { if showInspector { rightTab = .inspector } }
-    }
-    /// The tab of the right column (P1-6). Inspector: the column sits beside the viewer and the timeline spans the
-    /// window under it. Agent: the column runs the full height, beside the timeline too. A project opens on the Agent
-    /// tab; the tab picked later stays for the projects opened after it in the window.
-    public private(set) var rightTab: RightColumnTab = .agent
-    /// The agent lives in its own window, so its tab only says so.
+    /// The Inspector: a column beside the viewer, with the timeline spanning the editor's width under it.
+    public var showInspector = true
+    /// The agent lives in its own window, so the window has no agent column.
     public var agentPoppedOut = false
-    @ObservationIgnored var agentPickedAt: Date?
-    /// How long a picked Agent tab survives selecting a timeline item.
-    public static let agentTabHold: TimeInterval = 2
 
-    /// Whether the right column is on screen: the open flag of the tab it shows.
-    public var rightColumnVisible: Bool {
-        rightTab == .inspector ? showInspector : (showAgentDock || agentPoppedOut)
-    }
+    /// The Inspector column is on screen.
+    public var inspectorShown: Bool { showInspector }
+    /// The agent column is on screen: the dock is open and the agent is not in its own window.
+    public var agentColumnShown: Bool { showAgentDock && !agentPoppedOut }
 
-    /// The column is on screen showing the Inspector tab.
-    public var inspectorShown: Bool { rightColumnVisible && rightTab == .inspector }
-
-    private func pick(_ tab: RightColumnTab, now: Date = Date()) {
-        rightTab = tab
-        if tab == .agent { agentPickedAt = now }
-    }
-
-    /// The user clicked a tab of the column (or an automation did): select it and open it.
-    public func selectRightTab(_ tab: RightColumnTab, now: Date = Date()) {
+    /// `ui view --right-tab` (or a menu): show that pane. The other pane stays as it is.
+    public func selectRightTab(_ tab: RightColumnTab) {
         switch tab {
         case .inspector: showInspector = true
-        case .agent:
-            if agentPoppedOut { pick(.agent, now: now) } else { showAgentDock = true }
+        case .agent: showAgentDock = true
         }
     }
 

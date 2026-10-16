@@ -51,8 +51,14 @@ extension EditorView {
             }
             exportButton
             moreMenu(compact: compact)
+            // Inspector and agent are separate columns, each with its own toggle.
+            Button { document.run(.toggleInspector) } label: { Image(systemName: "slider.horizontal.3") }
+                .help("Show or hide the Inspector (⌃⌘I)").accessibilityLabel("Inspector")
+                .foregroundStyle(document.ui.inspectorShown ? Color.cyan : Color.primary)
+                .action(.toggleInspector, in: document)
             Button { document.run(.toggleAgentDock) } label: { Image(systemName: "sidebar.right") }
                 .help("Show or hide the agent dock (⌘J)").accessibilityLabel("Agent dock")
+                .foregroundStyle(document.ui.showAgentDock && !document.agents.isDetached ? Color.cyan : Color.primary)
                 .action(.toggleAgentDock, in: document)
         }
     }

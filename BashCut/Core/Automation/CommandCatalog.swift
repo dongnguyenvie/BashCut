@@ -309,7 +309,7 @@ public enum CommandCatalog {
         CommandSpec(
             "ui.view", .ui,
             "Read the editor view state, or change it: timeline zoom (pixels per second), viewer zoom, snapping, safe area, "
-                + "color compare, agent dock and chat message, right column tab, inspector tab, Settings section and search, Knowledge section, "
+                + "color compare, agent dock and chat message, side panes, inspector tab, Settings section and search, Knowledge section, "
                 + "Plugins tab and Browse category, the Media panel's source (footage, project, shared, selects, clips), the open library panel's "
                 + "search and filters, and scroll the timeline to a frame; fullScreen: the preview of viewer.fullscreen is on.",
             parameters: [
@@ -321,8 +321,8 @@ public enum CommandCatalog {
                 CommandParameter("viewerZoom", .string, "Viewer zoom: fit, or a percentage of the output size",
                                  choices: EditorViewerZoom.choices, cli: .option("viewer-zoom")),
                 CommandParameter("compare", .boolean, "Color before/after compare on or off", cli: .option("compare")),
-                CommandParameter("agentDock", .boolean, "Agent tab of the right column shown or hidden", cli: .option("agent-dock")),
-                CommandParameter("rightTab", .string, "Right column tab to show", choices: UIAction.rightTabs, cli: .option("right-tab")),
+                CommandParameter("agentDock", .boolean, "Agent column shown or hidden", cli: .option("agent-dock")),
+                CommandParameter("rightTab", .string, "Side pane to show; the other stays", choices: UIAction.rightTabs, cli: .option("right-tab")),
                 CommandParameter("reveal", .integer, "Scroll the timeline so this frame is visible", minimum: 0,
                                  cli: .option("reveal")),
                 CommandParameter("inspector", .string, "Inspector tab", choices: UIAction.inspectorTabs,
