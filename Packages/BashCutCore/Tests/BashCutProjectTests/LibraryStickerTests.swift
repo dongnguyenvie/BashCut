@@ -56,6 +56,21 @@ struct LibraryStickerTests {
         return item
     }
 
+    @Test("An emoji sticker is sized and placed like an image sticker, away from the captions")
+    func emojiPlacement() throws {
+        let sticker = LibrarySticker(stickerKind: "emoji", emoji: "🎉")
+        // Portrait 1080×1920: 0.3 of the width is 324 px, 0.3 of the short side, centred by default.
+        let centred = try sticker.emojiTextStyle(width: 1080, height: 1920)
+        #expect(centred["size"]?.double == 0.3 && centred["positionX"]?.double == 0.5)
+        let baseline = try #require(centred["positionY"]?.double)
+        #expect(baseline > 0.4 && baseline < 0.5)
+        // Top right stays inside the safe area (right 0.86, top 0.05).
+        let corner = try sticker.emojiTextStyle(size: 0.2, position: .named("top-right"), width: 1080, height: 1920)
+        #expect(abs((corner["positionX"]?.double ?? 0) - 0.76) < 0.001)
+        #expect((corner["positionY"]?.double ?? 0) > 0.8)
+        #expect(throws: (any Error).self) { try sticker.emojiTextStyle(size: 2, width: 1080, height: 1920) }
+    }
+
     @Test("Each sticker kind checks its params and file")
     func validation() throws {
         // Emoji, as the built-in pack stores it, and the kinds read from files.

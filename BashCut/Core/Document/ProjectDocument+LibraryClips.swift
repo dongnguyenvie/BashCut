@@ -109,7 +109,7 @@ extension ProjectDocument {
                 result["note"] = .string("The clip is shorter than asked, so it plays once")
             }
             if placement.position != nil || placement.size != nil {
-                result["note"] = .string("position and size apply to image, animated and video stickers only")
+                result["note"] = .string("position and size apply to stickers only")
             }
             return .object(result)
         } catch let failure as RPCFailure { throw failure } catch {

@@ -66,8 +66,12 @@ extension ProjectDocument {
                 if let note = placed.object["note"]?.string { message = note }
                 return (placed.object["rev"]?.int ?? project.revision, placed.object["item"]?.string ?? "")
             }
+            let sticker = try LibrarySticker(params: item.params, file: item.file, label: item.reference)
+            let fields = try sticker.emojiTextStyle(
+                size: placement.size, position: placement.position, width: project.width, height: project.height)
             result = try placeText(
-                emoji, preset: item.params["textPreset"]?.string ?? "bold-outline", label: "Add text", placement)
+                emoji, preset: item.params["textPreset"]?.string ?? "bold-outline", label: "Add text", placement
+            ) { item, _ in ["textStyle": .object((item["textStyle"]?.object ?? [:]).merging(fields) { $1 })] }
         case .look:
             result = try await placeFilterStack(item, placement)
         case .audio:
@@ -451,8 +455,8 @@ extension ProjectDocument {
             var placed: [String: JSONValue] = [
                 "rev": .integer(result.revision), "item": .string(result.itemID), "library": .string(item.reference),
             ]
-            if placement.position != nil || placement.size != nil {
-                placed["note"] = .string("position and size apply to image, animated and video stickers only")
+            if placement.position != nil || placement.size != nil, item.kind != .sticker {
+                placed["note"] = .string("position and size apply to stickers only")
             }
             return .object(placed)
         }
