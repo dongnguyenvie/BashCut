@@ -28,7 +28,13 @@ struct VoiceToolCard: View {
             targets: ToolTarget.supported(by: ToolID.voice), target: $target, advancedCount: 2,
             runTitle: takeCount == 1 ? String(localized: "Generate → 1 take") : String(localized: "Generate → 3 takes"),
             canRun: document.fileURL != nil && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            running: generating, message: message, run: generate,
+            running: generating, message: message,
+            runOnMany: {
+                document.openBatch(BatchStep("voice.speak", params: ["text": .string(text), "takes": .integer(takeCount),
+                                                                     "choose": .integer(1)],
+                                             label: String(localized: "Voiceover")))
+            },
+            run: generate,
             main: {
                 Text("Script").font(.caption).foregroundStyle(.secondary)
                 TextEditor(text: $text).frame(minHeight: 90).scrollContentBackground(.hidden)

@@ -34,7 +34,8 @@ struct PluginToolCard: View {
             provider: action.plugin.manifest.displayName, info: nil,
             targets: Self.targets(action), target: $target, advancedCount: advanced.count,
             runTitle: String(localized: "Run"), canRun: document.canRunPluginAction(action),
-            running: job?.isActive == true, progress: job?.progress, message: message, run: run,
+            running: job?.isActive == true, progress: job?.progress, message: message,
+            runOnMany: { document.openBatch(BatchStep(action.id, params: values, label: action.title)) }, run: run,
             main: {
                 if let confirm = action.spec.confirm { Text(confirm.text).font(.caption).foregroundStyle(.orange) }
                 ForEach(action.params.filter { !$0.isAdvanced }) { field($0) }

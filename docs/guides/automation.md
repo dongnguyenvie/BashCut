@@ -1128,6 +1128,12 @@ bashcut batch run --preset "Captions draft" --inputs ~/Movies/shoot,~/Movies/old
 - **The app must stay open.** Batches run inside the running BashCut, through the same command handlers as the CLI;
   there are no headless runs without the app. `batch run`, `batch cancel` and `batch presets` are not held by the
   read-after-switch rule, so the agent that started a batch can still cancel it while its items open.
+- **The batch window** (File ▸ Batch…, `ui action open batch`, or a tool card's **Run on › Many projects /
+  files…**, which adds that tool as the first step) builds, saves and runs the same pipeline: inputs, steps (＋ Add
+  step lists the tools, the export step, every command a step may run and the plugin actions) and the selected
+  step's settings, with the queue below. Its Run is the user's approval. `ui dialog` lists it as `sheet:batch` with the
+  pipeline and queue in its message; answer it with `ui respond OPTION --dialog sheet:batch` (`add-inputs`, then
+  `ui respond --path`; `save-preset`; `run`; `cancel`; `open-N` / `reveal-N` for item N; `close`).
 
 ## Model APIs
 

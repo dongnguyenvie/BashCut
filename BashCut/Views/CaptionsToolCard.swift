@@ -25,7 +25,13 @@ struct CaptionsToolCard: View {
             info: "Listens to the speech and writes timed captions on the Captions layer.",
             targets: ToolTarget.supported(by: ToolID.captions), target: $target, advancedCount: 3,
             runTitle: String(localized: "Generate captions"), canRun: canRun, running: running,
-            progress: job?.progress, message: message, run: generate,
+            progress: job?.progress, message: message,
+            runOnMany: {
+                var params: [String: JSONValue] = ["media": .string("{media}"), "replace": .bool(replace)]
+                if wordStyle != "none" { params["wordStyle"] = .string(wordStyle) }
+                document.openBatch(BatchStep("captions.generate", params: params, label: String(localized: "Auto captions")))
+            },
+            run: generate,
             main: {
                 if target == .project {
                     Picker("Media", selection: $source) {

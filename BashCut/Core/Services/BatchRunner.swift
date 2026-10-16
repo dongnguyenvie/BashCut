@@ -80,13 +80,7 @@ public final class BatchRunner {
                 }
                 continue
             }
-            if spec.execution == .approval || spec.mode == .privileged {
-                throw RPCFailure(-32602, "\(where_) needs the user's approval each time, so it cannot run in a batch"
-                                 + (step.action == "export.start" ? "; use the export step instead" : ""))
-            }
-            if refusedActions.contains(step.action) || step.action.hasPrefix("batch.") {
-                throw RPCFailure(-32602, "\(where_) cannot run in a batch: the runner opens each item's project itself")
-            }
+            if let refusal = stepRefusal(spec) { throw RPCFailure(-32602, "\(where_) " + refusal) }
         }
     }
 

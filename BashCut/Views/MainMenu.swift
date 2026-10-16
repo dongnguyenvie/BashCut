@@ -74,6 +74,7 @@ import BashCutPlugin
         menu.addItem(item(.closeProject, String(localized: "Close Project")))
         menu.addItem(item(.saveProject, String(localized: "Save")))
         menu.addItem(item(.importMedia, String(localized: "Import Footage…")))
+        menu.addItem(item(.showBatch, String(localized: "Batch…")))
         menu.addItem(.separator())
         menu.addItem(item(.showReview, String(localized: "Review Before Export…")))
         menu.addItem(item(.showExport, String(localized: "Export…")))

@@ -27,7 +27,12 @@ struct BeatsToolCard: View {
             info: "Finds the beats of a song and marks them on the timeline, so cuts can snap to them.",
             targets: ToolTarget.supported(by: ToolID.beats), target: $target, advancedCount: 1,
             runTitle: String(localized: "Detect beats"), canRun: canRun, running: running,
-            progress: job?.progress, message: message, run: detect,
+            progress: job?.progress, message: message,
+            runOnMany: {
+                document.openBatch(BatchStep("beats.detect", params: ["media": .string("{media}")],
+                                             label: String(localized: "Beat detection")))
+            },
+            run: detect,
             main: {
                 if target == .project {
                     if audio.isEmpty {

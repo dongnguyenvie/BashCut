@@ -1,0 +1,312 @@
+import AppKit
+import BashCutAutomation
+import BashCutDocument
+import BashCutPlugin
+import BashCutProject
+import SwiftUI
+
+/// The selected step's settings, in the same `ToolCard` frame as the Tools panel so a setting looks the same
+/// everywhere: a plugin action's fields from its manifest, a command's from its parameters, the export step's presets.
+/// The card runs on many projects here, so it has no Run on row of its own.
+struct BatchStepCard: View {
+    @Bindable var model: BatchWindowModel
+    let index: Int
+
+    private var step: BatchStep { model.pipeline.steps[index] }
+    private var spec: CommandSpec? { CommandCatalog.spec(named: step.action) }
+    private var action: ContributedAction? { model.document.plugins.action(step.action) }
+    private var parameters: [CommandParameter] {
+        (spec?.parameters ?? []).filter { !BatchRunner.hiddenStepParameters.contains($0.name) }
+    }
+    /// The main fields: the required ones, then the first optional ones, four at most unless more are required.
+    private var mainCount: Int { max(4, parameters.filter(\.required).count) }
+    private var advancedCount: Int {
+        if let action { return action.params.filter(\.isAdvanced).count }
+        return max(0, parameters.count - mainCount)
+    }
+
+    var body: some View {
+        ToolCard(
+            title: String(format: String(localized: "Step %lld · %@"), index + 1, model.title(step)),
+            icon: action?.spec.icon ?? (step.action == BatchRunner.exportAction ? "square.and.arrow.up" : "terminal"),
+            provider: action?.plugin.manifest.displayName ?? String(localized: "built-in"),
+            info: spec.map { LocalizedStringKey($0.summary) }, targets: [], target: .constant(.project),
+            advancedCount: advancedCount, runTitle: "", showsRunRow: false, run: {},
+            main: {
+                LabeledContent("Label") {
+                    TextField(model.title(step), text: Binding(
+                        get: { step.label ?? "" },
+                        set: { model.pipeline.steps[index].label = $0.isEmpty ? nil : $0 }))
+                    .textFieldStyle(.roundedBorder)
+                }
+                if step.action == BatchRunner.exportAction {
+                    exportFields
+                } else if let action {
+                    ForEach(action.params.filter { !$0.isAdvanced }) { pluginField($0) }
+                } else if spec == nil {
+                    Text("No command or installed plugin action has this ID.").font(.caption).foregroundStyle(.orange)
+                } else {
+                    ForEach(parameters.prefix(mainCount), id: \.name) { BatchParameterField(model: model, parameter: $0) }
+                }
+                Text("Text fields may use {input}, {name}, {project} and {media}.").font(.caption2).foregroundStyle(.secondary)
+            },
+            advanced: {
+                if let action {
+                    ForEach(action.params.filter(\.isAdvanced)) { pluginField($0) }
+                } else {
+                    ForEach(parameters.dropFirst(mainCount), id: \.name) { BatchParameterField(model: model, parameter: $0) }
+                }
+            },
+            result: {})
+    }
+
+    private func pluginField(_ option: PluginOption) -> some View {
+        PluginOptionField(option: option, value: Binding(
+            get: { model.parameter(option.id) ?? option.fallback }, set: { model.setParameter(option.id, $0) }))
+    }
+
+    @ViewBuilder private var exportFields: some View {
+        let chosen = BatchRunner.presets(step, model.pipeline)
+        Text("Export presets").font(.caption).foregroundStyle(.secondary)
+        FlowLayout(spacing: 6) {
+            ForEach(OutputPresetName.all, id: \.self) { preset in
+                Toggle(preset, isOn: Binding(
+                    get: { chosen.contains(preset) },
+                    set: { on in
+                        let list = on ? chosen + [preset] : chosen.filter { $0 != preset }
+                        model.setParameter("presets", .array(list.map(JSONValue.string)))
+                    }))
+                .toggleStyle(.button).controlSize(.small)
+            }
+        }
+        Toggle("Subtitles file (.srt)", isOn: boolBinding("includeSRT"))
+        Toggle("Normalize loudness", isOn: boolBinding("normalizeAudio"))
+    }
+
+    private func boolBinding(_ name: String) -> Binding<Bool> {
+        Binding(get: { model.parameter(name)?.bool ?? false }, set: { model.setParameter(name, $0 ? .bool(true) : nil) })
+    }
+}
+
+/// One command parameter as a field: a toggle, a picker of its choices, or text (numbers parsed, lists and objects
+/// as JSON). Its summary is the tooltip.
+private struct BatchParameterField: View {
+    @Bindable var model: BatchWindowModel
+    let parameter: CommandParameter
+    @State private var text = ""
+    @State private var invalid = false
+
+    private var title: String { parameter.name + (parameter.required ? " *" : "") }
+
+    var body: some View {
+        Group {
+            switch parameter.kind {
+            case .boolean:
+                Toggle(isOn: Binding(
+                    get: { (model.parameter(parameter.name) ?? parameter.defaultValue)?.bool ?? false },
+                    set: { model.setParameter(parameter.name, .bool($0)) })
+                ) { Text(verbatim: title) }
+            case .string where parameter.choices != nil:
+                Picker(selection: Binding(
+                    get: { model.parameter(parameter.name)?.string ?? "" },
+                    set: { model.setParameter(parameter.name, $0.isEmpty ? nil : .string($0)) })
+                ) {
+                    Text("Default").tag("")
+                    ForEach(parameter.choices ?? [], id: \.self) { Text(verbatim: $0).tag($0) }
+                } label: { Text(verbatim: title) }
+            default:
+                LabeledContent {
+                    TextField(Self.text(parameter.defaultValue), text: $text)
+                        .textFieldStyle(.roundedBorder)
+                        .foregroundStyle(invalid ? Color.orange : Color.primary)
+                        .onAppear { text = Self.text(model.parameter(parameter.name)) }
+                        .onChange(of: text) { commit() }
+                } label: { Text(verbatim: title) }
+            }
+        }
+        .help(parameter.summary)
+    }
+
+    private func commit() {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            invalid = false
+            model.setParameter(parameter.name, nil)
+            return
+        }
+        let value: JSONValue?
+        switch parameter.kind {
+        case .integer: value = Int(trimmed).map(JSONValue.integer)
+        case .number: value = Double(trimmed).map(JSONValue.number)
+        case .array, .object: value = try? JSONDecoder().decode(JSONValue.self, from: Data(trimmed.utf8))
+        default: value = .string(text)
+        }
+        invalid = value == nil
+        if let value { model.setParameter(parameter.name, value) }
+    }
+
+    static func text(_ value: JSONValue?) -> String {
+        switch value {
+        case .string(let text)?: return text
+        case .integer(let number)?: return String(number)
+        case .number(let number)?: return String(number)
+        case .bool(let flag)?: return flag ? "true" : "false"
+        case nil, .null?: return ""
+        case let value?:
+            return (try? JSONEncoder().encode(value)).flatMap { String(bytes: $0, encoding: .utf8) } ?? ""
+        }
+    }
+}
+
+/// The queue: each item of the run with its step, progress and result, and Open to fix, Reveal or Cancel.
+struct BatchQueueView: View {
+    @Bindable var model: BatchWindowModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Queue").font(.headline)
+                if let run = model.run {
+                    Text(verbatim: Self.summary(run)).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            header
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if let run = model.run {
+                        ForEach(Array(run.items.enumerated()), id: \.offset) { index, item in
+                            row(index, item, run: run)
+                            Divider()
+                        }
+                    } else {
+                        Text("Run the pipeline to fill the queue.").foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            Text("Item").frame(width: 220, alignment: .leading)
+            Text("Step").frame(width: 200, alignment: .leading)
+            Text("Progress").frame(width: 150, alignment: .leading)
+            Text("Result").frame(maxWidth: .infinity, alignment: .leading)
+            Spacer().frame(width: 190)
+        }
+        .font(.caption).foregroundStyle(.secondary)
+    }
+
+    private func row(_ index: Int, _ item: BatchItemStatus, run: BatchRunStatus) -> some View {
+        let status = BatchQueueStatus(item: item, jobs: model.document.jobs)
+        return HStack(spacing: 10) {
+            Label(item.source.name, systemImage: item.source.kind == .project ? "film.stack" : "film")
+                .lineLimit(1).truncationMode(.middle).frame(width: 220, alignment: .leading)
+            Text(verbatim: status.step.map { "\($0 + 1) · \(model.title(run.pipeline.steps[$0]))" } ?? "—")
+                .lineLimit(1).frame(width: 200, alignment: .leading)
+            Group {
+                if item.state == .running {
+                    ProgressView(value: status.progress)
+                } else {
+                    Text(verbatim: Self.stateTitle(item.state)).foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 150, alignment: .leading)
+            Text(verbatim: status.result).foregroundStyle(status.attention ? Color.orange : Color.primary)
+                .lineLimit(2).help(item.error ?? status.result).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 6) {
+                if item.state == .running {
+                    Button("Cancel", action: model.cancel)
+                } else if item.project != nil {
+                    Button(status.attention ? String(localized: "Open to fix") : String(localized: "Open")) {
+                        model.openItem(index)
+                    }
+                    .disabled(model.running).help(model.running ? "The batch is still running" : "Open in the editor")
+                    .accessibilityIdentifier("batch-open-\(index + 1)")
+                    Button("Reveal") { model.revealItem(index) }
+                }
+            }
+            .controlSize(.small).frame(width: 190, alignment: .trailing)
+        }
+        .padding(.vertical, 5)
+        .font(.callout)
+    }
+
+    static func stateTitle(_ state: BatchState) -> String {
+        switch state {
+        case .awaitingApproval: String(localized: "Awaiting approval")
+        case .waiting: String(localized: "Waiting")
+        case .running: String(localized: "Running")
+        case .completed: String(localized: "Done")
+        case .failed: String(localized: "Failed")
+        case .skipped: String(localized: "Skipped")
+        case .cancelled: String(localized: "Cancelled")
+        case .denied: String(localized: "Denied")
+        }
+    }
+
+    static func summary(_ run: BatchRunStatus) -> String {
+        let done = run.count(.completed), total = run.items.count
+        return Self.stateTitle(run.state) + " · " + String(format: String(localized: "%lld of %lld done"), done, total)
+            + (run.count(.failed) > 0 ? " · " + String(format: String(localized: "%lld failed"), run.count(.failed)) : "")
+    }
+}
+
+/// What the queue shows for one item: the step it is on (or stopped at), its progress and its result, with review
+/// issues and failures marked for attention.
+struct BatchQueueStatus {
+    let step: Int?
+    let progress: Double
+    let result: String
+    let attention: Bool
+
+    @MainActor init(item: BatchItemStatus, jobs: JobCenter) {
+        let total = max(1, item.steps.count)
+        let done = item.steps.filter { $0.state == .completed }.count
+        let running = item.currentStep.flatMap { item.steps[$0].job }.flatMap { jobs.job($0)?.progress } ?? 0
+        progress = min(1, (Double(done) + running) / Double(total))
+        step = item.currentStep ?? item.steps.lastIndex { $0.state == .failed } ?? (item.state == .completed ? total - 1 : nil)
+        let issues = Self.reviewIssues(item)
+        switch item.state {
+        case .completed:
+            var parts: [String] = []
+            if !item.outputs.isEmpty {
+                parts.append(item.outputs.count == 1 ? String(localized: "1 file")
+                             : String(format: String(localized: "%lld files"), item.outputs.count))
+            }
+            if let issues {
+                parts.append(issues == 1 ? String(localized: "1 review issue")
+                             : String(format: String(localized: "%lld review issues"), issues))
+            }
+            result = ([String(localized: "Done")] + parts).joined(separator: " · ")
+            attention = (issues ?? 0) > 0
+        case .failed:
+            result = item.error ?? String(localized: "Failed")
+            attention = true
+        case .running:
+            result = String(localized: "Running")
+            attention = false
+        default:
+            result = item.error ?? BatchQueueView.stateTitle(item.state)
+            attention = false
+        }
+    }
+
+    /// The issues the item's last review step found: `review run` gives a list, or `{issues, summary}`; long lists
+    /// are kept as their count.
+    static func reviewIssues(_ item: BatchItemStatus) -> Int? {
+        guard let review = item.steps.last(where: { $0.action == "review.run" && $0.state == .completed }) else {
+            return nil
+        }
+        let issues = review.result.object["issues"] ?? review.result
+        switch issues {
+        case .array(let list): return list.count
+        case .integer(let count): return count
+        default: return nil
+        }
+    }
+}
