@@ -67,7 +67,7 @@ let package = Package(
             .product(name: "BashCutPlugin", package: "BashCutCore"),
             .product(name: "SwiftTerm", package: "SwiftTerm")], path: "BashCut",
             exclude: ["Core/Engine", "Core/Storage", "Core/Agent", "Core/Automation", "Core/Plugins", "Core/Services",
-                      "Info.plist", "BashCut.entitlements", "Resources"]),
+                      "Info.plist", "BashCut.entitlements", "Helper.entitlements", "Assets.xcassets", "Resources"]),
         // Tests: one target per module plus shared fixtures (generated media, scratch folders, synthetic audio).
         .target(name: "BashCutTestSupport", path: "Tests/BashCutTestSupport"),
         .testTarget(name: "BashCutEngineTests", dependencies: ["BashCutEngine", "BashCutTestSupport",

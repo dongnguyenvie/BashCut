@@ -234,7 +234,7 @@ public enum ProjectFonts {
         let letters: CFCharacterSet? = Locale.LanguageCode.isoLanguageCodes.contains(Locale.LanguageCode(code))
             ? CFLocaleCreate(nil, CFLocaleIdentifier(rawValue: language as CFString))
                 .flatMap { CFLocaleGetValue($0, .exemplarCharacterSet) }
-                .map { unsafeBitCast($0, to: CFCharacterSet.self) }
+                .map { unsafeDowncast($0, to: CFCharacterSet.self) }
             : nil
         lock.lock()
         alphabets[language] = .some(letters)
