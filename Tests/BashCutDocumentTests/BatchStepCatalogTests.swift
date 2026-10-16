@@ -43,5 +43,10 @@ struct BatchStepCatalogTests {
             #expect(action != nil)
         }
         #expect(BatchRunner.stepAction(forTool: "plugin/view") == nil)
+        // A tool card's settings go on top of the step's defaults.
+        let captions = BatchRunner.toolStep(ToolID.captions, label: "Captions", params: ["replace": .bool(false)])
+        #expect(captions?.action == "captions.generate")
+        #expect(captions?.params["media"] == .string("{media}"))
+        #expect(captions?.params["replace"] == .bool(false))
     }
 }

@@ -13,7 +13,7 @@ extension EditorView {
             Color.clear.frame(width: width)
                 .overlay(alignment: .leading) {
                     libraryContent.frame(width: LibraryPanelMetrics.wideWidth)
-                        .background(Color(red: 0.065, green: 0.07, blue: 0.08))
+                        .background(Color.editorBackground)
                         .overlay(alignment: .trailing) { Divider() }
                         .shadow(color: .black.opacity(0.4), radius: 12, x: 4)
                 }

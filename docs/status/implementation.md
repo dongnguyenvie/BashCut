@@ -417,10 +417,10 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
 - Plugin API 12 (#634): `contributes.exportSteps` (`PluginExportStepContribution`, `when: media.data.<path>` over
   media the timeline uses). `ExportStepRunner` (BashCutDocument) runs matching steps of ready plugins as one
   `export.steps` job before a final export (`export start` unless `--no-steps`; the Export panel's **Finalise and
-  Export**): `PluginRecipeRunner` with the plugin's environment plus a revoked-after `.plugin` token, the socket and
+  Export**): `PluginCommandRunner` with the plugin's environment plus a revoked-after `.plugin` token, the socket and
   `BASHCUT_CLI`, `::progress`, timeout and cancel; the project is read again and a still-true `when` fails before
   exporting. `ExportController.preparing` makes it count as the running export (progress, cancel, `export status`
-  `state: preparing`). Tests: `PluginExportStepsTests`, `PluginRecipeRunnerTests`, `ExportStepRunnerTests`.
+  `state: preparing`). Tests: `PluginExportStepsTests`, `PluginCommandRunnerTests`, `ExportStepRunnerTests`.
 - Plugin actions with `confirm` wait in their job for a non-blocking `plugin-confirm` sheet (agents can only cancel)
   instead of a modal alert that stopped command handling.
 - Catalog refresh performance (#103): discovery keeps manifests in a `PluginCatalogCache` and reads a plugin again

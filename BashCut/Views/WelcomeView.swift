@@ -82,7 +82,7 @@ struct WelcomeView: View {
             .padding(32)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(red: 0.065, green: 0.07, blue: 0.08))
+        .background(Color.editorBackground)
     }
 
     /// Every project file is `project.bashcut.json`, so a project is named by the folder that holds it.

@@ -418,7 +418,8 @@ public struct PluginCommand: Codable, Sendable, Equatable {
         arguments = try container.decodeIfPresent([String].self, forKey: .arguments) ?? []
     }
 
-    fileprivate func validate() throws {
+    /// An argv without NUL bytes whose executable, when a path, stays inside the plugin bundle.
+    func validate() throws {
         guard !executable.isEmpty, !executable.contains("\0"),
             !arguments.contains(where: { $0.contains("\0") })
         else {
@@ -434,6 +435,9 @@ public struct PluginCommand: Codable, Sendable, Equatable {
 }
 
 public struct PluginInstallRecipe: Codable, Sendable, Equatable {
+    /// What a failing recipe's error starts with (`PluginCommandRunner`).
+    public static let label = "Dependency install"
+
     public let summary: String
     public let command: PluginCommand
     public init(summary: String, command: PluginCommand) {

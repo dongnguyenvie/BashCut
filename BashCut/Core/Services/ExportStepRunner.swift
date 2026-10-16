@@ -97,7 +97,7 @@ public struct ExportStepRunner {
         defer { end() }
         let progress = reporter.progressHandler(range: range)
         let label = String(format: String(localized: "Export step %@ (%@)"), run.title, run.plugin.manifest.displayName)
-        try await PluginRecipeRunner.run(
+        try await PluginCommandRunner.run(
             run.step.command, plugin: run.plugin, directory: run.plugin.directory, extraEnvironment: environment,
             label: label, timeout: run.step.timeout
         ) { output in

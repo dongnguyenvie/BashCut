@@ -40,29 +40,23 @@ extension Project {
         let span = end - start
         let looped = loop && span > available
         let total = looped ? span : min(span, available)
-        let copies = (total + available - 1) / available
-        guard copies <= LibraryAudio.maximumLoops else {
-            throw ProjectError.invalid("Repeating the new music \(copies) times is too many; pick a longer sound")
+        var items = try Project.tiledAudioItems(sound, at: start, total: total, length: available, sourceIn: sourceIn) {
+            "Repeating the new music \($0) times is too many; pick a longer sound"
         }
         var planner = LayerPlanner(self)
         if !media.contains(where: { $0.id == sound.id }) { try planner.add([.addMedia(sound)]) }
         try planner.add(bed.map { .delete(item: $0.item.id, ripple: false) })
         var kept: [String: JSONValue] = [:]
         for key in ["volumeDb", "fadeIn", "muted"] { kept[key] = first.item.fields[key] }
-        let fadeOut = bed.max { $0.item.end < $1.item.end }?.item.fields["fadeOut"]
-        var itemIDs: [String] = []
-        var operations: [EditOperation] = []
-        for copy in 0..<copies {
-            let offset = copy * available
-            var item = Item(media: sound.id, at: start + offset, duration: min(available, total - offset), sourceIn: sourceIn)
-            for (key, value) in kept where copy == 0 || key != "fadeIn" { item.fields[key] = value }
-            if copy == copies - 1, let fadeOut { item.fields["fadeOut"] = fadeOut }
-            itemIDs.append(item.id)
-            operations.append(.insert(track: first.track.id, item: item))
+        for index in items.indices {
+            for (key, value) in kept where index == 0 || key != "fadeIn" { items[index].fields[key] = value }
         }
-        try planner.add(operations)
+        if let fadeOut = bed.max(by: { $0.item.end < $1.item.end })?.item.fields["fadeOut"], let last = items.indices.last {
+            items[last].fields["fadeOut"] = fadeOut
+        }
+        try planner.add(items.map { .insert(track: first.track.id, item: $0) })
         return MusicReplacement(
-            planner: planner, trackID: first.track.id, removed: bed.map(\.item.id), itemIDs: itemIDs, at: start,
+            planner: planner, trackID: first.track.id, removed: bed.map(\.item.id), itemIDs: items.map(\.id), at: start,
             duration: total, looped: looped, shortened: span > total)
     }
 }

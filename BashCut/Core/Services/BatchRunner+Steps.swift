@@ -23,26 +23,30 @@ extension BatchRunner {
         CommandCatalog.specs.filter { $0.mode != .ui && !$0.name.hasPrefix("ui.") && stepRefusal($0) == nil }
     }
 
-    /// The command a built-in tool of the Tools panel runs as a step (its "Run on › Many projects / files…").
-    public static func stepAction(forTool tool: String) -> String? {
-        switch tool {
-        case ToolID.captions: "captions.generate"
-        case ToolID.beats: "beats.detect"
-        case ToolID.voice: "voice.speak"
-        default: nil
-        }
+    /// The command each built-in tool of the Tools panel runs as a step (its "Run on › Many projects / files…").
+    public static let toolActions: [String: String] = [
+        ToolID.captions: "captions.generate", ToolID.beats: "beats.detect", ToolID.voice: "voice.speak",
+    ]
+
+    public static func stepAction(forTool tool: String) -> String? { toolActions[tool] }
+
+    /// A new step running built-in `tool` with the card's current settings (`params`) over `newStep`'s.
+    public static func toolStep(_ tool: String, label: String, params: [String: JSONValue] = [:]) -> BatchStep? {
+        toolActions[tool].map { newStep($0, label: label, params: params) }
     }
 
-    /// A new step for `action` with the parameters it needs filled where a pipeline can: a required media ID is
-    /// `{media}`, a required path `{input}`, and other required ones take their default. The export step exports the
-    /// template outputs, else TikTok.
-    public static func newStep(_ action: String, label: String? = nil, pipeline: BatchPipeline) -> BatchStep {
-        if action == exportAction {
-            let presets = pipeline.template.outputs.isEmpty ? ["tiktok"] : pipeline.template.outputs
-            return BatchStep(action, params: ["presets": .array(presets.map(JSONValue.string))], label: label)
+    /// A new step for `action`: the catalog entry's starter parameters (`BatchStepCatalog`), then the required ones
+    /// filled where a pipeline can — a media ID is `{media}`, a path `{input}`, others take their default — and
+    /// `params` on top. The export step without presets exports the template outputs, else TikTok.
+    public static func newStep(_ action: String, label: String? = nil, params overrides: [String: JSONValue] = [:],
+                               pipeline: BatchPipeline? = nil) -> BatchStep {
+        var params = BatchStepCatalog.entry(action)?.params ?? [:]
+        if action == exportAction, params["presets"] == nil {
+            let outputs = pipeline?.template.outputs ?? []
+            params["presets"] = .array((outputs.isEmpty ? ["tiktok"] : outputs).map(JSONValue.string))
         }
-        var params: [String: JSONValue] = [:]
-        for parameter in CommandCatalog.spec(named: action)?.parameters ?? [] where parameter.required {
+        for parameter in CommandCatalog.spec(named: action)?.parameters ?? []
+        where parameter.required && params[parameter.name] == nil {
             if parameter.name == "media" {
                 params["media"] = .string("{media}")
             } else if parameter.isPath {
@@ -51,6 +55,7 @@ extension BatchRunner {
                 params[parameter.name] = value
             }
         }
+        params.merge(overrides) { $1 }
         return BatchStep(action, params: params, label: label)
     }
 

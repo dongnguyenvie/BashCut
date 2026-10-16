@@ -27,9 +27,10 @@ struct CaptionsToolCard: View {
             runTitle: String(localized: "Generate captions"), canRun: canRun, running: running,
             progress: job?.progress, message: message,
             runOnMany: {
-                var params: [String: JSONValue] = ["media": .string("{media}"), "replace": .bool(replace)]
+                var params: [String: JSONValue] = ["replace": .bool(replace)]
                 if wordStyle != "none" { params["wordStyle"] = .string(wordStyle) }
-                document.openBatch(BatchStep("captions.generate", params: params, label: String(localized: "Auto captions")))
+                document.openBatch(BatchRunner.toolStep(ToolID.captions, label: String(localized: "Auto captions"),
+                                                        params: params))
             },
             run: generate,
             main: {

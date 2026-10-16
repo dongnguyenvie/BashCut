@@ -79,22 +79,10 @@ private final class PluginWindowDelegate: NSObject, NSWindowDelegate {
         // The editor even when the app is in the background (a window opened by a command line).
         let editor = NSApp.windows.first { $0.contentView is NSHostingView<EditorView> } ?? NSApp.mainWindow
         let size = PluginWindowLayout.defaultSize(editor: editor?.frame.size)
-        let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: size),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered, defer: false)
-        let title = document.pluginViews.resolve(key)?.1.title.text ?? key
-        window.title = title
-        window.minSize = PluginWindowLayout.minimum
-        window.isReleasedWhenClosed = false
-        // Lives outside EditorView, so it needs the editor's dark appearance and tint itself.
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = NSColor(red: 0.065, green: 0.07, blue: 0.08, alpha: 1)
-        let hosting = NSHostingView(rootView: PluginWindowView(document: document, key: key, model: model, docked: false)
-            .background(Color(red: 0.065, green: 0.07, blue: 0.08))
-            .preferredColorScheme(.dark).tint(.cyan))
-        hosting.sizingOptions = []
-        window.contentView = hosting
+        let window = AuxiliaryWindow.make(
+            title: document.pluginViews.resolve(key)?.1.title.text ?? key, size: size,
+            minSize: PluginWindowLayout.minimum,
+            content: PluginWindowView(document: document, key: key, model: model, docked: false))
         let delegate = PluginWindowDelegate { [weak self] in self?.hidden(key) }
         delegates[key] = delegate
         window.delegate = delegate
@@ -155,7 +143,7 @@ struct PluginDockedViewHost: View {
     var body: some View {
         if let key = document.ui.dockedPluginView, let model = document.pluginViews.model(key: key) {
             PluginWindowView(document: document, key: key, model: model, docked: true)
-                .background(Color(red: 0.065, green: 0.07, blue: 0.08))
+                .background(Color.editorBackground)
         }
     }
 }

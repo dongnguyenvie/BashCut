@@ -287,7 +287,7 @@ public final class BatchRunner {
             } ?? host.defaultProjectsFolder
             try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
             var params = pipeline.template.createParameters.merging(leave) { $1 }
-            params["name"] = .string(Self.freeProjectName(source.name, in: parent))
+            params["name"] = .string(ProjectSetup.freeName(source.name, in: parent))
             params["directory"] = .string(parent.path)
             params["footage"] = .string(source.url.path)
             _ = try await host.invoke("project.create", params)
@@ -300,23 +300,6 @@ public final class BatchRunner {
         }
         guard let file = host.openProjectFile else { throw RPCFailure(-32000, BatchMessages.noProjectOpened) }
         return file
-    }
-
-    /// `name`, or `name 2`, `name 3`… when a project folder of that name is already in `parent`.
-    static func freeProjectName(_ name: String, in parent: URL) -> String {
-        var candidate = name
-        var number = 1
-        while FileManager.default.fileExists(atPath: parent.appendingPathComponent(folderName(candidate)).path) {
-            number += 1
-            candidate = "\(name) \(number)"
-        }
-        return candidate
-    }
-
-    private static func folderName(_ name: String) -> String {
-        var setup = ProjectSetup()
-        setup.name = name
-        return setup.folderName
     }
 }
 

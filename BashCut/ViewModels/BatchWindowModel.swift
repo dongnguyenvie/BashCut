@@ -49,21 +49,10 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
             window.makeKeyAndOrderFront(nil)
             return
         }
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1180, height: 760),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered, defer: false)
-        window.title = String(localized: "Batch")
-        window.minSize = NSSize(width: 980, height: 600)
-        window.isReleasedWhenClosed = false
-        // Outside EditorView, so it needs the editor's dark appearance and tint itself (as the detached agent dock).
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = NSColor(red: 0.065, green: 0.07, blue: 0.08, alpha: 1)
-        let hosting = NSHostingView(rootView: BatchWindowView(model: self, pluginManager: document.plugins)
-            .background(Color(red: 0.065, green: 0.07, blue: 0.08))
-            .preferredColorScheme(.dark).tint(.cyan))
-        hosting.sizingOptions = []
-        window.contentView = hosting
+        let window = AuxiliaryWindow.make(
+            title: String(localized: "Batch"), size: NSSize(width: 1180, height: 760),
+            minSize: NSSize(width: 980, height: 600),
+            content: BatchWindowView(model: self, pluginManager: document.plugins))
         let delegate = BatchWindowDelegate { [weak self] in
             self?.window = nil
             self?.delegate = nil
@@ -119,17 +108,6 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
 
     func addStep(_ action: String, label: String? = nil) {
         pipeline.steps.append(BatchRunner.newStep(action, label: label, pipeline: pipeline))
-        selectedStep = pipeline.steps.count - 1
-    }
-
-    /// A step from the core catalog (`BatchStepCatalog`), labelled with its localized title.
-    func addEntry(_ entry: BatchStepCatalog.Entry, title: String) {
-        var step = entry.step
-        step.label = title
-        if entry.action == BatchRunner.exportAction, step.params["presets"] == nil {
-            step = BatchRunner.newStep(entry.action, label: title, pipeline: pipeline)
-        }
-        pipeline.steps.append(step)
         selectedStep = pipeline.steps.count - 1
     }
 
