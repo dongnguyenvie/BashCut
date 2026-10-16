@@ -25,16 +25,22 @@ extension WorkflowChecklist {
         }
     }
 
-    /// Before a final export (any preset but quick-draft): no draft graphic on the timeline. The fix renders them at
-    /// full quality and swaps every use: `graphic plan --final` when every draft is a `plan.cut` graphic's media, else
-    /// `graphic rerender --all --final` (it finalises placed ones too).
+    /// The graphics plugin's command that renders `drafts` at full quality and swaps every use: `graphic plan --final`
+    /// when every draft is a `plan.cut` graphic's media, else `graphic rerender --all --final` (it finalises placed
+    /// ones too). The export guard, the Export panel's notice and the review's `graphic-draft` warning name it.
+    public static func graphicDraftFix(_ project: Project, drafts: [GraphicDraft]) -> String {
+        let planned = Set(
+            (project["plan"]?.object["cut"]?.object["graphics"]?.array ?? []).compactMap { $0.object["media"]?.string })
+        return drafts.allSatisfy { planned.contains($0.media) }
+            ? "bin/graphic plan --final" : "bin/graphic rerender --all --final"
+    }
+
+    /// Before a final export (any preset but quick-draft): no draft graphic on the timeline; the fix is
+    /// `graphicDraftFix`.
     public static func graphicsDraftGuard(_ project: Project) -> GuardFailure? {
         let drafts = graphicDrafts(project)
         guard !drafts.isEmpty else { return nil }
-        let planned = Set(
-            (project["plan"]?.object["cut"]?.object["graphics"]?.array ?? []).compactMap { $0.object["media"]?.string })
-        let command = drafts.allSatisfy { planned.contains($0.media) }
-            ? "bin/graphic plan --final" : "bin/graphic rerender --all --final"
+        let command = graphicDraftFix(project, drafts: drafts)
         let list = drafts.map { "\($0.name) (media \($0.media); items \($0.items.joined(separator: ", ")))" }
         return GuardFailure(
             category: "graphics_draft",

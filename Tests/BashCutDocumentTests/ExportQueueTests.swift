@@ -371,3 +371,43 @@ struct TimelineFormatsTests {
         #expect(TimelineFormats.exporter("fcpxml") == nil)
     }
 }
+
+/// Several outputs in one request (#593).
+extension ExportQueueTests {
+    @Test("Several outputs queue one export each, named name-<preset>, and all land in the export history")
+    func severalOutputs() async throws {
+        let root = try folder()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let render = root.appendingPathComponent("render")
+        let presets: [ExportPreset] = [.tiktok, .shorts]
+        #expect(ExportRequest.outputName("trip", preset: .tiktok, among: [.tiktok]) == "trip")
+        #expect(presets.map { ExportRequest.outputName("trip", preset: $0, among: presets) } == ["trip-tiktok", "trip-shorts"])
+        let base = ExportRequest.availableName("trip", presets: presets, directory: render, includeSubRip: false)
+        #expect(base == "trip")
+
+        let log = ExportLog()
+        let exports = ExportController(jobs: JobCenter()) { ExportPipeline(engine: FakeEngine(log: log), loudness: nil) }
+        var finished: [String] = []
+        for preset in presets {
+            let request = try ExportRequest(
+                project: project(), root: root, workspace: nil,
+                name: ExportRequest.outputName(base, preset: preset, among: presets), preset: preset,
+                directory: render, includeSubRip: false, normalizeAudio: false, reserved: exports.queue.reservedOutputs)
+            try exports.enqueue(request, author: .user) { result in
+                if case .success(let outcome) = result { finished.append(outcome.receipt.url.lastPathComponent) }
+            }
+        }
+        #expect(exports.queue.active.count == 2)
+        // The second name is taken while the first is queued, so the suggestion moves both on.
+        #expect(ExportRequest.availableName(
+            "trip", presets: presets, directory: render, includeSubRip: false,
+            reserved: exports.queue.reservedOutputs) == "trip-2")
+        try await waitUntil { finished.count == 2 }
+        #expect(finished == ["trip-tiktok.mp4", "trip-shorts.mp4"])
+        let history = try exports.ledger.all(projectRoot: root)
+        #expect(history.map(\.preset) == ["tiktok", "shorts"])
+        #expect(history.map { URL(fileURLWithPath: $0.path).lastPathComponent } == ["trip-tiktok.mp4", "trip-shorts.mp4"])
+        // On disk now: the next export of both outputs gets a fresh name for both.
+        #expect(ExportRequest.availableName("trip", presets: presets, directory: render, includeSubRip: false) == "trip-2")
+    }
+}

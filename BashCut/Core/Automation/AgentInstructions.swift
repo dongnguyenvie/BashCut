@@ -123,7 +123,8 @@ extension CommandCatalog {
         `jobs wait ID1,ID2,…` waits for several at once. Their result is one undoable edit.
         Each call is a turn: batch (`media import FOLDER`; sheets, not `ui frame` one by one; `checkpoint status
         --wait 100`; `context get` on start, not per command). Build a cut (or voiceover lines and graphics) as plan.cut:
-        `plan check`, then `plan apply`; transitions go in it too.
+        `plan check`, then `plan apply`; transitions go in it too. `plan check --patch P --save` keeps fixes before
+        graphics have media.
         `--format text` prints plain results.
         `project format --canvas landscape|portrait|square` changes the canvas (text sizes follow the short side).
         Clips fit inside the frame; a clip's `fill` (setProperties) or `--clips fill` crops to cover; zoom scales from it.

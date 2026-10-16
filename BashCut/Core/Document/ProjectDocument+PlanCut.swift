@@ -6,9 +6,11 @@ import Foundation
 /// `plan.check` and `plan.apply`: the edit as one list, checked on a scratch copy and built as one undoable edit.
 extension ProjectDocument {
     func registerPlanCutCommands() {
-        handle("plan.check") { document, arguments, _ in
+        handle("plan.check") { document, arguments, author in
             let spec = try document.planCutSpec(arguments)
-            return try await document.checkPlanCut(spec, words: arguments.bool("words")).json
+            let check = try await document.checkPlanCut(spec, words: arguments.bool("words"))
+            guard arguments.bool("save") else { return check.json }
+            return try document.savePlanCut(check, arguments, author: author)
         }
         handleAuthored("plan.apply") { document, arguments, author in
             let spec = try document.planCutSpec(arguments)

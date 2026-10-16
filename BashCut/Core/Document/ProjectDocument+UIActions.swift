@@ -67,7 +67,8 @@ extension ProjectDocument {
         case .pasteClips: return hasProject && (clipboard != nil || Self.pasteboardHasClips)
         case .muteClips: return selectedItems.contains { $0.mediaID != nil }
         case .showHistory, .showReview, .showPlugins, .showDoctor, .showSettings, .showAgentKit, .showSections,
-            .showCommands, .showShortcuts, .showUpdates, .showAbout, .showRecentProjects, .toggleAgentDock, .toggleLibraryPanel, .toggleInspector,
+            .showCommands, .showAssetSearch, .showShortcuts, .showUpdates, .showAbout,
+            .showRecentProjects, .toggleAgentDock, .toggleLibraryPanel, .toggleInspector,
             .askAgent, .openClaudeTerminal, .openCodexTerminal, .openShellTerminal,
             .toggleSafeArea, .toggleSnap, .toggleCompactHeader, .addVideoLayer, .addAdjustmentLayer, .addTextLayer,
             .addAudioLayer:
@@ -99,6 +100,7 @@ extension ProjectDocument {
             .showSections, .showCommands, .showShortcuts, .showUpdates:
             try openDialog(String(action.id.dropFirst("show.".count)))
         case .showRecentProjects: try openDialog("recents")
+        case .showAssetSearch: showAssetSearch()
         case .toggleAgentDock:
             if agents.isDetached { agents.attach() } else { ui.toggleAgentTab() }
         case .toggleLibraryPanel: ui.showLibraryPanel.toggle()

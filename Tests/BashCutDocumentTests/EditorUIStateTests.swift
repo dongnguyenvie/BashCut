@@ -151,6 +151,7 @@ struct EditorUIStateTests {
         let flag = try #require(EditorUIState.toggledDialogs["doctor"])
         ui[keyPath: flag] = true
         #expect(ui.showDoctor)
-        #expect(EditorUIState.toggledDialogs.count == 11)
+        #expect(EditorUIState.toggledDialogs["assets"] == \.showAssetSearch)
+        #expect(EditorUIState.toggledDialogs.count == 12)
     }
 }

@@ -164,3 +164,22 @@ struct LibraryWideButton: View {
         .accessibilityLabel(wide ? "Back to the narrow panel" : "Widen the panel")
     }
 }
+
+/// All assets beside a panel's search field (design section 4): the same search over every panel, project media and
+/// selects as ⇧⌘F, starting from the panel's text.
+struct AllAssetsButton: View {
+    let document: ProjectDocument
+    let query: String
+
+    var body: some View {
+        Button { document.showAssetSearch(query) } label: {
+            Text("All assets").font(.caption2.weight(.medium)).lineLimit(1).fixedSize()
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(Capsule().fill(Color.primary.opacity(0.08)))
+                .overlay(Capsule().stroke(Color.primary.opacity(0.15)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help("Search every panel, project media and selects, grouped by kind (⇧⌘F)")
+    }
+}

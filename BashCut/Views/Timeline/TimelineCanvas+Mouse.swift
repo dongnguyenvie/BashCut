@@ -35,6 +35,9 @@ extension TimelineCanvas {
         }
         let clip = onPlayhead ? nil : hit(at: point)
         hoveredItemID = clip?.1.id
+        // The clip's full name, since its title on the timeline may be cut in the middle.
+        let name = clip.map { clipTitle($0.1, track: $0.2) }
+        if toolTip != name { toolTip = name }
         if onPlayhead || clip.map({ !$0.2.isLocked && edge(at: point, of: $0.0) != nil }) == true {
             hoverCursor = .resizeLeftRight
         } else if let clip, !clip.2.isLocked {
@@ -48,6 +51,7 @@ extension TimelineCanvas {
     override func mouseExited(with event: NSEvent) {
         guard gesture == nil else { return }
         hoveredItemID = nil
+        toolTip = nil
         playheadView.highlighted = false
         badge.show(nil, nearX: 0, y: 0, within: visibleRect)
         NSCursor.arrow.set()

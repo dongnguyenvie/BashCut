@@ -267,3 +267,26 @@ struct WorkflowChecklistTests {
         #expect(plan["requiredStages"] == .array([.string("voiceover")]) && plan["naStages"] == .array([.string("colour")]))
     }
 }
+
+extension WorkflowChecklistTests {
+    @Test("Review warns about each draft graphic with its items and the final render, so plan check sees it (#634)")
+    func graphicDraftReview() throws {
+        var project = try project()
+        let final: JSONValue = .object(["composition": .string("diagram"), "name": .string("Flow"), "fps": .integer(30)])
+        project = try project.applying(.setMediaData(media: "m", patch: ["graphics": final])).project
+        #expect(!TimelineReview.run(project).contains { $0.kind == "graphic-draft" })
+
+        var draft = final.object
+        draft["draft"] = .bool(true)
+        project = try project.applying(.setMediaData(media: "m", patch: ["graphics": .object(draft)])).project
+        let issue = try #require(TimelineReview.run(project).first { $0.kind == "graphic-draft" })
+        #expect(issue.id == "graphic-draft-m")
+        #expect(issue.severity == .warning)
+        #expect(issue.facts["items"] == .array([.string("v"), .string("a")]))
+        #expect(issue.facts["command"] == .string("bin/graphic rerender --all --final"))
+        #expect(issue.fix?.hint?.contains("bin/graphic rerender --all --final") == true)
+        let items = project.tracks.flatMap(\.items).filter { ["v", "a"].contains($0.id) }
+        #expect(issue.frame == items.map(\.at).min())
+        #expect(issue.endFrame == items.map(\.end).max())
+    }
+}

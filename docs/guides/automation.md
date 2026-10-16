@@ -486,6 +486,18 @@ lists recent edits newest first: `step`, `label`, `author`, `why`, `evidence`, `
 `changes {counts, text, truncated}`; `undone` lists the edits redo would bring back. Edits from before this was
 recorded show only label and author. Plugins see `why` in the `edit.committed` event.
 
+The edit list (`plan.cut`) is checked with `plan check` and built with `plan apply`. Both take `--patch` by entry
+ID (`{"voiceover": {"l1": {"pause": 0.8}}}`: that entry merges, the rest of the list stays). `plan apply` refuses
+while the check has an error, and before the graphics and voice stages a voice-led list always has one: a graphic
+without `media` (`graphic-no-media`) or a line without a kept take (`no-take`). To keep the check's fixes before
+then, `plan check --save` saves the merged list as `plan.cut` in one undoable edit without building it; any other
+error refuses with the problems. The result is the check's, with `rev` and `saved`:
+
+```bash
+bashcut plan check --words --patch '{"voiceover": {"l1": {"pause": 0.8}}, "review": {"captionLineChars": 22}}' \
+  --save --base-rev last
+```
+
 
 ### Timeline operations
 

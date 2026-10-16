@@ -63,6 +63,7 @@ public enum UIAction: String, CaseIterable, Sendable {
     case showExportProgress = "show.export-progress"
     case showSections = "show.sections"
     case showCommands = "show.commands"
+    case showAssetSearch = "show.assets"
     case showShortcuts = "show.shortcuts"
     case showUpdates = "show.updates"
     case showAbout = "show.about"
@@ -195,6 +196,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .showExportProgress: "Show the running export: progress, queue and cancel"
         case .showSections: "Sections"
         case .showCommands: "Command palette"
+        case .showAssetSearch: "Search all assets: the whole library, project media and selects, grouped by kind"
         case .showShortcuts: "Keyboard shortcuts"
         case .showUpdates: "Check for BashCut updates"
         case .showAbout: "About BashCut (version and build)"
@@ -327,6 +329,7 @@ public enum UIAction: String, CaseIterable, Sendable {
         case .showHistory: UIShortcut("z", [.command, .option])
         case .showSettings: UIShortcut(",", [.command])
         case .showCommands: UIShortcut("p", [.command, .shift])
+        case .showAssetSearch: UIShortcut("f", [.command, .shift])
         case .showShortcuts: UIShortcut("/", [.command])
         case .showReview: UIShortcut("r", [.command, .shift])
         case .showExport: UIShortcut("e", [.command])
