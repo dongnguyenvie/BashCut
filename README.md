@@ -217,8 +217,9 @@ Requires macOS 14+, Xcode with Swift 6, and network access for the first package
 scripts/run.sh
 ```
 
-This builds with SwiftPM, packages `build/BashCut.app`, signs it with the first Apple Development identity in
-your keychain (or `BASHCUT_SIGN_IDENTITY`) so macOS keeps folder-access grants across rebuilds, and opens it. The
+This builds with SwiftPM, packages `build/BashCut.app`, signs it with a Developer ID Application identity
+(else the first Apple Development one, or `BASHCUT_SIGN_IDENTITY`) so macOS keeps folder-access grants across rebuilds
+and shares them with an installed release, and opens it. The
 app executable is `BashCutApp` and the bundled CLI is `bashcut`, avoiding a name collision on case-insensitive
 disks.
 
