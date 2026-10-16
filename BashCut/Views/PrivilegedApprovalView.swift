@@ -17,7 +17,7 @@ struct PrivilegedApprovalView: View {
                     GridRow {
                         Text(argument.name).foregroundStyle(.secondary)
                         Text(argument.value).font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled).lineLimit(3)
+                            .textSelection(.enabled).lineLimit(6)
                     }
                 }
             }.padding(12).background(.white.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius: 8))

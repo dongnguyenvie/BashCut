@@ -9,7 +9,9 @@ struct ExportView: View {
     @Bindable var document: ProjectDocument
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
+    /// The preset when the project names no outputs; with outputs, `checked` picks among them (#593).
     @State private var preset: ExportPreset = .tiktok
+    @State private var checked: Set<ExportPreset> = []
     @State private var directory: URL?
     @State private var includeSubRip = false
     @State private var normalizeAudio = false
@@ -19,12 +21,21 @@ struct ExportView: View {
     @State private var coverTitle = ""
     @State private var coverPreset = "hook-title"
 
-    private var dimensions: (Int, Int) {
-        preset.dimensions(projectWidth: document.project.width, projectHeight: document.project.height)
-    }
+    /// The project's outputs (`output.presets`), primary first.
+    private var outputs: [ExportPreset] { document.outputPresets }
+    /// What Export queues, one job each: the checked outputs in the project's order, else the picked preset.
+    private var chosen: [ExportPreset] { outputs.isEmpty ? [preset] : outputs.filter(checked.contains) }
     private var issues: Int { document.reviewIssues().filter { $0.severity != .info }.count }
     private var loudnessProviders: [PluginProviderChoice] {
         document.plugins.providers(for: "audio.loudness")
+    }
+    private var hasCaptions: Bool {
+        document.project.tracks.first(where: { $0.role == "captions" })?.items.isEmpty == false
+    }
+    private var hasMusic: Bool { document.project.tracks.contains { $0.role == TrackRole.music && !$0.items.isEmpty } }
+    /// Draft graphics a final export would ship (#634); a quick draft may use them.
+    private var drafts: [WorkflowChecklist.GraphicDraft] {
+        chosen.contains { $0 != .quickDraft } ? WorkflowChecklist.graphicDrafts(document.project) : []
     }
 
     var body: some View {
@@ -41,14 +52,7 @@ struct ExportView: View {
                         Button(String(format: String(localized: "Use %@"), free)) { name = free }
                     }.font(.caption)
                 }
-                Picker("Preset", selection: $preset) {
-                    ForEach(ExportPreset.allCases) { value in
-                        Text(LocalizedStringKey(value.title)).tag(value)
-                    }
-                }
-                LabeledContent("Video") {
-                    Text(videoDescription).foregroundStyle(.secondary)
-                }
+                outputRows
                 LabeledContent("Audio") {
                     Text(audioDescription).foregroundStyle(.secondary)
                 }
@@ -58,58 +62,36 @@ struct ExportView: View {
                         Button("Choose…", action: chooseDirectory).accessibilityLabel("Choose export folder")
                     }
                 }
-                Toggle("Include .srt captions", isOn: $includeSubRip)
-                    .disabled(document.project.tracks.first(where: { $0.role == "captions" })?.items.isEmpty != false)
-                Toggle("Without music", isOn: $withoutMusic)
-                    .disabled(!document.project.tracks.contains { $0.role == TrackRole.music && !$0.items.isEmpty })
+                option("Include .srt captions", isOn: $includeSubRip,
+                       reason: hasCaptions ? nil : "No captions on the timeline")
+                option("Without music", isOn: $withoutMusic, reason: hasMusic ? nil : "No music on the timeline")
                     .help("The same cut with voice and sound effects only, to add a platform's own sound")
-                Toggle("Normalize audio", isOn: $normalizeAudio)
-                    .disabled(loudnessProviders.isEmpty)
+                option("Normalize audio", isOn: $normalizeAudio,
+                       reason: loudnessProviders.isEmpty ? "Needs an audio.loudness plugin" : nil) {
+                    Button("Find a plugin…", action: findLoudnessPlugin).font(.caption)
+                }
                 if normalizeAudio {
                     Picker("Loudness provider", selection: $loudnessProvider) {
                         ForEach(loudnessProviders) { choice in
                             Text("\(choice.pluginName) · \(choice.provider.name)").tag(choice.provider.id)
                         }
                     }
-                    Stepper(value: $targetLUFS, in: -30 ... -5, step: 1) {
-                        LabeledContent("Target loudness") {
+                    // A labelled stepper is a form row of its own: its label left the grid's label column.
+                    LabeledContent("Target loudness") {
+                        HStack(spacing: 6) {
                             Text("\(targetLUFS.formatted(.number.precision(.fractionLength(0)))) LUFS")
+                            Stepper("Target loudness", value: $targetLUFS, in: -30 ... -5, step: 1).labelsHidden()
                         }
                     }
                 }
-                LabeledContent("Cover") {
-                    // Two lines: one row of field, preset and button squeezed the label in Vietnamese.
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            // In a columns form a TextField's title becomes a second label and squeezes the field.
-                            TextField("Title (optional)", text: $coverTitle, prompt: Text("Title (optional)"))
-                                .labelsHidden().frame(minWidth: 120, maxWidth: 220)
-                            Picker("Title preset", selection: $coverPreset) {
-                                ForEach(TextPreset.all, id: \.self) { Text(verbatim: $0).tag($0) }
-                            }.labelsHidden().fixedSize().disabled(coverTitle.isEmpty)
-                        }
-                        Button("Save Cover at Playhead") {
-                            document.saveCoverAtPlayhead(title: coverTitle, preset: coverPreset)
-                        }.help("A still of the frame at the playhead for each output's cover aspect, saved in render/")
-                    }
-                }
+                coverRow
             }.formStyle(.columns)
+            if !drafts.isEmpty { draftNotice }
             if issues > 0 {
                 Label("\(issues) review issues still open", systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
             }
-            if loudnessProviders.isEmpty {
-                Text("Install an audio.loudness plugin to enable two-pass LUFS normalization.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Button("Find a plugin…") {
-                    document.ui.showExport = false
-                    // Let the Export sheet finish closing before the Plugins sheet opens.
-                    Task {
-                        try? await Task.sleep(for: .milliseconds(400))
-                        document.showPluginBrowser(capability: "audio.loudness")
-                    }
-                }.font(.caption)
-            } else if normalizeAudio {
+            if normalizeAudio, !loudnessProviders.isEmpty {
                 Text("BashCut renders a temporary mix, measures it, applies a true-peak-safe gain, then verifies the final export.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -120,19 +102,24 @@ struct ExportView: View {
                 }
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Export", action: start).keyboardShortcut(.defaultAction)
+                Button(action: start) {
+                    chosen.count > 1 ? Text("Export \(chosen.count) outputs") : Text("Export")
+                }.keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || directory == nil || suggestedName != nil)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || directory == nil || suggestedName != nil
+                        || chosen.isEmpty)
             }
         }.padding(24).frame(width: 620)
             .onAppear {
                 directory = document.fileURL?.deletingLastPathComponent().appendingPathComponent("render")
                 // The project's own output (a recipe or the format menu sets it) wins over the Settings default.
                 preset = document.outputPresets.first ?? document.settings.savedExportPreset ?? document.primaryExportPreset
+                // The primary output is on; the others wait to be checked.
+                checked = Set(outputs.prefix(1))
                 // The project name, numbered when an earlier export already took it.
                 name = directory.map {
                     ExportRequest.availableName(
-                        defaultName, preset: preset, directory: $0, includeSubRip: includeSubRip,
+                        defaultName, presets: chosen, directory: $0, includeSubRip: includeSubRip,
                         reserved: document.exports.queue.reservedOutputs)
                 } ?? defaultName
                 document.plugins.refresh(projectRoot: document.fileURL?.deletingLastPathComponent())
@@ -145,16 +132,130 @@ struct ExportView: View {
             }
     }
 
+    /// The project's outputs as checkboxes, each with its picture; without outputs, a preset picker.
+    @ViewBuilder private var outputRows: some View {
+        if outputs.isEmpty {
+            Picker("Preset", selection: $preset) {
+                ForEach(ExportPreset.allCases) { value in
+                    Text(LocalizedStringKey(value.title)).tag(value)
+                }
+            }
+            LabeledContent("Video") {
+                Text(videoDescription(preset)).foregroundStyle(.secondary)
+            }
+        } else {
+            LabeledContent("Outputs") {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(outputs) { output in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Toggle(isOn: outputBinding(output)) {
+                                HStack(spacing: 6) {
+                                    Text(LocalizedStringKey(output.title))
+                                    if output == outputs.first {
+                                        Text("Primary").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            Text(videoDescription(output)).font(.caption).foregroundStyle(.secondary)
+                                .padding(.leading, 20)
+                        }
+                    }
+                    if chosen.isEmpty {
+                        Text("Check at least one output").font(.caption).foregroundStyle(.orange)
+                    } else if chosen.count > 1 {
+                        Text(String(format: String(localized: "Each output gets its own file: %@"),
+                                    chosen.map { ExportRequest.outputName(name, preset: $0, among: chosen) }
+                                        .joined(separator: ", ")))
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    }
+                }
+            }
+        }
+    }
+
+    private func outputBinding(_ output: ExportPreset) -> Binding<Bool> {
+        Binding(get: { checked.contains(output) }, set: { on in
+            if on { checked.insert(output) } else { checked.remove(output) }
+        })
+    }
+
+    /// A checkbox; when `reason` is set it is off and disabled, with the reason on one line under it.
+    private func option(
+        _ title: LocalizedStringKey, isOn: Binding<Bool>, reason: LocalizedStringKey?,
+        @ViewBuilder fix: () -> some View = { EmptyView() }
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Toggle(title, isOn: reason == nil ? isOn : .constant(false)).disabled(reason != nil)
+            if let reason {
+                HStack(spacing: 6) {
+                    Text(reason).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    fix()
+                }.padding(.leading, 20)
+            }
+        }
+    }
+
+    private var coverRow: some View {
+        LabeledContent("Cover") {
+            // Two lines: one row of field, preset and button squeezed the label in Vietnamese.
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    // In a columns form a TextField's title becomes a second label and squeezes the field.
+                    TextField("Title (optional)", text: $coverTitle, prompt: Text("Title (optional)"))
+                        .labelsHidden().frame(minWidth: 120, maxWidth: 220)
+                    Picker("Title preset", selection: $coverPreset) {
+                        ForEach(TextPreset.all, id: \.self) { Text(verbatim: $0).tag($0) }
+                    }.labelsHidden().fixedSize().disabled(coverTitle.isEmpty)
+                }
+                Button("Save Cover at Playhead") {
+                    document.saveCoverAtPlayhead(title: coverTitle, preset: coverPreset)
+                }.help("A still of the frame at the playhead for each output's cover aspect, saved in render/")
+            }
+        }
+    }
+
+    /// Draft graphics in a final export (#634): the user may export anyway; the notice names the fix.
+    private var draftNotice: some View {
+        let command = WorkflowChecklist.graphicDraftFix(document.project, drafts: drafts)
+        return VStack(alignment: .leading, spacing: 4) {
+            Label(drafts.count == 1 ? "1 graphic is a draft" : "\(drafts.count) graphics are drafts",
+                  systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+            Text("Drafts play at fewer frames a second. Ask your agent for the final render, or run:")
+                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Text(verbatim: command).font(.caption.monospaced()).textSelection(.enabled)
+                Button("Copy") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(command, forType: .string)
+                }.controlSize(.small)
+            }
+            Text(verbatim: drafts.map(\.name).joined(separator: ", ")).foregroundStyle(.secondary).lineLimit(2)
+        }.font(.caption)
+    }
+
+    private func findLoudnessPlugin() {
+        document.ui.showExport = false
+        // Let the Export sheet finish closing before the Plugins sheet opens.
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            document.showPluginBrowser(capability: "audio.loudness")
+        }
+    }
+
     /// A free name to offer when the typed one would overwrite an export on disk or in the queue.
     private var suggestedName: String? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let directory, !trimmed.isEmpty else { return nil }
         let reserved = document.exports.queue.reservedOutputs
-        guard ExportRequest.nameIsTaken(
-            trimmed, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
-        else { return nil }
+        let presets = chosen
+        guard presets.contains(where: { preset in
+            ExportRequest.nameIsTaken(
+                ExportRequest.outputName(trimmed, preset: preset, among: presets), preset: preset,
+                directory: directory, includeSubRip: includeSubRip, reserved: reserved)
+        }) else { return nil }
         return ExportRequest.availableName(
-            trimmed, preset: preset, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
+            trimmed, presets: presets, directory: directory, includeSubRip: includeSubRip, reserved: reserved)
     }
 
     private var defaultName: String {
@@ -166,7 +267,8 @@ struct ExportView: View {
         return setup.folderName.isEmpty ? "bashcut-export" : setup.folderName
     }
 
-    private var videoDescription: String {
+    private func videoDescription(_ preset: ExportPreset) -> String {
+        let dimensions = preset.dimensions(projectWidth: document.project.width, projectHeight: document.project.height)
         let codec = preset == .proRes422HQ ? "ProRes 422 HQ" : "H.264"
         let rate = preset.videoBitRate.map { " · \($0 / 1_000_000) Mbps" } ?? ""
         let fps = document.project.fps.value.formatted(.number.precision(.fractionLength(2)))
@@ -209,7 +311,7 @@ struct ExportView: View {
                 label: "Export audio settings")
         }
         document.startExport(
-            name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
+            name: name, presets: chosen, directory: directory, includeSubRip: includeSubRip,
             normalizeAudio: normalizeAudio, withoutRoles: withoutMusic ? [TrackRole.music] : [])
     }
 }

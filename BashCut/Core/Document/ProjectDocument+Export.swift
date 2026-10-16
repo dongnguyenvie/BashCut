@@ -23,14 +23,18 @@ extension ProjectDocument {
         } catch { message = error.localizedDescription }
     }
 
+    /// The Export sheet: one queued export per checked output (#593), named `name-<preset>` when there are several.
     func startExport(
-        name: String, preset: ExportPreset, directory: URL, includeSubRip: Bool,
+        name: String, presets: [ExportPreset], directory: URL, includeSubRip: Bool,
         normalizeAudio: Bool = false, withoutRoles: Set<String> = []
     ) {
         do {
-            try startExportAuthorized(
-                name: name, preset: preset, directory: directory, includeSubRip: includeSubRip,
-                normalizeAudio: normalizeAudio, withoutRoles: withoutRoles)
+            for preset in presets {
+                try startExportAuthorized(
+                    name: ExportRequest.outputName(name, preset: preset, among: presets), preset: preset,
+                    directory: directory, includeSubRip: includeSubRip, normalizeAudio: normalizeAudio,
+                    withoutRoles: withoutRoles)
+            }
         } catch {
             message = error.localizedDescription
         }
