@@ -49,6 +49,12 @@ for line in sys.stdin:
             with open(os.path.join(folder, "out.txt"), "w") as handle:
                 handle.write("done")
             send({"id": rid, "result": {"path": os.path.join(folder, "out.txt"), "options": params.get("options")}})
+        elif method == "options.check" and params["option"] == "broken":
+            send({"id": rid, "error": {"code": "failed", "message": "cannot check"}})
+        elif method == "options.check":
+            key = params["value"]
+            ok = key.startswith("AIza") and params["options"].get("service") == "gemini"
+            send({"id": rid, "result": {"ok": ok, "message": "Gemini accepts the key" if ok else "Not a Gemini key (" + params["option"] + ")"}})
         elif method == "plugin.action":
             answer = call(rid, "timeline.get", {})
             send({"id": rid, "result": {"message": "ok", "data": {"host": answer.get("result")}}})
@@ -189,5 +195,23 @@ struct PluginViewServiceTests {
         #expect(calls.all == ["timeline.get"])
         #expect(proposal.result.object["host"]?.object["rev"]?.int == 4)
         await PluginSessionTransport.shared.stopAll()
+    }
+
+    @Test("options.check sends the candidate key with the other option values and returns the plugin's verdict")
+    func checksAnOption() async throws {
+        let fixture = try fixture()
+        let plugin = try plugin(fixture)
+        let good = await fixture.service.checkOption(
+            "apiKey", value: "AIzaGood", options: ["service": .string("gemini"), "apiKey": .string("")], plugin: plugin)
+        #expect(good == PluginOptionCheck(ok: true, message: "Gemini accepts the key"))
+        let bad = await fixture.service.checkOption(
+            "apiKey", value: "sk-123", options: ["service": .string("gemini")], plugin: plugin)
+        #expect(bad == PluginOptionCheck(ok: false, message: "Not a Gemini key (apiKey)"))
+    }
+
+    @Test("A plugin that fails options.check gives no verdict")
+    func uncheckedOption() async throws {
+        let fixture = try fixture()
+        #expect(await fixture.service.checkOption("broken", value: "x", options: [:], plugin: try plugin(fixture)) == nil)
     }
 }

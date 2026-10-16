@@ -27,7 +27,12 @@ public struct SourceCrop: Sendable, Equatable {
         let visible = CGRect(
             x: oriented.minX + width * left, y: oriented.minY + height * bottom,
             width: width * max(0.05, 1 - left - right), height: height * max(0.05, 1 - top - bottom))
-        rect = visible.applying(orientation.inverted()).standardized
+        // Whole pixels, rounded inwards: a fractional edge would leave its row partly transparent, which shows the
+        // layer below through the edge and, blurred (`blur`), through much of the picture.
+        let exact = visible.applying(orientation.inverted()).standardized
+        let minX = exact.minX.rounded(.up), minY = exact.minY.rounded(.up)
+        let maxX = max(minX + 1, exact.maxX.rounded(.down)), maxY = max(minY + 1, exact.maxY.rounded(.down))
+        rect = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
         cornerRadius = radius * min(rect.width, rect.height)
     }
 

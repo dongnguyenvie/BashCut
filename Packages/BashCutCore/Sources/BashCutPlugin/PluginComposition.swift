@@ -39,10 +39,19 @@ public enum PluginFeature {
     /// `contributes.exportSteps`: blocking steps before a final export (API 12, #634).
     public static let exportSteps = "exportSteps"
 
+    /// `options[].check` on secrets: Settings asks the plugin (`options.check`) before saving a key.
+    public static let optionsCheck = "options.check"
+
+    /// The item field `blur` on video and image clips (a cropped, blurred copy hides one area of a picture).
+    public static let clipBlur = "clip.blur"
+
+    /// The item fields `pixelate` (a mosaic) and `feather` (edges fading out) on video and image clips.
+    public static let clipMosaic = "clip.mosaic"
+
     /// Features that are not a view component or place.
     static let named = [
         container, views, requires, invoke, optionsSet, voiceMaxTakes, voiceSavedClones, inspectorWhen, viewUpdate,
-        overlays, viewsDrag, skillsOnly, tools, exportSteps,
+        overlays, viewsDrag, skillsOnly, tools, exportSteps, optionsCheck, clipBlur, clipMosaic,
     ]
 
     /// Every feature this host provides: `views.<component>` for each view component it can draw and

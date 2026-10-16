@@ -66,7 +66,7 @@ public struct ItemProperty: Sendable {
         .init("textStyle", "tracking", .number(-0.5...2), "Letter spacing as a share of the font size (default 0)"),
         .init("textStyle", "uppercase", .boolean, "Draw the text in capitals"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
-        + backdropProperties
+        + backdropProperties + pictureProperties
 }
 
 extension ColorGrade {

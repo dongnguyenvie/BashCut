@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Replace": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Replace" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thay" } } } },
+    "Save Anyway": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save Anyway" } }, "vi": { "stringUnit": { "state": "translated", "value": "Vẫn lưu" } } } },
+    "Checking the key…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Checking the key…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đang kiểm tra khoá…" } } } },
+    "The plugin refused this key": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The plugin refused this key" } }, "vi": { "stringUnit": { "state": "translated", "value": "Plugin từ chối khoá này" } } } },
+    "Saved and checked": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saved and checked" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu và kiểm tra" } } } },
+    "Saved; the plugin could not check it": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saved; the plugin could not check it" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đã lưu; plugin không kiểm tra được" } } } },
     "Drop to add as footage": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Drop to add as footage" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thả vào để thêm làm footage" } } } },
     "Build": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Build" } }, "vi": { "stringUnit": { "state": "translated", "value": "Dựng" } } } },
     "Fix": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Fix" } }, "vi": { "stringUnit": { "state": "translated", "value": "Sửa" } } } },

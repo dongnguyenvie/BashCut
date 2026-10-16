@@ -247,6 +247,9 @@ public final class BashCutCompositor: NSObject, AVVideoCompositing, @unchecked S
         } else if let crop = video.crop {
             sourceImage = crop.apply(to: sourceImage)
         }
+        // `pixelate`, `blur` and `feather` act on what is left after the crop (a cropped copy hides one area of a
+        // picture: a mosaic or blur over text, its edges fading into the picture around it).
+        sourceImage = Self.obscured(sourceImage, properties: properties, side: min(decoded.extent.width, decoded.extent.height))
         sourceImage = sourceImage.transformed(by: transform)
         // The backdrop is part of the clip's picture: transitions, grade and opacity apply to both.
         if let backdrop = video.backdrop { sourceImage = sourceImage.composited(over: backdrop.image(source: decoded)) }

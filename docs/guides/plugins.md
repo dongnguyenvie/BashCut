@@ -121,7 +121,7 @@ the lower of the plugin's `apiVersion` and the host's current version.
 ### Host features
 
 Host features (API 8) are names for what a BashCut can do, so a plugin asks for exactly what it uses instead of a whole
-API version: `container`, `views`, `requires`, `invoke`, `options.set` (the `plugins.option` host call), and `views.<component>` for each view component (`views.list`,
+API version: `container`, `views`, `requires`, `invoke`, `options.set` (the `plugins.option` host call), `options.check` (a secret's `check`), `clip.blur` (the item field `blur`), `clip.mosaic` (`pixelate` and `feather`), and `views.<component>` for each view component (`views.list`,
 `views.audio`, `views.imageCompare`, …). The session `hello` carries `"features": […]` and `plugins list --views` lists them.
 A manifest's `features` names the ones the plugin cannot work without; a BashCut without one lists the plugin as
 outdated ("Update BashCut"). For optional features, read `features` from `hello` and adapt instead.
@@ -704,6 +704,14 @@ example the voice a `voice.synthesize` provider should use), as `options`.
     keys are never reused automatically and must be re-entered in Settings. Changed plugin code also requires
     a new key entry, even after Trust; approving code does not grant it the previous version's credentials.
     Saving a key for new code deletes that installation's keys for older fingerprints.
+  - A stored secret shows as dots with **Saved**; the field is never filled with the stored value.
+  - `"check": true` (host feature `options.check`) has Settings ask the plugin before it saves a key. **Save**
+    sends method `options.check` with `{"option": "apiKey", "value": "<the typed key>", "options": {…}}` (the
+    plugin's current option values, secrets included, with this one replaced) and shows the answer
+    `{"ok": true|false, "message": "…"}` under the field: a refused key is not saved unless the user chooses **Save
+    Anyway**, and an accepted one is saved with the plugin's message (for example "Gemini accepts the key"). Check
+    the shape first and the service second (a cheap call such as listing models), and answer within a few
+    seconds. A plugin that fails the request or is not ready gives no verdict, and the key is saved unchecked.
   - Action parameters cannot be secrets.
 - `file` (API 3) shows **Choose…** with a file panel (through `ModalCenter`, so agents answer it with
   `ui respond --path`); `fileTypes` limits the extensions. Project-scope files inside the project are stored
@@ -723,6 +731,7 @@ example the voice a `voice.synthesize` provider should use), as `options`.
 | `maxLength` | For `string`: 1–100,000 (default limit 10,000) |
 | `advanced` | API 10, action `params` only: `true` puts the parameter under **Advanced** on the tool card instead of with the main fields (default `false`). Ignored by the parameter sheet of other placements, which shows every parameter |
 | `scope` | `user` (default): saved for this Mac in `plugin-trust.json`. `project`: stored in the project under `pluginOptions.<plugin id>` as an undoable edit |
+| `check` | `secret` options only: Settings asks the plugin with `options.check` before saving the key (see above) |
 | `bindsSecrets` | Not on `secret` or `file` options. The plugin's secrets are stored per value of this option, so a key entered for one destination is never sent to another |
 
 A stored value that no longer fits the option falls back to its default. Agents read options with

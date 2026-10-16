@@ -1,4 +1,4 @@
-import BashCutPlugin
+@testable import BashCutPlugin
 import BashCutProject
 import Foundation
 import Testing
@@ -162,5 +162,18 @@ struct PluginContributionsTests {
         #expect(try options[2].parse("0.25") == .number(0.25))
         #expect(throws: PluginError.self) { try options[1].parse("many") }
         #expect(options[0].jsonSchema.object["enum"] == .array([.string("a"), .string("b")]))
+    }
+
+    @Test("check is for secret options")
+    func secretCheck() throws {
+        let key = PluginOption(id: "apiKey", title: "API key", type: .secret, scope: .user, check: true)
+        try key.validate()
+        #expect(key.isChecked)
+        let name = PluginOption(id: "name", title: "Name", type: .string, check: true)
+        #expect(throws: PluginError.self) { try name.validate() }
+        #expect(!name.isChecked)
+        let decoded = try JSONDecoder().decode(
+            PluginOption.self, from: Data(#"{"id":"apiKey","title":"Key","type":"secret","check":true}"#.utf8))
+        #expect(decoded.isChecked)
     }
 }

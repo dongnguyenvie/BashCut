@@ -31,4 +31,14 @@ extension ItemProperty {
         .init("backdrop", "blur", .number(0...0.5), "Blur radius as a share of the frame's short side (kind blur; default 0.05)"),
         .init("backdrop", "dim", .number(0...1), "Darkens the backdrop: 0 unchanged, 1 black (default 0)"),
     ]
+
+    /// Picture fields of video and image clips beyond transform, crop and colour.
+    static let pictureProperties: [ItemProperty] = [
+        .init(nil, "blur", .number(0...0.2),
+              "Video or image picture: Gaussian blur radius as a share of the picture's short side, after the crop (0.02 softens, 0.04 hides text)"),
+        .init(nil, "pixelate", .number(0...0.1),
+              "Video or image picture: mosaic cell size as a share of the picture's short side, after the crop and before the blur"),
+        .init(nil, "feather", .number(0...0.5),
+              "Video or image picture: its edges fade out over this share of its shorter side (after crop, mosaic and blur)"),
+    ]
 }
