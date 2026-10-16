@@ -13,7 +13,9 @@ extension CommandCatalog {
         + "the last step returned). Items run one at a time in the open editor, each project saved after its steps; "
         + "the app must stay open (no headless runs)."
 
-    static let batchSpecs: [CommandSpec] = [
+    static let batchSpecs: [CommandSpec] = batchRunSpecs + batchFixSpecs
+
+    private static let batchRunSpecs: [CommandSpec] = [
         CommandSpec(
             "batch.run", .privileged,
             "Run a pipeline over its inputs after the user approves the batch once in the app (that approval covers "
