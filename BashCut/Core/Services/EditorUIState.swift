@@ -162,6 +162,9 @@ public final class EditorUIState {
     /// The command palette (⇧⌘P) and the keyboard-shortcuts sheet (⌘/), both built from the menu bar.
     public var showCommands = false
     public var showShortcuts = false
+    /// The All assets search (⇧⌘F, P2-B1) and its last query, kept while it is closed.
+    public var showAssetSearch = false
+    public var assetSearchQuery = ""
     /// Open Recent › View All… (⌃R): every remembered project, searchable (#529).
     public var showRecents = false
     /// Voice panel › Clone a voice… (#532).
@@ -244,6 +247,7 @@ public final class EditorUIState {
         "review": \.showReview, "history": \.showHistory, "plugins": \.showPlugins, "settings": \.showSettings,
         "doctor": \.showDoctor, "ask": \.showAsk, "sections": \.showSections, "commands": \.showCommands,
         "shortcuts": \.showShortcuts, "updates": \.showUpdates, "recents": \.showRecents,
+        "assets": \.showAssetSearch,
     ]
 }
 

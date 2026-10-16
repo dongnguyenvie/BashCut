@@ -193,13 +193,12 @@ import BashCutPlugin
             self?.document.fullScreenPreview.isOn == true })
         menu.addItem(.separator())
         menu.addItem(item(.toggleAgentDock, String(localized: "Agent Dock")) { [weak self] in
-            guard let self else { return false }
-            return document.ui.showAgentDock && !document.agents.isDetached
-        })
+            self.map { $0.document.ui.showAgentDock && !$0.document.agents.isDetached } == true })
         menu.addItem(item(.toggleLibraryPanel, String(localized: "Library Panel")) { [weak self] in self?.document.ui.showLibraryPanel == true })
         menu.addItem(item(.toggleInspector, String(localized: "Inspector")) { [weak self] in self?.document.ui.inspectorShown == true })
         menu.addItem(.separator())
         menu.addItem(item(.showCommands, String(localized: "Command Palette…")))
+        menu.addItem(item(.showAssetSearch, String(localized: "Search All Assets…")))
         let fullScreen = menu.addItem(
             withTitle: String(localized: "Enter Full Screen"), action: #selector(NSWindow.toggleFullScreen(_:)),
             keyEquivalent: "f")

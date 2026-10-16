@@ -78,6 +78,7 @@ extension ProjectDocument {
         closing("sections", "Sections", when: ui.showSections) { [weak self] in self?.ui.showSections = false }
         closing("commands", "Command palette", when: ui.showCommands) { [weak self] in self?.ui.showCommands = false }
         closing("recents", "Recent projects", when: ui.showRecents) { [weak self] in self?.ui.showRecents = false }
+        closing("assets", "All assets search", when: ui.showAssetSearch) { [weak self] in self?.ui.showAssetSearch = false }
         closing("shortcuts", "Keyboard shortcuts", when: ui.showShortcuts) { [weak self] in
             self?.ui.showShortcuts = false
         }
