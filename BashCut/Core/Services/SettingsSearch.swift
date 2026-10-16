@@ -1,3 +1,4 @@
+import BashCutProject
 import Foundation
 
 /// Matching for the Settings search box: every word of the query must appear in the setting's terms (its English
@@ -13,7 +14,6 @@ public enum SettingsSearch {
     /// Lowercased without accents; Vietnamese đ is a letter of its own, so it becomes d by hand ("da gui" finds
     /// "đã gửi").
     public static func fold(_ text: String) -> String {
-        text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
-            .replacingOccurrences(of: "đ", with: "d").replacingOccurrences(of: "Đ", with: "d")
+        text.searchFolded
     }
 }

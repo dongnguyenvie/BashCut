@@ -5,15 +5,14 @@ import Foundation
 /// The steps a pipeline may hold (P2-C2): the batch window's "Add step" lists them from here, so a command added to
 /// the catalog that a batch may run shows up without a change to the window.
 extension BatchRunner {
-    /// Why `spec` cannot be a step, nil when it can: approval commands (exports go through the `export` step), project
-    /// switches and batch commands.
+    /// Why `spec` cannot be a step, as a `BatchMessages.step` key; nil when it can: approval commands (exports go
+    /// through the `export` step), project switches and batch commands.
     public static func stepRefusal(_ spec: CommandSpec) -> String? {
         if spec.execution == .approval || spec.mode == .privileged {
-            return "needs the user's approval each time, so it cannot run in a batch"
-                + (spec.name == "export.start" ? "; use the export step instead" : "")
+            return spec.name == "export.start" ? BatchMessages.approvalExport : BatchMessages.approval
         }
         if refusedActions.contains(spec.name) || spec.name.hasPrefix("batch.") {
-            return "cannot run in a batch: the runner opens each item's project itself"
+            return BatchMessages.opensProjects
         }
         return nil
     }

@@ -60,11 +60,7 @@ extension ProjectDocument {
                 }
                 return .array(started.ids.map(JSONValue.string))
             }
-            if steps.isEmpty {
-                _ = try export()
-            } else {
-                started.steps = startExportSteps(steps, name: targets[0].name, author: author, then: export)
-            }
+            started.steps = try runExport(after: steps, name: targets[0].name, author: author, export)
         }
         if !approval.autoApproved {
             message = String(localized: "Waiting for approval: export.start")
@@ -115,14 +111,19 @@ extension ProjectDocument {
         }
         var presets: [ExportPreset] = []
         for name in (list ?? single ?? "").split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) {
-            guard let preset = ExportPreset(argument: name) else {
-                throw RPCFailure(-32602, "Unknown export preset \(name): use "
-                    + CommandCatalog.exportPresets.joined(separator: ", "))
-            }
+            let preset = try exportPreset(name)
             if !presets.contains(preset) { presets.append(preset) }
         }
         guard !presets.isEmpty else { throw RPCFailure(-32602, "Unknown export preset") }
         return presets
+    }
+
+    /// The export preset named `name` (`export.start` and batch exports).
+    static func exportPreset(_ name: String) throws -> ExportPreset {
+        guard let preset = ExportPreset(argument: name) else {
+            throw RPCFailure(-32602, "Unknown export preset \(name): use " + CommandCatalog.exportPresets.joined(separator: ", "))
+        }
+        return preset
     }
 
     /// Resolves an export name and optional directory against the saved project's folder.

@@ -15,8 +15,7 @@ public struct BatchPresetStore: Sendable {
 
     /// The file name of a preset name: lowercase letters, digits and dashes.
     public static func slug(_ name: String) -> String {
-        let folded = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-            .replacingOccurrences(of: "đ", with: "d")
+        let folded = name.searchFolded
         var slug = ""
         for character in folded {
             if character.isASCII, character.isLetter || character.isNumber {
@@ -30,7 +29,7 @@ public struct BatchPresetStore: Sendable {
 
     private func file(_ name: String) throws -> URL {
         let slug = Self.slug(name)
-        guard !slug.isEmpty else { throw ProjectError.invalid("A preset needs a name with letters or digits") }
+        guard !slug.isEmpty else { throw ProjectError.invalid(BatchMessages.presetNameLetters) }
         return root.appendingPathComponent(slug).appendingPathExtension("json")
     }
 
@@ -46,8 +45,9 @@ public struct BatchPresetStore: Sendable {
         let url = try file(name)
         guard FileManager.default.fileExists(atPath: url.path) else {
             let names = list().compactMap(\.name)
-            throw ProjectError.invalid(
-                "No batch preset \"\(name)\"" + (names.isEmpty ? "" : "; saved: " + names.joined(separator: ", ")))
+            throw ProjectError.invalid(names.isEmpty
+                ? BatchMessages.text(BatchMessages.noPreset, name)
+                : BatchMessages.text(BatchMessages.noPresetSaved, name, names.joined(separator: ", ")))
         }
         return try load(file: url)
     }
@@ -59,8 +59,8 @@ public struct BatchPresetStore: Sendable {
     /// Saves `pipeline` under its name (replacing a preset of that name) and returns the file.
     @discardableResult
     public func save(_ pipeline: BatchPipeline) throws -> URL {
-        guard let name = pipeline.name else { throw ProjectError.invalid("A preset needs a name") }
-        guard !pipeline.steps.isEmpty else { throw ProjectError.invalid("A preset needs at least one step") }
+        guard let name = pipeline.name else { throw ProjectError.invalid(BatchMessages.presetName) }
+        guard !pipeline.steps.isEmpty else { throw ProjectError.invalid(BatchMessages.presetSteps) }
         let url = try file(name)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let encoder = JSONEncoder()

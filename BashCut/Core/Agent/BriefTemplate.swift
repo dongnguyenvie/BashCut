@@ -1,3 +1,4 @@
+import BashCutProject
 import Foundation
 
 /// What the open project looks like, for choosing which brief templates fit (the dock's quick starts, the fit badge in
@@ -194,8 +195,7 @@ public enum BriefText {
     /// Lowercased, without accents, đ as d: "Dịch phụ đề" → "dich phu de", so search works without Vietnamese
     /// diacritics.
     public static func normalize(_ text: String) -> String {
-        text.folding(options: [.diacriticInsensitive, .caseInsensitive, .widthInsensitive], locale: nil)
-            .replacingOccurrences(of: "đ", with: "d").replacingOccurrences(of: "Đ", with: "d").lowercased()
+        text.searchFolded
     }
 
     /// Whether every word of `query` is in the title or description (in the interface language or English), the ID or

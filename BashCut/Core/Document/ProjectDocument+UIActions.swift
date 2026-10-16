@@ -295,12 +295,18 @@ extension ProjectDocument {
         }
         previewSource(media)
         guard sourceViewer.media?.id == mediaID else { throw RPCFailure(-32602, message) }
+        markSource(in: inFrame, out: outFrame)
+        return viewStateJSON()
+    }
+
+    /// Marks in/out on the media in the source viewer, kept inside it (out after in), and seeks to in.
+    func markSource(in inFrame: Int?, out outFrame: Int?) {
+        guard let media = sourceViewer.media else { return }
         let last = max(1, media.frames)
-        let start = min(inFrame ?? 0, last - 1)
+        let start = min(max(0, inFrame ?? 0), last - 1)
         sourceViewer.inFrame = start
         sourceViewer.outFrame = min(max(start + 1, outFrame ?? last), last)
         sourceViewer.seek(start)
-        return viewStateJSON()
     }
 
     private func performFromAutomation(_ name: String, author: Author) throws -> JSONValue {

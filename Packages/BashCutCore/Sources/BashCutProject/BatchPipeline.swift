@@ -93,21 +93,21 @@ public struct BatchPipeline: Codable, Sendable, Equatable {
     /// Checks what does not need the app: at least one input and step, concurrency in range, a known `outputName`
     /// that keeps each item's files apart. Whether each step's action may run in a batch is the runner's check.
     public func validate() throws {
-        guard !inputs.isEmpty else { throw ProjectError.invalid("Give at least one input") }
-        guard !steps.isEmpty else { throw ProjectError.invalid("Give at least one step") }
+        guard !inputs.isEmpty else { throw ProjectError.invalid(BatchMessages.noInputs) }
+        guard !steps.isEmpty else { throw ProjectError.invalid(BatchMessages.noSteps) }
         guard (1...Self.maximumConcurrency).contains(concurrency) else {
-            throw ProjectError.invalid("concurrency must be 1…\(Self.maximumConcurrency)")
+            throw ProjectError.invalid(BatchMessages.text(BatchMessages.concurrency, Self.maximumConcurrency))
         }
         let tokens = Self.tokens(in: outputName)
         if let unknown = tokens.first(where: { !Self.outputTokens.contains($0) }) {
             throw ProjectError.invalid(
-                "outputName has an unknown {\(unknown)}; use " + Self.outputTokens.map { "{\($0)}" }.joined(separator: ", "))
+                BatchMessages.text(BatchMessages.outputNameToken, unknown, Self.outputTokens.map { "{\($0)}" }.joined(separator: ", ")))
         }
         guard tokens.contains("name") || tokens.contains("index") else {
-            throw ProjectError.invalid("outputName needs {name} or {index} so each item's files stay apart")
+            throw ProjectError.invalid(BatchMessages.outputNameApart)
         }
         if let bad = template.outputs.first(where: { $0.trimmingCharacters(in: .whitespaces).isEmpty }) {
-            throw ProjectError.invalid("template outputs has an empty preset \"\(bad)\"")
+            throw ProjectError.invalid(BatchMessages.text(BatchMessages.emptyOutput, bad))
         }
     }
 

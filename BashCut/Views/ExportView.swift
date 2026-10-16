@@ -214,10 +214,7 @@ struct ExportView: View {
     }
 
     /// Plugin export steps (plugin API 12) a final export of the chosen outputs would run first.
-    private var steps: [ExportStepRun] {
-        ExportStepRun.matching(
-            document.plugins.plugins.filter(document.plugins.isReady), project: document.project, presets: chosen)
-    }
+    private var steps: [ExportStepRun] { document.matchingExportSteps(for: chosen) }
 
     /// Draft graphics in a final export (#634): the user may export anyway; the notice names the fix and, when a
     /// plugin contributes an export step for them, finalises them and exports in one click.
