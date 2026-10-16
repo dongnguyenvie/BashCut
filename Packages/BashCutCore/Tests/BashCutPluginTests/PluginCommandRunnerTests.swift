@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 @Suite("Plugin install recipes")
-struct PluginRecipeRunnerTests {
+struct PluginCommandRunnerTests {
     private final class Lines: @unchecked Sendable {
         private let lock = NSLock()
         private var items: [PluginRecipeOutput] = []
@@ -32,9 +32,10 @@ struct PluginRecipeRunnerTests {
             """)
         defer { try? FileManager.default.removeItem(at: root) }
         let lines = Lines()
-        try await PluginRecipeRunner.run(
+        try await PluginCommandRunner.run(
             PluginCommand(executable: "bin/setup"), plugin: plugin, directory: plugin.directory,
-            inheritedEnvironment: ["PATH": "/usr/bin:/bin", "BASHCUT_TEST_SECRET": "leak"], output: lines.add)
+            inheritedEnvironment: ["PATH": "/usr/bin:/bin", "BASHCUT_TEST_SECRET": "leak"],
+            label: PluginInstallRecipe.label, output: lines.add)
         #expect(lines.all == [
             .progress(0.5, "Downloading model"), .line("secret=unset data=test.recipe"), .line("oops"),
         ])
@@ -45,15 +46,17 @@ struct PluginRecipeRunnerTests {
         let (failing, root) = try plugin("echo 'pip: no matching distribution'; exit 2")
         defer { try? FileManager.default.removeItem(at: root) }
         await #expect(throws: PluginError.invalid("Dependency install failed: pip: no matching distribution")) {
-            try await PluginRecipeRunner.run(
-                PluginCommand(executable: "bin/setup"), plugin: failing, directory: failing.directory, output: { _ in })
+            try await PluginCommandRunner.run(
+                PluginCommand(executable: "bin/setup"), plugin: failing, directory: failing.directory,
+                label: PluginInstallRecipe.label, output: { _ in })
         }
         let (slow, slowRoot) = try plugin("sleep 30")
         defer { try? FileManager.default.removeItem(at: slowRoot) }
         let started = Date()
         let task = Task {
-            try await PluginRecipeRunner.run(
-                PluginCommand(executable: "bin/setup"), plugin: slow, directory: slow.directory, output: { _ in })
+            try await PluginCommandRunner.run(
+                PluginCommand(executable: "bin/setup"), plugin: slow, directory: slow.directory, label: "Setup",
+                output: { _ in })
         }
         try await Task.sleep(for: .milliseconds(300))
         task.cancel()
@@ -66,19 +69,20 @@ struct PluginRecipeRunnerTests {
         let (plugin, root) = try plugin("echo \"token=${BASHCUT_SESSION_TOKEN} step=${BASHCUT_EXPORT_STEP}\"; exit ${FAIL:-0}")
         defer { try? FileManager.default.removeItem(at: root) }
         let lines = Lines()
-        try await PluginRecipeRunner.run(
+        try await PluginCommandRunner.run(
             PluginCommand(executable: "bin/setup"), plugin: plugin, directory: plugin.directory,
-            extraEnvironment: ["BASHCUT_SESSION_TOKEN": "t1", "BASHCUT_EXPORT_STEP": "finalise"], output: lines.add)
+            extraEnvironment: ["BASHCUT_SESSION_TOKEN": "t1", "BASHCUT_EXPORT_STEP": "finalise"], label: "Export step",
+            output: lines.add)
         #expect(lines.all == [.line("token=t1 step=finalise")])
         await #expect(throws: PluginError.invalid("Export step Finalise failed: token= step=")) {
-            try await PluginRecipeRunner.run(
+            try await PluginCommandRunner.run(
                 PluginCommand(executable: "bin/setup"), plugin: plugin, directory: plugin.directory,
                 extraEnvironment: ["FAIL": "3"], label: "Export step Finalise", output: { _ in })
         }
         let (slow, slowRoot) = try self.plugin("sleep 30")
         defer { try? FileManager.default.removeItem(at: slowRoot) }
         await #expect(throws: PluginError.invalid("Export step Slow timed out after 1 s")) {
-            try await PluginRecipeRunner.run(
+            try await PluginCommandRunner.run(
                 PluginCommand(executable: "bin/setup"), plugin: slow, directory: slow.directory, label: "Export step Slow",
                 timeout: 1, output: { _ in })
         }

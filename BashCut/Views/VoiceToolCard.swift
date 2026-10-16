@@ -30,9 +30,9 @@ struct VoiceToolCard: View {
             canRun: document.fileURL != nil && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             running: generating, message: message,
             runOnMany: {
-                document.openBatch(BatchStep("voice.speak", params: ["text": .string(text), "takes": .integer(takeCount),
-                                                                     "choose": .integer(1)],
-                                             label: String(localized: "Voiceover")))
+                document.openBatch(BatchRunner.toolStep(
+                    ToolID.voice, label: String(localized: "Voiceover"),
+                    params: ["text": .string(text), "takes": .integer(takeCount), "choose": .integer(1)]))
             },
             run: generate,
             main: {

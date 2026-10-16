@@ -39,11 +39,9 @@ public struct PluginExportStepContribution: Codable, Sendable, Equatable, Identi
         guard title.isValid(limit: 60) else {
             throw PluginError.invalid("Export step \(id) needs a title of at most 60 characters per language, English included")
         }
-        let components = NSString(string: command.executable).pathComponents
-        guard command.executable.contains("/"), !command.executable.hasPrefix("/"), !components.contains(".."),
-            !command.executable.contains("\0"), !command.arguments.contains(where: { $0.contains("\0") }),
-            command.arguments.count <= 64
-        else { throw PluginError.invalid("Export step \(id) must run a file inside the plugin bundle (bin/…)") }
+        guard command.executable.contains("/"), command.arguments.count <= 64, (try? command.validate()) != nil else {
+            throw PluginError.invalid("Export step \(id) must run a file inside the plugin bundle (bin/…)")
+        }
         _ = try PluginExportStepCondition(parsing: when)
         if let timeoutSeconds, !(60...7200).contains(timeoutSeconds) {
             throw PluginError.invalid("Export step \(id) timeoutSeconds must be 60...7200")

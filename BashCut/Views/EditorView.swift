@@ -59,7 +59,7 @@ struct EditorView: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { windowHeight = $0 }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: { windowWidth = $0 })
         .ignoresSafeArea(.container, edges: .top)
-        .background(Color(red: 0.065, green: 0.07, blue: 0.08)).preferredColorScheme(.dark).tint(.cyan)
+        .background(Color.editorBackground).preferredColorScheme(.dark).tint(.cyan)
         .frame(minWidth: minSize.width, minHeight: minSize.height)
         .onGeometryChange(for: Double.self, of: { $0.size.width },
             action: { document.adaptTimelineHeader(windowWidth: $0) })

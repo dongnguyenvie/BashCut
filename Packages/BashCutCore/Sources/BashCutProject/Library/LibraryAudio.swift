@@ -185,9 +185,8 @@ extension Project {
         guard asked > 0 else { throw ProjectError.invalid("The duration must be at least one frame") }
         let looped = asked > length && loopable
         let total = looped ? asked : min(asked, length)
-        let copies = (total + length - 1) / length
-        guard copies <= LibraryAudio.maximumLoops else {
-            throw ProjectError.invalid("Repeating the sound \(copies) times is too many; choose a shorter duration")
+        let items = try Project.tiledAudioItems(sound, at: frame, total: total, length: length) { copies in
+            "Repeating the sound \(copies) times is too many; choose a shorter duration"
         }
         var planner = LayerPlanner(self)
         if !media.contains(where: { $0.id == sound.id }) { try planner.add([.addMedia(sound)]) }
@@ -200,18 +199,23 @@ extension Project {
             layer = role == "sfx" ? try planner.sfxTrack() : try planner.musicTrack()
         }
         let target = try planner.freeTrack(near: layer, at: frame, duration: total)
-        var itemIDs: [String] = []
-        var operations: [EditOperation] = []
-        for copy in 0..<copies {
-            let start = copy * length
-            let item = Item(media: sound.id, at: frame + start, duration: min(length, total - start))
-            itemIDs.append(item.id)
-            operations.append(.insert(track: target, item: item))
-        }
-        try planner.add(operations)
+        try planner.add(items.map { .insert(track: target, item: $0) })
         return AudioPlacement(
-            planner: planner, itemIDs: itemIDs, trackID: target, duration: total, looped: looped,
+            planner: planner, itemIDs: items.map(\.id), trackID: target, duration: total, looped: looped,
             shortened: asked > total)
+    }
+
+    /// Items playing `sound` back to back from `frame` for `total` frames, `length` frames per copy from `sourceIn`
+    /// (the last copy trimmed). Throws `tooMany(copies)` past `LibraryAudio.maximumLoops` copies.
+    static func tiledAudioItems(
+        _ sound: Media, at frame: Int, total: Int, length: Int, sourceIn: Int = 0, tooMany: (Int) -> String
+    ) throws -> [Item] {
+        let copies = (total + length - 1) / length
+        guard copies <= LibraryAudio.maximumLoops else { throw ProjectError.invalid(tooMany(copies)) }
+        return (0..<copies).map { copy in
+            let offset = copy * length
+            return Item(media: sound.id, at: frame + offset, duration: min(length, total - offset), sourceIn: sourceIn)
+        }
     }
 }
 

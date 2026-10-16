@@ -216,7 +216,7 @@ private struct BatchPipelineColumn: View {
             ForEach(BatchStepCatalog.Group.allCases, id: \.self) { group in
                 Section(Self.title(group)) {
                     ForEach(BatchStepCatalog.entries.filter { $0.group == group }, id: \.action) { entry in
-                        Button(entry.localizedTitle) { model.addEntry(entry, title: entry.localizedTitle) }
+                        Button(entry.localizedTitle) { model.addStep(entry.action, label: entry.localizedTitle) }
                     }
                 }
             }

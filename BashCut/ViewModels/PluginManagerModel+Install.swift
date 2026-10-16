@@ -19,7 +19,8 @@ extension PluginManagerModel {
             try trust.validateSetup(of: plugin)
             for (index, (dependency, recipe)) in recipes.enumerated() {
                 installStep = String(format: String(localized: "Setting up %@ (%d of %d)…"), dependency.name, index + 1, recipes.count)
-                try await PluginRecipeRunner.run(recipe.command, plugin: plugin, directory: plugin.directory, output: report)
+                try await PluginCommandRunner.run(
+                    recipe.command, plugin: plugin, directory: plugin.directory, label: PluginInstallRecipe.label, output: report)
             }
             // Approving the setup ran the plugin's own code, so its files are pinned like an install from the
             // registry; before, a plugin set up this way (a linked or copied folder) still said "Not approved yet".
@@ -57,7 +58,8 @@ extension PluginManagerModel {
         let stagedPlugin = InstalledPlugin(manifest: manifest, directory: staged)
         for (index, (dependency, recipe)) in recipes.enumerated() {
             installStep = String(format: String(localized: "Setting up %@ (%d of %d)…"), dependency.name, index + 1, recipes.count)
-            try await PluginRecipeRunner.run(recipe.command, plugin: stagedPlugin, directory: staged, output: report)
+            try await PluginCommandRunner.run(
+                recipe.command, plugin: stagedPlugin, directory: staged, label: PluginInstallRecipe.label, output: report)
         }
         try Task.checkCancellation()
         if replacing { stopSession(manifest.id) }

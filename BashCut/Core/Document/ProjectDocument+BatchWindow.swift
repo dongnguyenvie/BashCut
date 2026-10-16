@@ -84,7 +84,7 @@ extension ProjectDocument {
         switch option {
         case .addStep(let action):
             guard let entry = BatchStepCatalog.entry(action) else { throw ModalError("No batch step \(action)") }
-            model.addEntry(entry, title: entry.localizedTitle)
+            model.addStep(action, label: entry.localizedTitle)
         case .removeStep(let number): model.removeStep(number - 1)
         case .moveStep(let number, let up): model.moveStep(number - 1, by: up ? -1 : 1)
         case .loadPreset(let name): model.loadPreset(try batchPresets.load(name))

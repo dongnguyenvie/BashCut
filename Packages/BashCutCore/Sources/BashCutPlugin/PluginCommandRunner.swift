@@ -16,15 +16,15 @@ public enum PluginRecipeOutput: Sendable, Equatable {
     }
 }
 
-/// Runs a dependency install recipe the user approved, or a plugin's export step (API 12): the plugin's filtered
+/// Runs a plugin command: a dependency install recipe the user approved, or a plugin's export step (API 12): the plugin's filtered
 /// environment (no app secrets; an export step adds its own short-lived automation token), its own process group,
 /// stdout and stderr streamed line by line, and cancellation or `timeout` that stops the whole group (pip, curl and
 /// other helpers included). A failure starts with `label` and ends with the last output.
-public enum PluginRecipeRunner {
+public enum PluginCommandRunner {
     public static func run(
         _ command: PluginCommand, plugin: InstalledPlugin, directory: URL,
         inheritedEnvironment: [String: String] = ProcessInfo.processInfo.environment,
-        extraEnvironment: [String: String] = [:], label: String = "Dependency install", timeout: TimeInterval? = nil,
+        extraEnvironment: [String: String] = [:], label: String, timeout: TimeInterval? = nil,
         output: @escaping @Sendable (PluginRecipeOutput) -> Void
     ) async throws {
         let (executable, arguments) = try resolve(command, directory: directory)

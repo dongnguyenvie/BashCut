@@ -403,22 +403,9 @@ extension AgentDockModel {
             return
         }
         document.ui.showAgentDock = false
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 760),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered, defer: false)
-        window.title = String(localized: "BashCut Agent")
-        window.minSize = NSSize(width: 360, height: 520)
-        window.isReleasedWhenClosed = false
-        // The detached window lives outside EditorView, so it needs the editor's dark appearance and tint itself.
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = NSColor(red: 0.065, green: 0.07, blue: 0.08, alpha: 1)
-        let hosting = NSHostingView(rootView: AgentDockView(model: self, detached: true)
-            .background(Color(red: 0.065, green: 0.07, blue: 0.08))
-            .preferredColorScheme(.dark).tint(.cyan))
-        // The window keeps its own size: wrapping text measured at a narrow width would otherwise grow it.
-        hosting.sizingOptions = []
-        window.contentView = hosting
+        let window = AuxiliaryWindow.make(
+            title: String(localized: "BashCut Agent"), size: NSSize(width: 480, height: 760),
+            minSize: NSSize(width: 360, height: 520), content: AgentDockView(model: self, detached: true))
         let delegate = AgentDockWindowDelegate { [weak self] in
             self?.detachedWindow = nil
             self?.detachedDelegate = nil
@@ -441,20 +428,9 @@ extension AgentDockModel {
         }
         knowledge.beginVisit()
         knowledge.askAgent = { [weak self] request in self?.ask(request) ?? false }
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered, defer: false)
-        window.title = String(localized: "Knowledge")
-        window.minSize = NSSize(width: 860, height: 540)
-        window.isReleasedWhenClosed = false
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = NSColor(red: 0.065, green: 0.07, blue: 0.08, alpha: 1)
-        let hosting = NSHostingView(rootView: KnowledgeManagerView(model: knowledge, ui: document.ui)
-            .background(Color(red: 0.065, green: 0.07, blue: 0.08))
-            .preferredColorScheme(.dark).tint(.cyan))
-        hosting.sizingOptions = []
-        window.contentView = hosting
+        let window = AuxiliaryWindow.make(
+            title: String(localized: "Knowledge"), size: NSSize(width: 1060, height: 720),
+            minSize: NSSize(width: 860, height: 540), content: KnowledgeManagerView(model: knowledge, ui: document.ui))
         let delegate = AgentDockWindowDelegate { [weak self] in
             self?.knowledge.endVisit()
             self?.knowledgeWindow = nil

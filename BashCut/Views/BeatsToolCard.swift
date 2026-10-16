@@ -29,8 +29,7 @@ struct BeatsToolCard: View {
             runTitle: String(localized: "Detect beats"), canRun: canRun, running: running,
             progress: job?.progress, message: message,
             runOnMany: {
-                document.openBatch(BatchStep("beats.detect", params: ["media": .string("{media}")],
-                                             label: String(localized: "Beat detection")))
+                document.openBatch(BatchRunner.toolStep(ToolID.beats, label: String(localized: "Beat detection")))
             },
             run: detect,
             main: {

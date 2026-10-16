@@ -26,10 +26,23 @@ public struct ProjectSetup: Sendable {
 
     public init() {}
 
-    public var folderName: String {
-        let folded = name.searchFolded
-        return folded.components(separatedBy: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789").inverted)
+    public var folderName: String { Self.folderName(name) }
+
+    /// The project folder name for `name`: its folded letters and digits joined by dashes.
+    public static func folderName(_ name: String) -> String {
+        name.searchFolded.components(separatedBy: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789").inverted)
             .filter { !$0.isEmpty }.joined(separator: "-")
+    }
+
+    /// `name`, or `name 2`, `name 3`… when a project folder of that name is already in `parent`.
+    public static func freeName(_ name: String, in parent: URL) -> String {
+        var candidate = name
+        var number = 1
+        while FileManager.default.fileExists(atPath: parent.appendingPathComponent(folderName(candidate)).path) {
+            number += 1
+            candidate = "\(name) \(number)"
+        }
+        return candidate
     }
 
     public var dimensions: (width: Int, height: Int) { canvas.dimensions(shortSide: resolution.rawValue) }
