@@ -35,8 +35,6 @@ public struct ItemProperty: Sendable {
     public static let all: [ItemProperty] = [
         .init(nil, "speed", .number(0.01...100), "Source frames per timeline frame; the timeline duration is kept"),
         .init(nil, "opacity", .number(0...1), "Picture opacity"),
-        .init(nil, "blur", .number(0...0.2),
-              "Video or image picture: Gaussian blur radius as a share of the picture's short side, after the crop (0.02 softens, 0.04 hides text)"),
         .init(nil, "volumeDb", .number(Project.volumeDbRange), "Clip gain in dB"),
         .init(nil, "muted", .boolean, "Silences the clip"),
         .init(nil, "preservePitch", .boolean, "Keeps pitch when speed changes (default true)"),
@@ -68,7 +66,7 @@ public struct ItemProperty: Sendable {
         .init("textStyle", "tracking", .number(-0.5...2), "Letter spacing as a share of the font size (default 0)"),
         .init("textStyle", "uppercase", .boolean, "Draw the text in capitals"),
     ] + ColorGrade.ranges.map { .init("color", $0.key, .number($0.range), ColorGrade.summaries[$0.key] ?? "") }
-        + backdropProperties
+        + backdropProperties + pictureProperties
 }
 
 extension ColorGrade {
