@@ -60,11 +60,14 @@ if pgrep -qf "build/BashCut.app/Contents/MacOS/BashCutApp"; then
 fi
 # Sign with a stable identity so macOS privacy grants (Desktop folder access) survive rebuilds; an ad-hoc
 # signature changes with every build and macOS asks again. BASHCUT_SIGN_IDENTITY picks the identity;
-# otherwise the first valid Apple Development identity in the keychain is used.
-identity="${BASHCUT_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
-    | awk -F'"' '/Apple Development/ { print $2; exit }')}"
+# otherwise a Developer ID Application identity, then the first Apple Development one. Developer ID comes first
+# because macOS keeps one grant per bundle ID: a dev build signed differently from the installed release
+# (/Applications/BashCut.app, Developer ID) takes the grant away from it, and each one asks again in turn.
+identities="$(security find-identity -v -p codesigning 2>/dev/null)"
+identity="${BASHCUT_SIGN_IDENTITY:-$(printf '%s\n' "$identities" | awk -F'"' '/Developer ID Application/ { print $2; exit }')}"
+identity="${identity:-$(printf '%s\n' "$identities" | awk -F'"' '/Apple Development/ { print $2; exit }')}"
 if [ -z "$identity" ]; then
-    echo "warning: no Apple Development identity found; signing ad hoc (macOS will ask for folder access again)" >&2
+    echo "warning: no signing identity found; signing ad hoc (macOS will ask for folder access again)" >&2
     identity="-"
 fi
 for name in $core_plugins; do
