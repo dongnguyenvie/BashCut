@@ -57,6 +57,7 @@
     "No project opened": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No project opened" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa mở project nào" } } } },
     "Its job %@ was dropped": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Its job %@ was dropped" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tác vụ %@ của bước đã bị bỏ" } } } },
     "The job failed": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "The job failed" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tác vụ bị lỗi" } } } },
+    "Missing %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Missing %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Thiếu %@" } } } },
     "Batch settings": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Batch settings" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cài đặt chạy hàng loạt" } } } },
     "Batch…": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Batch…" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chạy hàng loạt…" } } } },
     "Cancel Batch": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancel Batch" } }, "vi": { "stringUnit": { "state": "translated", "value": "Huỷ lượt chạy" } } } },

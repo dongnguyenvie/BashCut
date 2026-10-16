@@ -146,6 +146,11 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
         selectedStep = target
     }
 
+    func setLabel(_ index: Int, _ label: String?) {
+        guard pipeline.steps.indices.contains(index) else { return }
+        pipeline.steps[index].label = label
+    }
+
     /// The selected step's parameter `name`, nil when unset.
     func parameter(_ name: String) -> JSONValue? {
         guard let index = selectedStep, pipeline.steps.indices.contains(index) else { return nil }
@@ -159,7 +164,11 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
 
     /// A step's title for the list and the queue: its label, else the tool or command it runs.
     func title(_ step: BatchStep) -> String {
-        if let label = step.label { return label }
+        if let label = step.label {
+            // A catalog title kept as the label (CLI pipelines, presets) is the default, shown in the app's language.
+            if let entry = BatchStepCatalog.entry(step.action), entry.title == label { return entry.localizedTitle }
+            return label
+        }
         if step.action == BatchRunner.exportAction { return String(localized: "Export") }
         return document.plugins.action(step.action)?.title ?? step.action
     }

@@ -12,7 +12,9 @@ struct BatchStepCard: View {
     @Bindable var model: BatchWindowModel
     let index: Int
 
-    private var step: BatchStep { model.pipeline.steps[index] }
+    /// SwiftUI can draw the card once more after its step is removed (Remove, `ui respond remove-step-N`), before the
+    /// window drops it: an empty step then, never an index past the end.
+    private var step: BatchStep { model.pipeline.steps.indices.contains(index) ? model.pipeline.steps[index] : BatchStep("") }
     private var spec: CommandSpec? { CommandCatalog.spec(named: step.action) }
     private var action: ContributedAction? { model.document.plugins.action(step.action) }
     private var parameters: [CommandParameter] {
@@ -36,7 +38,7 @@ struct BatchStepCard: View {
                 LabeledContent("Label") {
                     TextField(model.title(step), text: Binding(
                         get: { step.label ?? "" },
-                        set: { model.pipeline.steps[index].label = $0.isEmpty ? nil : $0 }))
+                        set: { model.setLabel(index, $0.isEmpty ? nil : $0) }))
                     .textFieldStyle(.roundedBorder)
                 }
                 if step.action == BatchRunner.exportAction {

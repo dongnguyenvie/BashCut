@@ -116,6 +116,8 @@ public enum BatchMessage {
         "No project opened",
         "Its job %@ was dropped",
         "The job failed",
+        // The parameter check every step command runs first.
+        "Missing %@",
     ]
 
     private static let expressions: [(key: String, regex: NSRegularExpression)] = patterns.map { key in
