@@ -85,6 +85,10 @@ struct ProjectFontsTests {
         #expect((CTFontCopyFullName(font) as String).contains("Condensed Black"))
         #expect(ProjectFonts.covers("System-CondensedBlack", language: "vi") == true)
         #expect(ProjectFonts.missingCharacters("System-Black", text: "BẮT HEO RỪNG Ở").isEmpty)
+        // Emoji draw in Apple Color Emoji whatever the font: never missing glyphs of a text font.
+        #expect(ProjectFonts.missingCharacters("ArialMT", text: "Party 🎉 ✨ ❤️ 1️⃣").isEmpty)
+        #expect(ProjectFonts.missingCharacters("ArialMT", text: "1 # *").isEmpty)
+        #expect(ProjectFonts.missingCharacters("ArialMT", text: "漢字") == "漢字")
         #expect(ProjectFonts.installed.first?.postScriptName == "System-Regular")
     }
 }

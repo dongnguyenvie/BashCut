@@ -152,16 +152,24 @@ public enum ProjectFonts {
 
     /// Whether `name` resolves to that font rather than the Helvetica fallback.
     /// The characters of `text` that `name` has no glyphs for, each once, in order (spaces and line breaks aside).
+    /// Emoji are left out: no text font has them, and Core Text always draws them in Apple Color Emoji.
     public static func missingCharacters(_ name: String, text: String) -> String {
         let font = font(name, size: 12)
         var seen = Set<Character>()
         var missing = ""
-        for character in text where !character.isWhitespace && seen.insert(character).inserted {
+        for character in text where !character.isWhitespace && !isEmoji(character) && seen.insert(character).inserted {
             let units = Array(String(character).utf16)
             var glyphs = [CGGlyph](repeating: 0, count: units.count)
             if !CTFontGetGlyphsForCharacters(font, units, &glyphs, units.count) { missing.append(character) }
         }
         return missing
+    }
+
+    /// An emoji drawn as a picture: one with emoji presentation (🎉), or a sequence such as ✨, ❤️ or 1️⃣.
+    static func isEmoji(_ character: Character) -> Bool {
+        let scalars = character.unicodeScalars
+        guard let first = scalars.first else { return false }
+        return first.properties.isEmojiPresentation || (first.properties.isEmoji && scalars.count > 1)
     }
 
     public static func isAvailable(_ name: String) -> Bool {
