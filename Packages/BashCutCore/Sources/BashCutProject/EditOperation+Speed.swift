@@ -1,15 +1,19 @@
 import Foundation
 
 /// `setSpeed`: constant speed for a clip and its linked partner. By default the clip keeps the same source and its
-/// timeline duration changes (2× halves it), rippling later clips on its layers; with `keepDuration` it keeps its
-/// length and uses more or less source. Either way it is shortened to fit the source if needed.
+/// timeline duration changes (2× halves it, rounded down so the out edge never plays past the source it played
+/// before), rippling later clips on its layers; with `keepDuration` it keeps its length and uses more or less source.
+/// Either way it is shortened to fit the source if needed. Captions made from the clip's media follow the clips the
+/// change retimed or moved (`retimeCaptions`), like its linked sound.
 extension Project {
     mutating func applySpeed(_ id: String, speed: Double, keepDuration: Bool) throws {
+        let before = self
         let linked = try linkedItemID(id)
         var moved = Set<String>()
         let duration = try speedItem(id: id, speed: speed, keepDuration: keepDuration, duration: nil, moved: &moved)
         // The partner gets the same speed and length so picture and sound stay in sync.
         if let linked { _ = try speedItem(id: linked, speed: speed, keepDuration: true, duration: duration, moved: &moved) }
+        retimeCaptions(from: before)
     }
 
     public static let speedRange: ClosedRange<Double> = 0.1...16
@@ -54,7 +58,7 @@ extension Project {
         }
         let wanted = forced ?? (keepDuration
             ? original.duration
-            : max(1, Int((Double(original.duration) * original.speed / speed).rounded())))
+            : max(1, Int((Double(original.duration) * original.speed / speed + 0.0001).rounded(.down))))
         // Frames the remaining source can fill at this speed.
         let available = Double(asset.frames - original.sourceIn) / asset.fps.value * fps.value / speed
         let fitting = Int((available + 0.0001).rounded(.down))
@@ -86,6 +90,7 @@ extension Project {
             }
             return
         }
+        let before = self
         var moved = Set<String>()
         let duration = try speedItem(id: id, speed: curve.average, keepDuration: keepDuration, duration: nil, moved: &moved)
         try setCurve(id, curve)
@@ -93,6 +98,7 @@ extension Project {
             _ = try speedItem(id: linked, speed: curve.average, keepDuration: true, duration: duration, moved: &moved)
             try setCurve(linked, curve)
         }
+        retimeCaptions(from: before)
     }
 
     private mutating func setCurve(_ id: String, _ curve: SpeedCurve) throws {

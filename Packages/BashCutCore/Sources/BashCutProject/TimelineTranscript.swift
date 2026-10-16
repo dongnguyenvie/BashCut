@@ -7,7 +7,8 @@ import Foundation
 /// Words come from each caption's `words` (transcribed timings, `timing: transcribed`) or are spread over the caption
 /// by word length (`timing: estimated`), like the word-by-word renderer. A caption made from a media
 /// (`captionMedia`) maps each word to that media's source seconds through the clip heard at the word now; captions do
-/// not move with their clips, so a word whose clip was trimmed away or moved has no source.
+/// not move with their clips (only a speed change retimes them), so a word whose clip was trimmed away or moved has
+/// no source.
 public enum TimelineTranscript {
     /// One caption cue: a non-empty text item on a text layer, in SubRip order.
     public struct Cue: Sendable {

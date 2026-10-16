@@ -52,6 +52,89 @@ struct SpeedTests {
         #expect(linked.operations == [.setSpeed(item: "v", speed: 1.5, keepDuration: false)] && linked.skipped.isEmpty)
     }
 
+    @Test("A speed that does not divide the clip rounds down, so the out edge never plays past its old source")
+    func outEdgeRoundsDown() throws {
+        let project = try ProjectFixtures.twoClips()
+        // 60 / 1.6 = 37.5 frames: 38 would play 2.027 s of a clip that played 2 s, into the next word.
+        let fast = try project.applying(.setSpeed(item: "left", speed: 1.6, keepDuration: false)).project
+        let left = try item(fast, "left")
+        #expect(try left.duration == 37 && item(fast, "right").at == 37)
+        #expect(left.sourceSeconds(afterFrames: left.duration, fps: fast.fps) <= 2)
+    }
+
+    /// `twoClips` with captions made from its media: "One both" heard at 0.5–1.5 s in `left` and "Two" at 2.5–3.5 s
+    /// in `right`, plus a typed caption that is not from the media.
+    private func captioned() throws -> Project {
+        var project = try ProjectFixtures.twoClips()
+        let srt = "1\n00:00:00,500 --> 00:00:01,500\nOne both\n\n2\n00:00:02,500 --> 00:00:03,500\nTwo\n"
+        let words = [
+            CaptionWords.Timed(text: "One", start: 0.5, end: 1), CaptionWords.Timed(text: "both", start: 1, end: 1.5),
+            CaptionWords.Timed(text: "Two", start: 2.5, end: 3.5),
+        ]
+        project = try project.applying(project.importingSubRip(srt, media: "m", words: words)).project
+        var typed = Item(id: "typed", at: 110, duration: 10)
+        typed.fields["text"] = .string("Typed")
+        return try project.applying(.insert(track: "t1", item: typed)).project
+    }
+
+    private func captions(_ project: Project) -> [Item] {
+        project.tracks.filter { $0.role == TrackRole.captions }.flatMap(\.items).sorted { $0.at < $1.at }
+    }
+
+    @Test("Captions made from the media follow the sped clip and the clips it ripples, keeping word timings")
+    func captionsFollow() throws {
+        let project = try captioned()
+        #expect(captions(project).map(\.at) == [15, 75, 110])
+        let fast = try project.applying(.setSpeed(item: "left", speed: 1.5, keepDuration: false)).project
+        let moved = captions(fast)
+        // left is 40 frames now and right starts at 40: its caption moves with it; the typed one stays.
+        #expect(moved.map(\.text) == ["One both", "Two", "Typed"])
+        #expect(moved.map(\.at) == [10, 55, 110] && moved.map(\.end) == [30, 85, 120])
+        let words = try #require(moved.first?.fields["words"]?.array).map(\.object)
+        #expect(words.map { $0["at"]?.int } == [0, 10] && words.map { $0["dur"]?.int } == [10, 10])
+        // Slowing down stretches them the other way.
+        let slow = try project.applying(.setSpeed(item: "left", speed: 0.5, keepDuration: false)).project
+        #expect(captions(slow).map(\.at) == [30, 110, 135] && captions(slow).map(\.end) == [90, 120, 165])
+        let round = try ProjectFixtures.undoRedo(.setSpeed(item: "left", speed: 1.5, keepDuration: false), on: project)
+        #expect(round.matches(original: project))
+    }
+
+    @Test("Slowing at the same length keeps only the words the clip still plays the middle of")
+    func captionsLoseUnplayedWords() throws {
+        let project = try captioned()
+        // `left` plays 0–1 s at 0.5× now: "One" (middle 0.75 s) is heard at 30–60, "both" (1.25 s) no longer.
+        let slow = try project.applying(.setSpeed(item: "left", speed: 0.5, keepDuration: true)).project
+        let first = try #require(captions(slow).first)
+        #expect(first.at == 30 && first.end == 60)
+        #expect(first.fields["words"]?.array.compactMap { $0.object["text"]?.string } == ["One"])
+        #expect(captions(slow).first { $0.text == "Two" }?.at == 75)
+    }
+
+    @Test("A retimed caption that would overlap a caption left on its layer goes to another caption layer")
+    func captionsStack() throws {
+        var project = try captioned()
+        var typed = Item(id: "late", at: 125, duration: 10)
+        typed.fields["text"] = .string("Late")
+        project = try project.applying(.insert(track: "t1", item: typed)).project
+        // At 0.75× `right` starts at 80, so "Two" lands on 95–125, over "typed".
+        let slow = try project.applying(.setSpeed(item: "left", speed: 0.75, keepDuration: false)).project
+        let layers = slow.tracks.filter { $0.role == TrackRole.captions }
+        #expect(layers.count == 2)
+        #expect(layers.last?.items.map(\.text) == ["Two"])
+        #expect(try item(slow, "typed").at == 110 && item(slow, "late").at == 125)
+    }
+
+    @Test("A ramp retimes the clip's captions through the curve")
+    func captionsFollowRamp() throws {
+        let project = try captioned()
+        let curve = try SpeedCurve([.init(t: 0, speed: 1), .init(t: 1, speed: 3)])
+        let ramped = try project.applying(.setSpeedCurve(item: "left", curve: curve, keepDuration: false)).project
+        let left = try item(ramped, "left"), first = try #require(captions(ramped).first)
+        let start = left.sourceSeconds(afterFrames: first.at - left.at, fps: ramped.fps)
+        #expect(abs(start - 0.5) < 0.05)
+        #expect(try captions(ramped).first { $0.text == "Two" }?.at == item(ramped, "right").at + 15)
+    }
+
     @Test("Linked picture and sound change together")
     func linked() throws {
         let project = try ProjectFixtures.linkedPair()

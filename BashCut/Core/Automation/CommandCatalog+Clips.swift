@@ -32,7 +32,7 @@ extension CommandCatalog {
                 + "endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word "
                 + "length), gapBefore (frames since the previous word ended) and, for captions made from a media, "
                 + "source {media, clip, start, end} in that media's seconds through the clip heard there now (null "
-                + "when no clip of it plays there: captions do not move with their clips). count is the words "
+                + "when no clip of it plays there: captions do not move with their clips, except through a speed change). count is the words "
                 + "returned, total the words on the caption layers. With heard, the words come from the stored "
                 + "transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip "
                 + "that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the "
@@ -63,8 +63,10 @@ extension CommandCatalog {
         CommandSpec(
             "clip.speed", .edit,
             "Change a clip's constant speed like Inspector › Speed. By default the clip keeps its source and its length "
-                + "changes (2× halves it), moving later clips on its layer; with keepDuration it keeps its length and uses "
-                + "more or less source. Linked picture and sound change together. A clip is shortened to fit its source even "
+                + "changes (2× halves it; rounded down to a whole frame, so the out edge never plays past the source it "
+                + "played), moving later clips on its layer; with keepDuration it keeps its length and uses more or less "
+                + "source. Linked picture and sound change together, and captions made from the clip's media follow the "
+                + "clips the change retimed or moved, word timings included. A clip is shortened to fit its source even "
                 + "with keepDuration; the result then has shortened: true. With items, every listed clip changes in one "
                 + "undo step, each by these rules (Inspector with several clips selected); items that have no speed are "
                 + "returned as skipped.",
@@ -98,7 +100,7 @@ extension CommandCatalog {
                 + SpeedCurve.presets.map(\.id).joined(separator: ", ") + ", or none to remove it) or points "
                 + "[[t, speed], …] with t from 0 (clip start) to 1 (clip end). The clip keeps its source and its length "
                 + "follows the average speed unless keepDuration (still shortened to fit its source, reported as shortened: "
-                + "true); linked sound follows; one undo step.",
+                + "true); linked sound and captions made from its media follow; one undo step.",
             parameters: [
                 CommandParameter("item", .string, "Item ID; the selected clip by default", cli: .positional),
                 CommandParameter("preset", .string, "Preset name, or none",
