@@ -113,6 +113,16 @@ extension ProjectDocument {
         return .object(context)
     }
 
+    /// The check a settings field runs on a typed value (`options.check`), or nil when the option declares none.
+    func pluginOptionCheck(_ option: PluginOption, plugin: InstalledPlugin) -> ((String) async -> PluginOptionCheck?)? {
+        guard option.isChecked else { return nil }
+        return { [weak self] key in
+            guard let self else { return nil }
+            return await self.plugins.service.checkOption(
+                option.id, value: key, options: self.pluginOptionValues(plugin, revealSecrets: true), plugin: plugin)
+        }
+    }
+
     /// Option values for a plugin: project values over user values over defaults. Secrets are only included when
     /// `revealSecrets` is set (requests to the plugin); otherwise each shows as `{"set": true|false}`.
     func pluginOptionValues(_ plugin: InstalledPlugin, revealSecrets: Bool = false) -> [String: JSONValue] {

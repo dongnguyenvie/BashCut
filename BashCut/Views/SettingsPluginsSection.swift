@@ -131,11 +131,7 @@ struct SettingsPluginsSection: View {
                                 error = ""
                             } catch { self.error = error.localizedDescription }
                         }),
-                        check: option.isChecked ? { key in
-                            await document.plugins.service.checkOption(
-                                option.id, value: key, options: document.pluginOptionValues(plugin, revealSecrets: true),
-                                plugin: plugin)
-                        } : nil)
+                        check: document.pluginOptionCheck(option, plugin: plugin))
                         .labelsHidden().toggleStyle(.switch).frame(maxWidth: 360, alignment: .trailing)
                     Text(PluginOptionPolicy.scope(of: option, in: all) == .project ? "project" : "this Mac")
                         .font(.caption2).foregroundStyle(.secondary)
