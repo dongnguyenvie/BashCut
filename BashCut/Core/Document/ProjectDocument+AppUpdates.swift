@@ -60,7 +60,7 @@ extension ProjectDocument {
             try? await Task.sleep(for: .milliseconds(500))
             // Not from this task: quitting waits for a main-actor reply (terminateLater), which cannot run while a
             // main-queue job is still inside terminate.
-            RunLoop.main.perform(inModes: [.default]) { NSApp.terminate(nil) }
+            RunLoop.main.perform(inModes: [.default]) { MainActor.assumeIsolated { NSApp.terminate(nil) } }
             // Still here: quitting was refused (an export or a save is running), so the helper is stopped.
             try? await Task.sleep(for: .seconds(30))
             appUpdate.cancelInstall(String(localized: "BashCut did not quit, so it was not updated"))
