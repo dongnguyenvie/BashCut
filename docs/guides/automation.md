@@ -1132,8 +1132,19 @@ bashcut batch run --preset "Captions draft" --inputs ~/Movies/shoot,~/Movies/old
   files…**, which adds that tool as the first step) builds, saves and runs the same pipeline: inputs, steps (＋ Add
   step lists the tools, the export step, every command a step may run and the plugin actions) and the selected
   step's settings, with the queue below. Its Run is the user's approval. `ui dialog` lists it as `sheet:batch` with the
-  pipeline and queue in its message; answer it with `ui respond OPTION --dialog sheet:batch` (`add-inputs`, then
-  `ui respond --path`; `save-preset`; `run`; `cancel`; `open-N` / `reveal-N` for item N; `close`).
+  pipeline (its steps by label and action), the queue and the window's last message (in the app's language) in its
+  message; answer it with `ui respond OPTION --dialog sheet:batch`:
+  - inputs: `add-inputs`, then `ui respond --path` answers the file panel;
+  - steps: `add-step:<action>` adds a step from the core step catalog (the ＋ Add step groups: `media.place`,
+    `captions.generate`, `captions.replace`, `captions.style`, `library.apply`, `music.replace`, `review.run`,
+    `export`) and selects it; `remove-step-N`, `move-step-N-up` / `move-step-N-down` (N is 1-based, as listed);
+    `load-preset:<name>` loads a saved preset's steps and settings, keeping the inputs. A step's settings are not
+    options: put them in a preset (`batch presets FILE --name NAME`) and load it;
+  - `save-preset`; `run`; `cancel`; `open-N` / `reveal-N` for finished item N; `close`.
+
+  Step edits apply at once, so the next `ui dialog` shows them. While a batch runs only `add-inputs`, `save-preset`,
+  `cancel` and `close` are offered. After `open-N` (or a run that opens projects) call `context get` once before the
+  next `ui` command: the project switch makes the next `ui` call fail with `stale_revision` otherwise.
 
 ## Model APIs
 

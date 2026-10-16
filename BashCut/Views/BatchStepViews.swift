@@ -216,7 +216,7 @@ struct BatchQueueView: View {
             }
             .frame(width: 150, alignment: .leading)
             Text(verbatim: status.result).foregroundStyle(status.attention ? Color.orange : Color.primary)
-                .lineLimit(2).help(item.error ?? status.result).textSelection(.enabled)
+                .lineLimit(2).help(item.error.map { BatchMessage.localized($0) } ?? status.result).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 6) {
                 if item.state == .running {
@@ -285,13 +285,13 @@ struct BatchQueueStatus {
             result = ([String(localized: "Done")] + parts).joined(separator: " · ")
             attention = (issues ?? 0) > 0
         case .failed:
-            result = item.error ?? String(localized: "Failed")
+            result = item.error.map { BatchMessage.localized($0) } ?? String(localized: "Failed")
             attention = true
         case .running:
             result = String(localized: "Running")
             attention = false
         default:
-            result = item.error ?? BatchQueueView.stateTitle(item.state)
+            result = item.error.map { BatchMessage.localized($0) } ?? BatchQueueView.stateTitle(item.state)
             attention = false
         }
     }
