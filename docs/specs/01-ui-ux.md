@@ -517,3 +517,4 @@ Shortcuts belong to editor actions; `bashcut ui actions` lists every action with
 | ⌘⇧R | Review | Implemented |
 | ⌘1…⌘8 | Asset panels (Media … Brand) | Implemented |
 | ⌘T | Tools panel | Implemented |
+| ⇧⌘F | All assets search: the whole library, project media and selects, grouped by kind (↩ uses, ↓ then Space previews, Search online opens Online resources); also All assets beside a panel's search field | Implemented |

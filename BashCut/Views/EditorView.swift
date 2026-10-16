@@ -71,6 +71,12 @@ struct EditorView: View {
                     CommandPaletteView { document.ui.showCommands = false }.padding(.top, 90)
                 }
             }
+            if document.ui.showAssetSearch {
+                ZStack(alignment: .top) {
+                    Color.black.opacity(0.3).onTapGesture { document.ui.showAssetSearch = false }
+                    AssetSearchView(document: document) { document.ui.showAssetSearch = false }.padding(.top, 90)
+                }
+            }
             if document.ui.showRecents {
                 ZStack(alignment: .top) {
                     Color.black.opacity(0.3).onTapGesture { document.ui.showRecents = false }

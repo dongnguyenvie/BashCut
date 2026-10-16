@@ -74,6 +74,7 @@ struct LibraryItemsSection<Tile: View>: View {
     private var searchRow: some View {
         HStack(spacing: 6) {
             TextField("Search library…", text: filter.query).textFieldStyle(.roundedBorder)
+            AllAssetsButton(document: document, query: filter.wrappedValue.query)
             filterMenu
         }
     }

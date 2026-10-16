@@ -93,7 +93,10 @@ struct LibraryView: View {
 
     private var mediaGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextField("Search media…", text: $search).textFieldStyle(.roundedBorder)
+            HStack(spacing: 6) {
+                TextField("Search media…", text: $search).textFieldStyle(.roundedBorder)
+                AllAssetsButton(document: document, query: search)
+            }
             Button("Import footage…") { document.importMedia() }.disabled(document.fileURL == nil)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 ForEach(visibleMedia) { media in
