@@ -1,5 +1,6 @@
 import AppKit
 import BashCutAutomation
+import BashCutProject
 
 /// The menu bar read back as data for the command palette and the keyboard-shortcuts sheet. Both list exactly
 /// what the menus have, so a command or shortcut never shows up in one place and not the other.
@@ -74,7 +75,7 @@ import BashCutAutomation
     }
 
     private static func fold(_ text: String) -> String {
-        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).replacingOccurrences(of: "đ", with: "d")
+        text.searchFolded
     }
 
     /// `⌃⌥⇧⌘` and the key, the way macOS menus draw a key equivalent.

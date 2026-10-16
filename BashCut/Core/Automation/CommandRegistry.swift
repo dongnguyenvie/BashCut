@@ -49,6 +49,15 @@ struct FailedRequest {
     static let projectReads: Set<String> = ["context.get", "timeline.get", "project.get"]
     /// Reads that edit when the named flag is set; they then need a session token like any edit.
     static let editingFlags: [String: String] = ["plan.check": "save"]
+
+    /// The mode `request` runs in: its spec's, except a read with its editing flag set runs as an edit (token check,
+    /// switch gate and the agent activity steps all see an edit).
+    static func mode(of spec: CommandSpec, _ request: RPCRequest) -> CommandMode {
+        guard spec.mode == .read, let flag = editingFlags[request.method], request.params[flag] == .bool(true) else {
+            return spec.mode
+        }
+        return .edit
+    }
     /// Commands that switch the project; their result shows the new project to the caller.
     static let projectSwitches: Set<String> = ["project.open", "project.create", "project.close", "edl.import"]
     /// Commands that never edit the open project, so the read-after-switch gate does not hold them: a batch switches
@@ -169,8 +178,7 @@ struct FailedRequest {
             else {
                 throw RPCFailure(-32601, "Unknown command: \(request.method)")
             }
-            let edits = Self.editingFlags[request.method].map { request.params[$0] == .bool(true) } ?? false
-            if spec.mode != .read || edits {
+            if Self.mode(of: spec, request) != .read {
                 guard author != nil else {
                     throw RPCFailure(-32001, "A live agent session token is required")
                 }
@@ -218,7 +226,7 @@ struct FailedRequest {
 
     private func startActivity(_ request: RPCRequest, author: Author?) -> CommandActivity? {
         guard let author, onActivity != nil, let spec = CommandCatalog.spec(named: request.method) else { return nil }
-        let activity = CommandActivity(id: UUID(), method: request.method, mode: spec.mode, author: author, token: request.token)
+        let activity = CommandActivity(id: UUID(), method: request.method, mode: Self.mode(of: spec, request), author: author, token: request.token)
         onActivity?(activity)
         return activity
     }

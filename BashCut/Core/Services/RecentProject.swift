@@ -104,6 +104,6 @@ public struct RecentProject: Sendable, Equatable {
     }
 
     private static func fold(_ text: String) -> String {
-        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).replacingOccurrences(of: "đ", with: "d")
+        text.searchFolded
     }
 }

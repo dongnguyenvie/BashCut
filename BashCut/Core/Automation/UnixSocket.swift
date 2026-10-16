@@ -16,6 +16,12 @@ public enum AutomationPaths {
             .appendingPathComponent("Library/Application Support/BashCut/automation-token")
     }
 
+    /// The variables a process started by the app reaches this session with: the socket, its token and the project
+    /// (`BASHCUT_SOCKET`, `BASHCUT_SESSION_TOKEN`, `BASHCUT_PROJECT`); `AgentLaunch` sets the same three for agents.
+    public static func sessionEnvironment(token: String, socket: String = socket, project: URL?) -> [String: String] {
+        ["BASHCUT_SOCKET": socket, "BASHCUT_SESSION_TOKEN": token, "BASHCUT_PROJECT": project?.path ?? ""]
+    }
+
     /// The session token from an in-app terminal (`BASHCUT_SESSION_TOKEN`), else the external-agent token file.
     public static func sessionToken() -> String? {
         if let token = ProcessInfo.processInfo.environment["BASHCUT_SESSION_TOKEN"], !token.isEmpty { return token }

@@ -37,13 +37,8 @@ extension ProjectDocument {
             })
         }
         // Finalise and export (#634): the plugins' export steps first, then the exports.
-        let steps = runSteps ? exportSteps(for: presets) : []
-        if !steps.isEmpty {
-            startExportSteps(steps, name: name, author: .user, then: export)
-            return
-        }
         do {
-            _ = try export()
+            try runExport(after: runSteps ? exportSteps(for: presets) : [], name: name, author: .user, export)
         } catch {
             message = error.localizedDescription
         }

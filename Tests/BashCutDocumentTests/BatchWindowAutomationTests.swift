@@ -34,6 +34,19 @@ struct BatchWindowAutomationTests {
         #expect(BatchWindowOption.editing(steps: 0, presets: []).count == BatchStepCatalog.entries.count)
     }
 
+    @Test("A message worded through BatchMessages matches its own key back, with its parts")
+    func wordedMessagesMatchBack() throws {
+        let missing = BatchMessages.text(BatchMessages.inputMissing, "/tmp/a b.mov")
+        #expect(missing == "Input /tmp/a b.mov does not exist")
+        #expect(BatchMessage.match(missing)?.key == BatchMessages.inputMissing)
+        let step = BatchMessages.step(BatchMessages.exportUnknownPreset, 1, "export", "nope")
+        #expect(step == "Step 2 (export): unknown export preset nope")
+        let matched = try #require(BatchMessage.match(step))
+        #expect(matched.key == BatchMessages.exportUnknownPreset)
+        #expect(matched.arguments == ["2", "export", "nope"])
+        #expect(Set(BatchMessages.all).count == BatchMessages.all.count)
+    }
+
     @Test("The batch's messages match their patterns, specific ones before the generic step failure")
     func messagePatterns() throws {
         #expect(BatchMessage.match("Give at least one step")?.key == "Give at least one step")

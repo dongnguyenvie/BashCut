@@ -60,27 +60,24 @@ public final class BatchRunner {
     public static func check(_ pipeline: BatchPipeline, isPluginAction: (String) -> Bool) throws {
         try pipeline.validate()
         if let unknown = pipeline.template.outputs.first(where: { !OutputPresetName.all.contains($0) }) {
-            throw RPCFailure(-32602, "template outputs: unknown export preset \(unknown); use "
-                             + OutputPresetName.all.joined(separator: ", "))
+            throw RPCFailure(-32602, BatchMessages.text(BatchMessages.unknownOutput, unknown, OutputPresetName.all.joined(separator: ", ")))
         }
         for (index, step) in pipeline.steps.enumerated() {
-            let where_ = "Step \(index + 1) (\(step.action))"
             if step.action == exportAction {
                 let presets = presets(step, pipeline)
-                if presets.isEmpty { throw RPCFailure(-32602, "\(where_) needs params.presets or template outputs") }
+                if presets.isEmpty { throw RPCFailure(-32602, BatchMessages.step(BatchMessages.exportNeedsPresets, index, step.action)) }
                 if let unknown = presets.first(where: { !OutputPresetName.all.contains($0) }) {
-                    throw RPCFailure(-32602, "\(where_): unknown export preset \(unknown)")
+                    throw RPCFailure(-32602, BatchMessages.step(BatchMessages.exportUnknownPreset, index, step.action, unknown))
                 }
                 continue
             }
             guard let spec = CommandCatalog.spec(named: step.action) else {
                 guard isPluginAction(step.action) else {
-                    throw RPCFailure(-32602, "\(where_): no command or installed plugin action has this ID (plugins "
-                                     + "actions lists plugin actions)")
+                    throw RPCFailure(-32602, BatchMessages.step(BatchMessages.unknownAction, index, step.action))
                 }
                 continue
             }
-            if let refusal = stepRefusal(spec) { throw RPCFailure(-32602, "\(where_) " + refusal) }
+            if let refusal = stepRefusal(spec) { throw RPCFailure(-32602, BatchMessages.step(refusal, index, step.action)) }
         }
     }
 
@@ -210,7 +207,7 @@ public final class BatchRunner {
                 run.items[index].state = cancelled ? .cancelled : .skipped
             }
             run.state = cancelled ? .cancelled : stopped ? .failed : .completed
-            if stopped { run.error = "Stopped after a failed item (onFailure stop)" }
+            if stopped { run.error = BatchMessages.stoppedAfterFailure }
             run.finishedAt = Date()
         }
     }
@@ -227,7 +224,7 @@ public final class BatchRunner {
         } catch {
             updateItem(id, item) { status in
                 status.state = Task.isCancelled ? .cancelled : .failed
-                status.error = "Could not open its project: " + error.localizedDescription
+                status.error = BatchMessages.text(BatchMessages.openFailed, error.localizedDescription)
                 for step in status.steps.indices { status.steps[step].state = .skipped }
             }
             return false
@@ -246,7 +243,7 @@ public final class BatchRunner {
             variables["media"] = variables["media"] ?? host.firstMediaID
             do {
                 guard host.openProjectFile?.standardizedFileURL == project.standardizedFileURL else {
-                    throw RPCFailure(-32000, "The open project changed during the batch")
+                    throw RPCFailure(-32000, BatchMessages.projectChanged)
                 }
                 let outcome = try await perform(step, at: index, item: item, variables: variables, in: context)
                 if let media = Self.mediaID(in: outcome.result) { variables["media"] = media }
@@ -262,7 +259,7 @@ public final class BatchRunner {
                     status.steps[index].state = Task.isCancelled || JobCenter.isCancellation(error) ? .cancelled : .failed
                     status.steps[index].error = failure.message
                     status.steps[index].errorCategory = (error as? StepJobFailure)?.category ?? failure.category.rawValue
-                    status.error = "Step \(index + 1) (\(step.action)): \(failure.message)"
+                    status.error = BatchMessages.step(BatchMessages.stepFailed, index, step.action, failure.message)
                 }
             }
         }
@@ -301,7 +298,7 @@ public final class BatchRunner {
                 ])
             }
         }
-        guard let file = host.openProjectFile else { throw RPCFailure(-32000, "No project opened") }
+        guard let file = host.openProjectFile else { throw RPCFailure(-32000, BatchMessages.noProjectOpened) }
         return file
     }
 
@@ -390,16 +387,17 @@ extension BatchRunner {
         activeJob = id
         defer { activeJob = nil }
         while true {
-            guard let job = host.jobs.job(id) else { throw StepJobFailure(message: "Its job \(id) was dropped", category: nil) }
+            guard let job = host.jobs.job(id) else { throw StepJobFailure(message: BatchMessages.text(BatchMessages.jobDropped, id), category: nil) }
             if !job.isActive {
                 guard job.state == .completed else {
                     if job.state == .cancelled { throw CancellationError() }
-                    throw StepJobFailure(message: job.error ?? "The job failed", category: job.errorCategory)
+                    throw StepJobFailure(message: job.error ?? BatchMessages.jobFailed, category: job.errorCategory)
                 }
                 return job
             }
             do {
-                try await Task.sleep(for: .milliseconds(100))
+                // Returns on any state or step change; the loop above decides whether the job is done.
+                _ = try await host.jobs.wait(id, for: .seconds(60))
             } catch {
                 host.jobs.cancel(id)
                 throw error

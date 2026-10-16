@@ -347,9 +347,7 @@ extension ProjectDocument {
 
     /// An item ID from a display name: ASCII lowercase letters and digits joined by hyphens.
     static func libraryID(from name: String) -> String {
-        let folded = name.replacingOccurrences(of: "đ", with: "d").replacingOccurrences(of: "Đ", with: "D")
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
-            .lowercased()
+        let folded = name.searchFolded
         let words = folded.split { !($0.isASCII && ($0.isLetter || $0.isNumber)) }
         return String(words.joined(separator: "-").prefix(64)).trimmingCharacters(in: CharacterSet(charactersIn: "-"))
     }

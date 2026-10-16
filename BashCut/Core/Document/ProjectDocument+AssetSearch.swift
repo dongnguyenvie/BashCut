@@ -80,9 +80,7 @@ extension ProjectDocument {
             previewSource(media)
             guard sourceViewer.visible, sourceViewer.media?.id == media.id else { return }
             let fps = media.fps.value
-            sourceViewer.inFrame = max(0, Int((select.from * fps).rounded(.down)))
-            sourceViewer.outFrame = max(sourceViewer.inFrame + 1, min(media.frames, Int((select.to * fps).rounded())))
-            sourceViewer.seek(sourceViewer.inFrame)
+            markSource(in: Int((select.from * fps).rounded(.down)), out: Int((select.to * fps).rounded()))
         case .library(let item):
             if item.kind == .audio { toggleLibraryPreview(item) } else { showAssetInPanel(item) }
         }

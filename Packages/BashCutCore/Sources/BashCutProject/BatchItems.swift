@@ -34,21 +34,21 @@ extension BatchPipeline {
             let url = URL(fileURLWithPath: expanded, relativeTo: base).standardizedFileURL
             var isFolder: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder) else {
-                throw ProjectError.invalid("Input \(input.path) does not exist")
+                throw ProjectError.invalid(BatchMessages.text(BatchMessages.inputMissing, input.path))
             }
             let kind = input.kind ?? Self.detectedKind(url, isFolder: isFolder.boolValue)
             switch kind {
             case .project:
-                guard let file = Self.projectFile(url) else { throw ProjectError.invalid("No project at \(input.path)") }
+                guard let file = Self.projectFile(url) else { throw ProjectError.invalid(BatchMessages.text(BatchMessages.noProject, input.path)) }
                 add(BatchItemSource(name: file.deletingLastPathComponent().lastPathComponent, url: file, kind: .project))
             case .file:
-                guard !isFolder.boolValue else { throw ProjectError.invalid("Input \(input.path) is a folder") }
+                guard !isFolder.boolValue else { throw ProjectError.invalid(BatchMessages.text(BatchMessages.inputFolder, input.path)) }
                 add(BatchItemSource(name: url.deletingPathExtension().lastPathComponent, url: url, kind: .file))
             case .folder:
-                guard isFolder.boolValue else { throw ProjectError.invalid("Input \(input.path) is not a folder") }
+                guard isFolder.boolValue else { throw ProjectError.invalid(BatchMessages.text(BatchMessages.inputNotFolder, input.path)) }
                 let found = try Self.folderItems(url)
                 guard !found.isEmpty else {
-                    throw ProjectError.invalid("No video, audio, image or project in \(input.path)")
+                    throw ProjectError.invalid(BatchMessages.text(BatchMessages.noMedia, input.path))
                 }
                 found.forEach(add)
             }

@@ -169,7 +169,7 @@ struct BatchQueueView: View {
             HStack {
                 Text("Queue").font(.headline)
                 if let run = model.run {
-                    Text(verbatim: Self.summary(run)).font(.caption).foregroundStyle(.secondary)
+                    Text(verbatim: BatchQueueStatus.summary(run)).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -213,7 +213,7 @@ struct BatchQueueView: View {
                 if item.state == .running {
                     ProgressView(value: status.progress)
                 } else {
-                    Text(verbatim: Self.stateTitle(item.state)).foregroundStyle(.secondary)
+                    Text(verbatim: BatchQueueStatus.stateTitle(item.state)).foregroundStyle(.secondary)
                 }
             }
             .frame(width: 150, alignment: .leading)
@@ -236,79 +236,5 @@ struct BatchQueueView: View {
         }
         .padding(.vertical, 5)
         .font(.callout)
-    }
-
-    static func stateTitle(_ state: BatchState) -> String {
-        switch state {
-        case .awaitingApproval: String(localized: "Awaiting approval")
-        case .waiting: String(localized: "Waiting")
-        case .running: String(localized: "Running")
-        case .completed: String(localized: "Done")
-        case .failed: String(localized: "Failed")
-        case .skipped: String(localized: "Skipped")
-        case .cancelled: String(localized: "Cancelled")
-        case .denied: String(localized: "Denied")
-        }
-    }
-
-    static func summary(_ run: BatchRunStatus) -> String {
-        let done = run.count(.completed), total = run.items.count
-        return Self.stateTitle(run.state) + " · " + String(format: String(localized: "%lld of %lld done"), done, total)
-            + (run.count(.failed) > 0 ? " · " + String(format: String(localized: "%lld failed"), run.count(.failed)) : "")
-    }
-}
-
-/// What the queue shows for one item: the step it is on (or stopped at), its progress and its result, with review
-/// issues and failures marked for attention.
-struct BatchQueueStatus {
-    let step: Int?
-    let progress: Double
-    let result: String
-    let attention: Bool
-
-    @MainActor init(item: BatchItemStatus, jobs: JobCenter) {
-        let total = max(1, item.steps.count)
-        let done = item.steps.filter { $0.state == .completed }.count
-        let running = item.currentStep.flatMap { item.steps[$0].job }.flatMap { jobs.job($0)?.progress } ?? 0
-        progress = min(1, (Double(done) + running) / Double(total))
-        step = item.currentStep ?? item.steps.lastIndex { $0.state == .failed } ?? (item.state == .completed ? total - 1 : nil)
-        let issues = Self.reviewIssues(item)
-        switch item.state {
-        case .completed:
-            var parts: [String] = []
-            if !item.outputs.isEmpty {
-                parts.append(item.outputs.count == 1 ? String(localized: "1 file")
-                             : String(format: String(localized: "%lld files"), item.outputs.count))
-            }
-            if let issues {
-                parts.append(issues == 1 ? String(localized: "1 review issue")
-                             : String(format: String(localized: "%lld review issues"), issues))
-            }
-            result = ([String(localized: "Done")] + parts).joined(separator: " · ")
-            attention = (issues ?? 0) > 0
-        case .failed:
-            result = item.error.map { BatchMessage.localized($0) } ?? String(localized: "Failed")
-            attention = true
-        case .running:
-            result = String(localized: "Running")
-            attention = false
-        default:
-            result = item.error.map { BatchMessage.localized($0) } ?? BatchQueueView.stateTitle(item.state)
-            attention = false
-        }
-    }
-
-    /// The issues the item's last review step found: `review run` gives a list, or `{issues, summary}`; long lists
-    /// are kept as their count.
-    static func reviewIssues(_ item: BatchItemStatus) -> Int? {
-        guard let review = item.steps.last(where: { $0.action == "review.run" && $0.state == .completed }) else {
-            return nil
-        }
-        let issues = review.result.object["issues"] ?? review.result
-        switch issues {
-        case .array(let list): return list.count
-        case .integer(let count): return count
-        default: return nil
-        }
     }
 }

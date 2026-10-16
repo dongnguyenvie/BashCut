@@ -19,6 +19,9 @@ public final class ExportController {
     public private(set) var failure: ExportFailure?
     /// Plugin export steps running before the exports start (#634); the export counts as running meanwhile.
     public private(set) var preparing: ExportPreparation?
+    /// Keeps App Nap off while export steps run, as the queue does for the export itself (#350): a step can run for
+    /// minutes and calls back into the app through the CLI.
+    @ObservationIgnored private var preparingActivity: (any NSObjectProtocol)?
     @ObservationIgnored private let history: ExportHistoryStore
 
     public init(
@@ -39,9 +42,17 @@ public final class ExportController {
     /// The export steps job `job` runs before exporting `name`; `endPreparing` when it is over.
     public func beginPreparing(job: String, name: String, steps: [String]) {
         preparing = ExportPreparation(job: job, name: name, steps: steps)
+        if preparingActivity == nil {
+            preparingActivity = ProcessInfo.processInfo.beginActivity(
+                options: .userInitiated, reason: "Running export steps")
+        }
     }
 
-    public func endPreparing() { preparing = nil }
+    public func endPreparing() {
+        preparing = nil
+        if let preparingActivity { ProcessInfo.processInfo.endActivity(preparingActivity) }
+        preparingActivity = nil
+    }
 
     /// Queues `request`. When it finishes, the report is recorded first, then `finished` runs with the
     /// outcome; it does not run after `reset`.
@@ -73,7 +84,7 @@ public final class ExportController {
     /// Drops every export and the report when another project opens.
     public func reset() {
         if let preparing { queue.jobs.cancel(preparing.job) }
-        preparing = nil
+        endPreparing()
         queue.cancelAll()
         report = nil
         notice = nil

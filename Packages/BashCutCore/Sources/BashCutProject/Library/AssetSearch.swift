@@ -112,9 +112,7 @@ public enum AssetSearch {
     }
 
     static func fold(_ text: String) -> String {
-        text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
-            // Vietnamese đ does not fold with the diacritics.
-            .replacingOccurrences(of: "đ", with: "d")
+        text.searchFolded
     }
 
     /// The rank of a match, or nil when some word is in none of the fields.

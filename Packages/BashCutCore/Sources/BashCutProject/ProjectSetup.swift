@@ -27,8 +27,7 @@ public struct ProjectSetup: Sendable {
     public init() {}
 
     public var folderName: String {
-        let folded = name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
-            .replacingOccurrences(of: "đ", with: "d")
+        let folded = name.searchFolded
         return folded.components(separatedBy: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789").inverted)
             .filter { !$0.isEmpty }.joined(separator: "-")
     }

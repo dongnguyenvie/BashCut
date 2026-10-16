@@ -12,7 +12,25 @@ extension ProjectDocument {
     func exportSteps(for presets: [ExportPreset]) -> [ExportStepRun] {
         guard presets.contains(where: { $0 != .quickDraft }) else { return [] }
         plugins.refresh(projectRoot: fileURL?.deletingLastPathComponent())
-        return ExportStepRun.matching(plugins.plugins.filter(plugins.isReady), project: project, presets: presets)
+        return matchingExportSteps(for: presets)
+    }
+
+    /// `exportSteps(for:)` from the plugins as last loaded, without refreshing them: safe while drawing a view.
+    func matchingExportSteps(for presets: [ExportPreset]) -> [ExportStepRun] {
+        ExportStepRun.matching(plugins.plugins.filter(plugins.isReady), project: project, presets: presets)
+    }
+
+    /// Runs `export` at once, or after `steps` as one job (`startExportSteps`); returns the steps' job, if any.
+    @discardableResult
+    func runExport(
+        after steps: [ExportStepRun], name: String, author: Author,
+        _ export: @escaping @MainActor @Sendable () throws -> JSONValue
+    ) throws -> String? {
+        guard !steps.isEmpty else {
+            _ = try export()
+            return nil
+        }
+        return startExportSteps(steps, name: name, author: author, then: export)
     }
 
     /// Runs `steps` as one job with progress and cancel, then `export` on the project the steps left. The export
@@ -28,10 +46,8 @@ extension ProjectDocument {
             guard let self else { return ([:], {}) }
             // The step edits through the CLI as the plugin; its token dies with the step.
             let token = registry.issueToken(author: .plugin)
-            var environment = [
-                "BASHCUT_SOCKET": AutomationPaths.socket, "BASHCUT_SESSION_TOKEN": token,
-                "BASHCUT_PROJECT": fileURL?.path ?? "", "BASHCUT_EXPORT_STEP": run.step.id,
-            ]
+            var environment = AutomationPaths.sessionEnvironment(token: token, project: fileURL)
+            environment["BASHCUT_EXPORT_STEP"] = run.step.id
             if let cli = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("bashcut"),
                 FileManager.default.isExecutableFile(atPath: cli.path)
             {
