@@ -84,6 +84,16 @@ extension PlanCut {
         return .object(fields)
     }
 
+    /// Errors a later stage of the edit resolves, not the list: a graphic gets its media when the graphics stage
+    /// renders it, a voiceover line its take when voice lines makes it. `plan check --save` keeps a list with only
+    /// these (#631); `plan apply` still refuses them.
+    public static let stagePending: Set<String> = ["graphic-no-media", "no-take"]
+
+    /// The errors that stop `plan check --save`: every error but the stage-pending ones.
+    public static func saveBlockers(_ problems: [Problem]) -> [Problem] {
+        problems.filter { $0.severity == "error" && !stagePending.contains($0.id) }
+    }
+
     /// A new value with the null members of its objects left out (a patch's null means "remove", never "store null").
     static func stripNulls(_ value: JSONValue) -> JSONValue {
         switch value {

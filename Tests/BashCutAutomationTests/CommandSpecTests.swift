@@ -78,6 +78,12 @@ struct CommandSpecTests {
         #expect(throws: RPCFailure.self) {
             try export.validate(["preset": .string("vhs"), "name": .string("draft")])
         }
+        // Several outputs in one request (#593): presets instead of preset.
+        let several = try CommandLineParser.parse(["export", "start", "--presets", "tiktok,shorts", "--name", "trip"])
+        #expect(several.spec.name == "export.start")
+        #expect(several.params["presets"] == .string("tiktok,shorts"))
+        #expect(several.params["preset"] == nil)
+        #expect(try export.validate(several.params)["presets"] == .string("tiktok,shorts"))
     }
 
     @Test("Number parameters parse from the CLI, check their range and publish it to MCP")

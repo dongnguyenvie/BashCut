@@ -7557,7 +7557,17 @@
     "News story": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "News story" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tin" } } } },
     "Survey the project footage and summarize missing coverage.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Survey the project footage and summarize missing coverage." } }, "vi": { "stringUnit": { "state": "translated", "value": "Xem toàn bộ footage của project và tóm tắt những cảnh còn thiếu." } } } },
     "Draft voiceover without overlapping real speech.": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Draft voiceover without overlapping real speech." } }, "vi": { "stringUnit": { "state": "translated", "value": "Viết nháp lời đọc, không chồng lên tiếng nói thật." } } } },
-    "Not ready": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not ready" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa sẵn sàng" } } } }
+    "Not ready": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Not ready" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chưa sẵn sàng" } } } },
+    "No captions on the timeline": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No captions on the timeline" } }, "vi": { "stringUnit": { "state": "translated", "value": "Timeline chưa có phụ đề" } } } },
+    "No music on the timeline": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No music on the timeline" } }, "vi": { "stringUnit": { "state": "translated", "value": "Timeline chưa có nhạc" } } } },
+    "Needs an audio.loudness plugin": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Needs an audio.loudness plugin" } }, "vi": { "stringUnit": { "state": "translated", "value": "Cần plugin audio.loudness" } } } },
+    "Primary": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Primary" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chính" } } } },
+    "Check at least one output": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Check at least one output" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hãy chọn ít nhất một đầu ra" } } } },
+    "Each output gets its own file: %@": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Each output gets its own file: %@" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mỗi đầu ra có tệp riêng: %@" } } } },
+    "Export %lld outputs": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Export %lld outputs" } }, "vi": { "stringUnit": { "state": "translated", "value": "Xuất %lld đầu ra" } } } },
+    "1 graphic is a draft": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "1 graphic is a draft" } }, "vi": { "stringUnit": { "state": "translated", "value": "1 đồ hoạ đang là bản nháp" } } } },
+    "%lld graphics are drafts": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld graphics are drafts" } }, "vi": { "stringUnit": { "state": "translated", "value": "%lld đồ hoạ đang là bản nháp" } } } },
+    "Drafts play at fewer frames a second. Ask your agent for the final render, or run:": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Drafts play at fewer frames a second. Ask your agent for the final render, or run:" } }, "vi": { "stringUnit": { "state": "translated", "value": "Bản nháp chạy ít khung hình mỗi giây hơn. Hãy nhờ agent render bản cuối, hoặc chạy:" } } } }
   },
   "version": "1.0"
 }

@@ -38,6 +38,17 @@ import Testing
         #expect(calls == 1)
     }
 
+    @Test("plan check is a read, but with save it edits: a session token is required (#631)")
+    func planCheckSave() async throws {
+        let registry = CommandRegistry()
+        registry.register("plan.check") { arguments, author in .bool(arguments.bool("save") && author != nil) }
+        #expect(await registry.handle(RPCRequest(method: "plan.check")).result == .bool(false))
+        let save: [String: JSONValue] = ["save": .bool(true), "baseRev": .integer(0)]
+        #expect(await registry.handle(RPCRequest(method: "plan.check", params: save)).error?.code == -32001)
+        let token = registry.issueToken(author: .codex)
+        #expect(await registry.handle(RPCRequest(method: "plan.check", params: save, token: token)).result == .bool(true))
+    }
+
     @Test("Requests are validated against the spec before the handler runs")
     func specValidation() async throws {
         let registry = CommandRegistry()
