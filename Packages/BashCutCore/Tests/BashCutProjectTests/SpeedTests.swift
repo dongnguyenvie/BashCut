@@ -99,6 +99,17 @@ struct SpeedTests {
         #expect(round.matches(original: project))
     }
 
+    @Test("Slowing at the same length keeps only the words the clip still plays the middle of")
+    func captionsLoseUnplayedWords() throws {
+        let project = try captioned()
+        // `left` plays 0–1 s at 0.5× now: "One" (middle 0.75 s) is heard at 30–60, "both" (1.25 s) no longer.
+        let slow = try project.applying(.setSpeed(item: "left", speed: 0.5, keepDuration: true)).project
+        let first = try #require(captions(slow).first)
+        #expect(first.at == 30 && first.end == 60)
+        #expect(first.fields["words"]?.array.compactMap { $0.object["text"]?.string } == ["One"])
+        #expect(captions(slow).first { $0.text == "Two" }?.at == 75)
+    }
+
     @Test("A retimed caption that would overlap a caption left on its layer goes to another caption layer")
     func captionsStack() throws {
         var project = try captioned()

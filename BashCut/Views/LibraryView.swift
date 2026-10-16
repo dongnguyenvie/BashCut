@@ -234,7 +234,7 @@ private extension LibraryView {
         document.project.media.filter {
             $0["kind"] != .string("audio")
                 && source(for: $0) == mediaSource
-                && (search.isEmpty || "\($0.path) \($0.fileName)".localizedCaseInsensitiveContains(search))
+                && (search.isEmpty || "\($0.path) \($0.fileName)".searchFolded.contains(search.searchFolded))
         }
     }
 

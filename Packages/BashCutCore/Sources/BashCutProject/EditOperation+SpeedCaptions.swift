@@ -5,8 +5,8 @@ import Foundation
 /// ripples the clips after it, so without this every caption made from that media would end up off its words. A
 /// caption made from a media (`captionMedia`) is mapped through the clip of that media it was heard in: the frame
 /// where the clip played that source second before is moved to the frame where it plays it now, for the caption's
-/// edges and each of its word timings. Captions of clips the edit did not change, and captions typed or imported as
-/// timeline text, stay where they are.
+/// edges and each of its word timings (a word whose middle the clip no longer plays is dropped). Captions of clips
+/// the edit did not change, and captions typed or imported as timeline text, stay where they are.
 extension Project {
     mutating func retimeCaptions(from before: Project) {
         let now = Dictionary(tracks.flatMap(\.items).map { ($0.id, $0) }) { first, _ in first }
@@ -56,10 +56,9 @@ extension Project {
     /// `caption` mapped from where `old` played its source to where `new` plays it, kept inside `new`.
     private func retimed(_ caption: Item, from old: Item, to new: Item, media: Media, before: Project) -> Item? {
         let start = Double(old.sourceIn) / media.fps.value
-        let map = { (frame: Int) -> Int in
-            let seconds = start + old.sourceSeconds(afterFrames: frame - old.at, fps: before.fps)
-            return min(new.end, max(new.at, self.frame(atSource: seconds, in: new, media: media)))
-        }
+        let source = { (frame: Int) in start + old.sourceSeconds(afterFrames: frame - old.at, fps: before.fps) }
+        let map = { (frame: Int) in min(new.end, max(new.at, self.frame(atSource: source(frame), in: new, media: media))) }
+        let plays = sourceSpan(of: new, media: media)
         var item = caption
         item.at = map(caption.at)
         item.duration = map(caption.end) - item.at
@@ -68,6 +67,8 @@ extension Project {
             item.fields["words"] = .array(words.compactMap { word in
                 var entry = word.object
                 guard let at = entry["at"]?.int, let length = entry["dur"]?.int else { return word }
+                // A word the clip no longer plays the middle of is not heard there any more (as placedCues keeps them).
+                guard plays.contains((source(caption.at + at) + source(caption.at + at + length)) / 2) else { return nil }
                 let from = min(item.duration - 1, max(0, map(caption.at + at) - item.at))
                 entry["at"] = .integer(from)
                 entry["dur"] = .integer(max(1, min(item.duration, map(caption.at + at + length) - item.at) - from))
