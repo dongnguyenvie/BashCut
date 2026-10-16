@@ -24,7 +24,7 @@ let package = Package(
                .library(name: "BashCutTestSupport", targets: ["BashCutTestSupport"])],
     dependencies: [.package(path: "Packages/BashCutCore"),
                    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
-                   .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.20.0"),
+                   .package(url: "https://github.com/migueldeicaza/SwiftTerm", exact: "1.20.0"),
                    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
                    .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", exact: "0.12.1")],
     targets: [
