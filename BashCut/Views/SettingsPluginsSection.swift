@@ -1,6 +1,7 @@
 import BashCutDocument
 import BashCutPlugin
 import BashCutPlugins
+import BashCutProject
 import SwiftUI
 
 /// Settings › Plugins: hook and update preferences, then the options of every installed plugin that declares
@@ -23,8 +24,8 @@ struct SettingsPluginsSection: View {
     private var configurable: [InstalledPlugin] {
         guard query.isEmpty, !filter.isEmpty else { return withOptions }
         return withOptions.filter { plugin in
-            plugin.manifest.displayName.localizedCaseInsensitiveContains(filter)
-                || plugin.id.localizedCaseInsensitiveContains(filter)
+            plugin.manifest.displayName.searchFolded.contains(filter.searchFolded)
+                || plugin.id.searchFolded.contains(filter.searchFolded)
         }
     }
 

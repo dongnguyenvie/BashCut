@@ -24,6 +24,17 @@ struct LibraryTests {
     private static let fire = LibraryItem(
         id: "fire", kind: .sticker, name: "Fire", tags: ["hot"], pack: "Food", params: ["emoji": .string("🔥")])
 
+    @Test("A library search ignores case, accents and đ, both ways")
+    func foldedQuery() {
+        let item = LibraryItem(id: "chu-do", kind: .sticker, name: "Chữ đỏ", tags: ["Tiêu đề"], params: ["emoji": .string("🔴")])
+        for query in ["chu do", "CHỮ ĐỎ", "tieu de", "chu-do"] {
+            #expect(LibraryCatalog.Filter(query: query).matches(item), "\(query)")
+        }
+        #expect(LibraryCatalog.Filter(query: "DÍSSOLVE").matches(
+            LibraryItem(id: "soft-dissolve", kind: .sticker, name: "Soft dissolve")))
+        #expect(!LibraryCatalog.Filter(query: "chu xanh").matches(item))
+    }
+
     @Test("Each kind checks what it needs to be applied or placed")
     func validation() throws {
         try Self.fire.validate()
