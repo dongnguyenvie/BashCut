@@ -12,9 +12,13 @@ extension BashCutCompositor {
         guard extent.width.isFinite, extent.height.isFinite, !extent.isEmpty else { return image }
         var result = image
         if let pixelate = properties["pixelate"]?.double, pixelate * side >= 2 {
-            result = result.clampedToExtent().applyingFilter("CIPixellate", parameters: [
-                kCIInputScaleKey: min(0.1, pixelate) * side, kCIInputCenterKey: CIVector(x: extent.midX, y: extent.midY),
-            ]).cropped(to: extent)
+            // CIPixellate takes each cell's middle pixel: blurred first, a cell carries its average colour, so thin
+            // letters leave no bright cells that still spell them.
+            let cell = min(0.1, pixelate) * side
+            result = result.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: cell / 2])
+                .applyingFilter("CIPixellate", parameters: [
+                    kCIInputScaleKey: cell, kCIInputCenterKey: CIVector(x: extent.midX, y: extent.midY),
+                ]).cropped(to: extent)
         }
         if let blur = properties["blur"]?.double, blur > 0 {
             result = blurred(result, soft: min(0.2, blur) * side, x: 0, y: 0)
