@@ -959,7 +959,7 @@ Make captions whose text is the script and whose times come from the speech: eac
 
 ### `bashcut transcript words [--from <from>] [--to <to>] [--media <media>] [--heard]`
 
-Read every word on the caption layers in timeline order: index, text, at/end (frames), atSeconds, endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word length), gapBefore (frames since the previous word ended) and, for captions made from a media, source {media, clip, start, end} in that media's seconds through the clip heard there now (null when no clip of it plays there: captions do not move with their clips). count is the words returned, total the words on the caption layers. With heard, the words come from the stored transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the provider's confidence/speaker/event/noSpeechProb/avgLogprob/compressionRatio; transcribed and untranscribed list the media.
+Read every word on the caption layers in timeline order: index, text, at/end (frames), atSeconds, endSeconds, item and cue (captions export numbering), timing (transcribed or estimated from word length), gapBefore (frames since the previous word ended) and, for captions made from a media, source {media, clip, start, end} in that media's seconds through the clip heard there now (null when no clip of it plays there: captions do not move with their clips, except through a speed change). count is the words returned, total the words on the caption layers. With heard, the words come from the stored transcripts (media.transcribe) of the media the timeline plays instead: each word inside a clip that plays it, at that clip's frames (trim, speed), with item = the clip, timing source and the provider's confidence/speaker/event/noSpeechProb/avgLogprob/compressionRatio; transcribed and untranscribed list the media.
 
 - Mode: read · Runs: immediately · MCP: `bashcut_transcript_words`
 - `from`: integer, ≥ 0. Only words ending after this timeline frame
@@ -1021,7 +1021,7 @@ Read the project.bashcut.json JSON Schema: every field, its type and range. Gene
 
 ### `bashcut clip speed [<item>] [--items <items>] --speed <speed> [--keep-duration] [--preserve-pitch <preservePitch>] --base-rev <baseRev>`
 
-Change a clip's constant speed like Inspector › Speed. By default the clip keeps its source and its length changes (2× halves it), moving later clips on its layer; with keepDuration it keeps its length and uses more or less source. Linked picture and sound change together. A clip is shortened to fit its source even with keepDuration; the result then has shortened: true. With items, every listed clip changes in one undo step, each by these rules (Inspector with several clips selected); items that have no speed are returned as skipped.
+Change a clip's constant speed like Inspector › Speed. By default the clip keeps its source and its length changes (2× halves it; rounded down to a whole frame, so the out edge never plays past the source it played), moving later clips on its layer; with keepDuration it keeps its length and uses more or less source. Linked picture and sound change together, and captions made from the clip's media follow the clips the change retimed or moved, word timings included. A clip is shortened to fit its source even with keepDuration; the result then has shortened: true. With items, every listed clip changes in one undo step, each by these rules (Inspector with several clips selected); items that have no speed are returned as skipped.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_speed`
 - `item`: string. Item ID; the selected clip by default
@@ -1043,7 +1043,7 @@ Set a clip's gain in dB (Inspector › Volume; op setProperties {volumeDb}). 0 l
 
 ### `bashcut clip speed-curve [<item>] [--preset <preset>] [--points <points>] [--keep-duration] --base-rev <baseRev>`
 
-Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a preset (montage, hero, bullet, jump-cut, flash-in, flash-out, or none to remove it) or points [[t, speed], …] with t from 0 (clip start) to 1 (clip end). The clip keeps its source and its length follows the average speed unless keepDuration (still shortened to fit its source, reported as shortened: true); linked sound follows; one undo step.
+Give a clip a speed ramp (CapCut Curve) like Inspector › Speed › Curve: a preset (montage, hero, bullet, jump-cut, flash-in, flash-out, or none to remove it) or points [[t, speed], …] with t from 0 (clip start) to 1 (clip end). The clip keeps its source and its length follows the average speed unless keepDuration (still shortened to fit its source, reported as shortened: true); linked sound and captions made from its media follow; one undo step.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_clip_speed-curve`
 - `item`: string. Item ID; the selected clip by default
