@@ -44,4 +44,16 @@ struct ProjectSwitchGateTests {
         #expect(!registry.needsProjectRead(token))
         #expect(registry.needsProjectRead(other))
     }
+
+    @Test("Batch commands are not held after a switch: the batch switches projects and its caller can still cancel it")
+    func batchCommandsAreNotGated() async throws {
+        let registry = CommandRegistry()
+        registry.register("batch.cancel") { _, _ in .object(["cancelled": .bool(true)]) }
+        registry.register("timeline.undo") { _, _ in .object([:]) }
+        let token = registry.issueToken(author: .codex)
+        registry.projectSwitched(to: "interview-02")
+        #expect(await registry.handle(request("batch.cancel", token: token)).error == nil)
+        #expect(registry.needsProjectRead(token), "the gate still holds edits of the new project")
+        #expect(await registry.handle(request("timeline.undo", token: token, params: ["baseRev": .integer(1)])).error != nil)
+    }
 }

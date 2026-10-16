@@ -53,6 +53,7 @@ extension ProjectDocument {
         registerSelectsCommands()
         registerPlanCutCommands()
         registerVariantCommands()
+        registerBatchCommands()
         registerPackagingCommands()
         registerLedgerCommands()
         registerStorageCommands()

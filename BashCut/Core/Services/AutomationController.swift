@@ -9,6 +9,8 @@ import OSLog
 @MainActor
 public final class AutomationController {
     public let registry: CommandRegistry
+    /// Batch pipeline runs (`batch run`); app-wide, so they outlive the project switches they make.
+    public let batches = BatchRunner()
     /// Token written to `tokenFile` for agents outside the app; it outlives project switches, unlike
     /// in-app terminal tokens.
     public private(set) var externalAgentToken: String?

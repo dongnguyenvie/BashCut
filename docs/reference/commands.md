@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 240 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 244 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1489,6 +1489,47 @@ Map an export's imported outcomes onto its sections (section markers when it was
 - `export`: string. The export: its ID (x-…), index or path from export history; the latest by default
 - `top`: integer, 0…20, default 3. Largest drops to list
 - `window`: number, 0…30, default 4. Seconds of words on each side of a drop
+
+## batch
+
+### `bashcut batch run [<pipeline.json>] [--preset <preset>] [--inputs <inputs>] [--base <base>] [--save-current] [--discard-current]`
+
+Run a pipeline over its inputs after the user approves the batch once in the app (that approval covers its exports). Returns the batch ID at once (state awaiting_approval or running); follow it with batch status --wait. A pipeline is JSON: {name, inputs (paths of media files, folders or projects; or {path, kind}), template {canvas, resolution, fps, language, brand, outputs (export presets)}, steps [{action, params, label}], onFailure skip|stop, concurrency, outputName ({name}-{preset} by default; {name}, {preset}, {index}, {pipeline}), projectsFolder}. Each file becomes a new project from the template (its folder linked as footage); a project input is that project. A step's action is a command that runs immediately or as a job (never one that needs approval, nor project open/create/close) or a plugin action; the export step (action export, params presets, includeSRT, normalizeAudio, bitrate, without) exports each preset (else the template outputs). String params may use {input}, {name}, {project} and {media} (the media the last step returned). Items run one at a time in the open editor, each project saved after its steps; the app must stay open (no headless runs).
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_batch_run`
+- `pipeline`: object. The pipeline (CLI: path to pipeline.json)
+- `preset`: string. A saved pipeline (batch presets) instead of pipeline
+- `inputs`: string. Comma-separated input paths, replacing the pipeline's inputs
+- `base`: string, path. Folder that relative input paths resolve against; the CLI sets it to the pipeline file's folder
+- `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
+- `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
+
+### `bashcut batch status [<batch>] [--all] [--wait <wait>]`
+
+Read a batch (default: the latest): state, concurrency {asked, used}, counts, and per item its input, kind, project, state, current step, outputs and steps (action, state, job, error, errorCategory, outputs, result). Without batch and with all, every kept batch in short form. With wait, holds until the batch or an item changes state or step, or it finishes (changed, timedOut).
+
+- Mode: read · Runs: immediately · MCP: `bashcut_batch_status`
+- `batch`: string. Batch ID
+- `all`: boolean, default false. Every kept batch, short form
+- `wait`: integer, 0…110. Seconds to wait for a change, at most 110
+
+### `bashcut batch cancel [<batch>]`
+
+Cancel a batch (default: the running one) and the job of its running step; items not run yet end cancelled, projects already made stay.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_batch_cancel`
+- `batch`: string. Batch ID
+
+### `bashcut batch presets [<pipeline.json>] [--name <name>] [--keep-inputs] [--get <get>] [--remove <remove>]`
+
+Saved pipelines in the user store (Application Support/BashCut/Batch/Presets): list them; with pipeline save it (name from name, else the pipeline's; inputs are dropped unless keepInputs), with get return one, with remove delete one.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_batch_presets`
+- `pipeline`: object. Pipeline to save (CLI: path to pipeline.json)
+- `name`: string. Preset name for save
+- `keepInputs`: boolean, default false. Save the pipeline's inputs too
+- `get`: string. Preset name to return
+- `remove`: string. Preset name to delete
 
 ## speech
 

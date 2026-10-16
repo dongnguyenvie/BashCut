@@ -102,6 +102,11 @@ public enum CommandLineParser {
             } else {
                 guard let parameter = positionals.popFirst() else { throw Failure(message: "Unexpected argument \(word)") }
                 params[parameter.name] = try value(word, for: parameter)
+                // Relative paths inside a JSON file (a pipeline's inputs) resolve against the file's folder.
+                if parameter.cli == .positionalJSONFile, params["base"] == nil, spec.parameters.contains(where: { $0.name == "base" }) {
+                    let file = URL(fileURLWithPath: (word as NSString).expandingTildeInPath).standardizedFileURL
+                    params["base"] = .string(file.deletingLastPathComponent().path)
+                }
             }
         }
         return params

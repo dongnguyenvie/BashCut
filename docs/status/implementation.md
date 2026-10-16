@@ -350,6 +350,12 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   `knowledge proposals` lists both, `approve`/`reject` take `l-…` or `p-…` IDs. The dock's book button shows the
   proposal count, or a dot for entries changed since the last visit.
 - A shared debug log (`~/Library/Logs/BashCut/debug.log`) written by the app, CLI and MCP bridge.
+- Batch pipelines (#596, P2-C1): `batch run|status|cancel|presets`. A pipeline (core `BatchPipeline`, JSON) runs its
+  steps over files, folders and projects, one project per input; the app-wide `BatchRunner` opens each item in the
+  editor, runs every step through the CLI's handlers as a job and records per-item, per-step state. Verified by
+  `BatchRunnerTests` (import, test-provider captions, export over 3 generated clips → 3 projects, 3 files) and live
+  in a dev copy with the Whisper plugin. Items run one at a time; the batch window (P2-C2), batch-fix actions
+  (P2-C3) and the Vietsub preset (P2-C4) are next. No headless runs.
 
 ### Plugins
 
