@@ -299,7 +299,7 @@ viewer instead (**Undock** or Esc).
 - The sheet lists each plugin's name and version, capability IDs, provider choices, dependency health and manifest
   diagnostics.
 - **Add Plugin…** (also a drop on Installed, and Settings › Plugins) takes a link (zip, GitHub repo, folder,
-  `plugin.json` or release; optional `#sha256=`; a per-host token in the Keychain) or a plugin folder, its
+  `plugin.json` or release; optional `#sha256=`; a per-host token in `plugin-secrets.json`) or a plugin folder, its
   `plugin.json`, or a `.zip` / `.bashcutplugin` archive. It validates and stages a copy, shows an unsigned badge, the source and every
   dependency recipe, and installs into this Mac's or the open project's plugin folder.
   A folder can instead be installed as a link (developer mode), which Installed shows with **Reload**; copied

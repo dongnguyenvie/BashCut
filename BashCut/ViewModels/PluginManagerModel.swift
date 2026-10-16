@@ -207,7 +207,7 @@ enum PluginText {
     @ObservationIgnored let trustsAutomatically: () -> Bool
     /// Settings › General › Developer mode: sample plugins (`category: sample`) show in the app's own surfaces.
     @ObservationIgnored let developerMode: () -> Bool
-    /// Values of `secret` options (Keychain; in memory in tests).
+    /// Values of `secret` options (plugin-secrets.json; in memory in tests).
     @ObservationIgnored var secrets = PluginSecretStore()
     @ObservationIgnored var service: CapabilityService
     private var projectRoot: URL?

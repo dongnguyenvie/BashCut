@@ -56,7 +56,7 @@ struct AgentChatCapabilityTests {
         try manifest.validate()
         try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("plugin.json"))
 
-        let secrets = PluginSecretStore(keychain: false)
+        let secrets = PluginSecretStore(file: nil)
         try secrets.write("sk-test", plugin: "app.bashcut.chat", option: "apiKey")
         var service = CapabilityService(
             roots: PluginRoots(user: root.appendingPathComponent("user"), bundled: nil),
@@ -81,7 +81,7 @@ struct AgentChatCapabilityTests {
 
     @Test("Secrets are kept per plugin and option; empty deletes")
     func secrets() throws {
-        let store = PluginSecretStore(keychain: false)
+        let store = PluginSecretStore(file: nil)
         #expect(store.read(plugin: "a.b", option: "key").isEmpty)
         try store.write("one", plugin: "a.b", option: "key")
         try store.write("two", plugin: "a.c", option: "key")

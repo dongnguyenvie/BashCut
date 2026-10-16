@@ -238,7 +238,7 @@ refused.
 
 **Private repos and servers:** *Add Token…* in the sheet saves an access token for the link's host (one for
 `github.com` covers GitHub's API and downloads; use a fine-grained token with read access to the repo's contents).
-It is kept in the Keychain on this Mac, sent only to that host, dropped when a download redirects to another host,
+It is kept on this Mac (`plugin-secrets.json` in Application Support), sent only to that host, dropped when a download redirects to another host,
 and never written to project files, logs or command parameters.
 
 BashCut remembers where a plugin from a link came from: Plugins › Installed shows the link and commit, and
@@ -692,7 +692,7 @@ example the voice a `voice.synthesize` provider should use), as `options`.
 - `choiceLabels` (API 3) gives `enum` choices display text; the value stays the choice.
 - `secret` (API 4) is for API keys and tokens.
   - It must have `user` scope and no `default`.
-  - BashCut keeps it in the Keychain (service `app.bashcut.plugin-secret`) and shows a password field with
+  - BashCut keeps it in `~/Library/Application Support/BashCut/plugin-secrets.json` (mode 0600) and shows a password field with
     **Save** and **Clear**.
   - The plugin receives it in `options` like other values.
   - `plugins options` shows only `{"set": true|false}`. For a plugin declaring any secret, **all** options
