@@ -101,7 +101,7 @@ public struct LibraryCatalog: Sendable {
             if let pack, item.pack?.caseInsensitiveCompare(pack) != .orderedSame { return false }
             if let query, !query.isEmpty {
                 let text = ([item.id, item.name, item.pack ?? ""] + item.tags).joined(separator: " ")
-                if !text.localizedCaseInsensitiveContains(query) { return false }
+                if !text.searchFolded.contains(query.searchFolded) { return false }
             }
             return true
         }
