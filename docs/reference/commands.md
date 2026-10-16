@@ -1875,7 +1875,7 @@ Read the open dialogs (alerts, file panels, sheets), topmost last, with their op
 
 ### `bashcut ui respond [<option>] [--path <path>] [--dialog <dialog>]`
 
-Answer the topmost dialog like the user: choose an option ID or title, or give a path to a file panel.
+Answer the topmost dialog like the user: choose an option ID or title, or give a path to a file panel. A window is answered only with --dialog (sheet:batch add-step:captions.replace, load-preset:NAME, run; see ui dialog).
 
 - Mode: ui · Runs: immediately · MCP: `bashcut_ui_respond`
 - `option`: string. Option ID or title

@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://bashcut.birchapps.com">Website</a> ·
   <a href="https://github.com/dongnguyenvie/BashCut/releases/latest">Tải về</a> ·
   <a href="https://testflight.apple.com/join/XwsNZxre">Beta TestFlight</a> ·
   <a href="docs/README.md">Tài liệu</a> ·

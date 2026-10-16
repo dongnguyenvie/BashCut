@@ -111,7 +111,7 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
             itemsError = nil
         } catch {
             items = []
-            itemsError = pipeline.inputs.isEmpty ? nil : error.localizedDescription
+            itemsError = pipeline.inputs.isEmpty ? nil : BatchMessage.localized(error.localizedDescription)
         }
     }
 
@@ -146,6 +146,11 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
         selectedStep = target
     }
 
+    func setLabel(_ index: Int, _ label: String?) {
+        guard pipeline.steps.indices.contains(index) else { return }
+        pipeline.steps[index].label = label
+    }
+
     /// The selected step's parameter `name`, nil when unset.
     func parameter(_ name: String) -> JSONValue? {
         guard let index = selectedStep, pipeline.steps.indices.contains(index) else { return nil }
@@ -159,7 +164,11 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
 
     /// A step's title for the list and the queue: its label, else the tool or command it runs.
     func title(_ step: BatchStep) -> String {
-        if let label = step.label { return label }
+        if let label = step.label {
+            // A catalog title kept as the label (CLI pipelines, presets) is the default, shown in the app's language.
+            if let entry = BatchStepCatalog.entry(step.action), entry.title == label { return entry.localizedTitle }
+            return label
+        }
         if step.action == BatchRunner.exportAction { return String(localized: "Export") }
         return document.plugins.action(step.action)?.title ?? step.action
     }
@@ -183,7 +192,7 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
             try BatchRunner.check(checked) { [plugins = document.plugins] in plugins.action($0) != nil }
             try document.batchPresets.save(preset)
             message = String(format: String(localized: "Saved preset %@"), name)
-        } catch { message = error.localizedDescription }
+        } catch { message = BatchMessage.localized(error.localizedDescription) }
         reloadPresets()
     }
 
@@ -213,7 +222,7 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
             try BatchRunner.check(pipeline) { [plugins = document.plugins] in plugins.action($0) != nil }
             items = try pipeline.items()
         } catch {
-            message = RPCFailure.from(error).message
+            message = BatchMessage.localized(RPCFailure.from(error).message)
             return
         }
         guard let leave = leaveCurrent() else { return }
@@ -258,6 +267,11 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
         let urls = files.isEmpty ? [item.project?.deletingLastPathComponent() ?? item.source.url] : files
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
+}
+
+extension BatchStepCatalog.Entry {
+    /// The catalog's English title, localized here (the core list has no strings of its own).
+    var localizedTitle: String { String(localized: String.LocalizationValue(title)) }
 }
 
 private extension Array {
