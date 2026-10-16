@@ -20,6 +20,9 @@ public final class ExportQueue {
     @ObservationIgnored private var requests: [String: ExportRequest] = [:]
     @ObservationIgnored private var outcomes: [String: ExportOutcome] = [:]
     public private(set) var activeJob: String?
+    /// Keeps App Nap off while an export runs: a napped BashCut in the background answered the agent's calls up to
+    /// 3 s late while the encoder used the CPU (#350). It also keeps the Mac from idle sleep mid-export.
+    @ObservationIgnored private var activity: (any NSObjectProtocol)?
 
     /// `pipeline` is read when each export starts, so plugin changes apply to queued exports.
     public init(jobs: JobCenter, pipeline: @escaping @MainActor () -> ExportPipeline) {
@@ -72,6 +75,7 @@ public final class ExportQueue {
         requests.removeAll()
         outcomes.removeAll()
         activeJob = nil
+        endActivity()
     }
 
     private func dropPending(_ id: String) {
@@ -83,6 +87,9 @@ public final class ExportQueue {
         guard activeJob == nil, !pending.isEmpty else { return }
         let next = pending.removeFirst()
         activeJob = next.job
+        if activity == nil {
+            activity = ProcessInfo.processInfo.beginActivity(options: .userInitiated, reason: "Exporting video")
+        }
         let pipeline = pipeline()
         let request = next.request
         let id = next.job
@@ -117,5 +124,11 @@ public final class ExportQueue {
         requests[export.job] = nil
         export.finished(result)
         startNext()
+        if activeJob == nil { endActivity() }
+    }
+
+    private func endActivity() {
+        if let activity { ProcessInfo.processInfo.endActivity(activity) }
+        activity = nil
     }
 }

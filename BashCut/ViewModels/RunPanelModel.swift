@@ -45,7 +45,7 @@ import Observation
         if visible { dismiss() } else { show() }
     }
 
-    /// Whether this run is followed: the panel shows or would show it (an agent's export then skips the report sheet).
+    /// Whether this run is followed: the panel shows or would show it.
     var tracksRun: Bool { progress.map { !isDismissed($0) } ?? false }
 
     private func isDismissed(_ progress: RunProgress) -> Bool {

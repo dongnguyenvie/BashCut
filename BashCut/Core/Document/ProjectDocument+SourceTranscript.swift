@@ -28,18 +28,25 @@ extension ProjectDocument {
     /// The stored transcript with the word times as the recognizer gave them.
     func rawTranscript(_ mediaID: String) async throws -> SourceTranscript? {
         let source = try analysisSource(mediaID)
-        var urls = [source.url]
+        return try await Self.rawTranscript(source.media, url: source.url, root: source.root, workspace: settings.workspace)
+    }
+
+    /// The stored transcript of `media` (its file at `url`), read off the main actor.
+    nonisolated static func rawTranscript(_ media: Media, url: URL, root: URL, workspace: URL?) async throws
+        -> SourceTranscript?
+    {
+        var urls = [url]
         // A converted media (AV1, VP9 → H.264) keeps the sound and timing of its original: a transcript made from the
         // original before the conversion finished still holds.
-        if let original = source.media.fields["originalPath"]?.string,
-            let url = try? MediaPathResolver.resolve(original, projectRoot: source.root, workspaceRoot: settings.workspace),
-            url != source.url, FileManager.default.fileExists(atPath: url.path)
+        if let original = media.fields["originalPath"]?.string,
+            let originalURL = try? MediaPathResolver.resolve(original, projectRoot: root, workspaceRoot: workspace),
+            originalURL != url, FileManager.default.fileExists(atPath: originalURL.path)
         {
-            urls.append(url)
+            urls.append(originalURL)
         }
         for url in urls {
-            let key = try await Self.transcriptKey(url)
-            if let record = ProjectCache.record(SourceTranscript.self, .transcripts, key: key, projectRoot: source.root),
+            let key = try SourceTranscript.cacheKey(for: url)
+            if let record = ProjectCache.record(SourceTranscript.self, .transcripts, key: key, projectRoot: root),
                 record.version == SourceTranscript.version, record.key == key
             {
                 return record

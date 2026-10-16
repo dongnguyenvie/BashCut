@@ -1060,6 +1060,7 @@
     "Details": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Details" } }, "vi": { "stringUnit": { "state": "translated", "value": "Chi tiết" } } } },
     "Open": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Open" } }, "vi": { "stringUnit": { "state": "translated", "value": "Mở" } } } },
     "Reveal": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Reveal" } }, "vi": { "stringUnit": { "state": "translated", "value": "Hiện trong Finder" } } } },
+    "Report": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Report" } }, "vi": { "stringUnit": { "state": "translated", "value": "Báo cáo" } } } },
     "Dismiss": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Dismiss" } }, "vi": { "stringUnit": { "state": "translated", "value": "Đóng" } } } },
     "Export progress: details and cancel": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Export progress: details and cancel" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tiến độ xuất: chi tiết và huỷ" } } } },
     "Export progress": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Export progress" } }, "vi": { "stringUnit": { "state": "translated", "value": "Tiến độ xuất" } } } },

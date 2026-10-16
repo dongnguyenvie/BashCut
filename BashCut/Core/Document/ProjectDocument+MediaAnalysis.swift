@@ -14,10 +14,18 @@ extension ProjectDocument {
         guard let media = project.media.first(where: { $0.id == mediaID }) else {
             throw RPCFailure(-32602, "Unknown media \(mediaID)")
         }
-        guard let url = try? MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: settings.workspace),
-            FileManager.default.fileExists(atPath: url.path)
-        else { throw RPCFailure(-32602, "The file of media \(mediaID) is missing") }
+        guard let url = Self.sourceURL(media, root: root, workspace: settings.workspace) else {
+            throw RPCFailure(-32602, "The file of media \(mediaID) is missing")
+        }
         return (root, media, url)
+    }
+
+    /// The file of `media` when it is there.
+    nonisolated static func sourceURL(_ media: Media, root: URL, workspace: URL?) -> URL? {
+        guard let url = try? MediaPathResolver.resolve(media.path, projectRoot: root, workspaceRoot: workspace),
+            FileManager.default.fileExists(atPath: url.path)
+        else { return nil }
+        return url
     }
 
     /// The stored record of `mediaID` for its file as it is now, or nil when it was not measured (or changed since).

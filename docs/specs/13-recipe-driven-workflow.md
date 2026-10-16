@@ -121,8 +121,8 @@ the review issues still open on the current timeline, every file the run exporte
 the run started, newest first), and Open, Reveal, Export another format… (`ui action export.open-output`,
 `export.reveal-output`, `show.export`), Fix N remaining issues and Try another recipe (`ui action run.fix-issues`,
 `run.another-recipe`: a request worded by BashCut, sent to the open agent like a typed message). An agent export
-during a run shows the card instead of the export report sheet; `run.dismiss` closes it until the next run and
-`run.show` (File › Show Agent Run) brings it back.
+never opens the export report sheet (its toast has a Report button, #350); during a run it shows the card, which
+`run.dismiss` closes until the next run and `run.show` (File › Show Agent Run) brings back.
 
 ## 6. What makes it trustworthy
 
