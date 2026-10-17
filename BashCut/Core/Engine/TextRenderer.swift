@@ -119,7 +119,7 @@ struct CaptionLineLayout {
 /// A text item's look: its preset's defaults overridden by the open `textStyle` fields (Phase 2 restyle): `align`
 /// left|center|right, `positionX` (0–1: the left edge, centre or right edge by align), `lineHeight` (× font size),
 /// `tracking` (× font size between letters), `uppercase`, `background {color, opacity, padding, radius}` (a plate
-/// behind the block), `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
+/// behind the block; padding and radius × font size), `shadow {color, opacity, blur, dx, dy}` and `accentBars [{side left|right|top|bottom, color,
 /// opacity, thickness, gap (× font size), length (share of the block's side), radius}]` (flexibility audit C1). A
 /// background or accent bars replace the preset's own plates and bars.
 struct CaptionStyle {
@@ -287,7 +287,9 @@ enum TextRenderer {
         context.translateBy(x: -bounds.minX, y: -bounds.minY)
         for decoration in decorations {
             context.setFillColor(decoration.color)
-            context.addPath(CGPath(roundedRect: decoration.rect, cornerWidth: decoration.radius, cornerHeight: decoration.radius, transform: nil))
+            // A radius past half the short side would round each axis on its own into an ellipse; cap it at a pill.
+            let radius = min(decoration.radius, decoration.rect.width / 2, decoration.rect.height / 2)
+            context.addPath(CGPath(roundedRect: decoration.rect, cornerWidth: radius, cornerHeight: radius, transform: nil))
             context.fillPath()
         }
         for layout in lines {

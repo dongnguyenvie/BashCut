@@ -150,22 +150,46 @@ extension ProjectDocument {
         }
     }
 
-    /// Style values that cannot be meant: an outline under 1 pt (`strokeWidth` is in points, unlike `size`); one
-    /// problem per entry (captions share one).
+    /// Style values that cannot be meant: an outline under 1 pt (`strokeWidth` is in points, unlike `size`); a
+    /// plate padding or radius given in pixels (they are × font size, so 20 draws a plate 20 font sizes round: an
+    /// ellipse or a pill); one problem per entry and kind (captions share one).
     func planStyleProblems(_ after: Project) -> [PlanCut.Problem] {
-        after.tracks.flatMap(\.items).compactMap { item -> PlanCut.Problem? in
-            guard let entry = item.fields[PlanCut.tag]?.string,
-                let width = item["textStyle"]?.object["strokeWidth"]?.double, width > 0, width < 1
-            else { return nil }
-            return PlanCut.Problem(
-                id: "stroke-units", severity: "warning", entry: entry,
-                detail: "strokeWidth is in points (0–50), not a share like size: \(width) draws no visible outline; "
-                    + "give it in points as the inspector's Outline (0–12 pt), or use a background", facts: ["strokeWidth": .number(width)])
+        after.tracks.flatMap(\.items).flatMap { item -> [PlanCut.Problem] in
+            guard let entry = item.fields[PlanCut.tag]?.string, let style = item["textStyle"]?.object else { return [] }
+            var problems: [PlanCut.Problem] = []
+            if let width = style["strokeWidth"]?.double, width > 0, width < 1 {
+                problems.append(PlanCut.Problem(
+                    id: "stroke-units", severity: "warning", entry: entry,
+                    detail: "strokeWidth is in points (0–50), not a share like size: \(width) draws no visible outline; "
+                        + "give it in points as the inspector's Outline (0–12 pt), or use a background",
+                    facts: ["strokeWidth": .number(width)]))
+            }
+            let plates: [(String, [String: JSONValue]?)] = [
+                ("background", style["background"]?.object), ("emphasis.plate", style["emphasis"]?.object["plate"]?.object)
+            ]
+            for (name, plate) in plates {
+                guard let plate else { continue }
+                let large = ["padding", "radius"].compactMap { key -> (String, Double)? in
+                    guard let value = plate[key]?.double, value > Self.planPlateUnitsLimit else { return nil }
+                    return ("\(name).\(key)", value)
+                }
+                guard !large.isEmpty else { continue }
+                problems.append(PlanCut.Problem(
+                    id: "plate-units", severity: "warning", entry: entry,
+                    detail: large.map { "\($0.0) \($0.1)" }.joined(separator: ", ")
+                        + " is × font size, not pixels: the plate grows past its text and rounds into an ellipse; "
+                        + "give padding about 0.3 and radius about 0.2 (0.5 for a pill)",
+                    facts: Dictionary(uniqueKeysWithValues: large.map { ($0.0, JSONValue.number($0.1)) })))
+            }
+            return problems
         }
         .reduce(into: [PlanCut.Problem]()) { result, problem in
-            if !result.contains(where: { $0.entry == problem.entry }) { result.append(problem) }
+            if !result.contains(where: { $0.entry == problem.entry && $0.id == problem.id }) { result.append(problem) }
         }
     }
+
+    /// Plate padding or radius above this many font sizes reads as pixels: no designed plate reaches it.
+    static let planPlateUnitsLimit = 2.0
 
     /// Each title's smallest line as a share of the frame's short side (`textShare`), the measure review.minTextSize
     /// uses, so a template that shrinks a line shows before the build.

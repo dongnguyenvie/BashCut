@@ -170,7 +170,8 @@ extension CommandCatalog {
         let presets: String = TextPreset.all.joined(separator: ", ")
         return "Text items take `textPreset` (built-in: \(presets); any other name uses the first's defaults) and "
             + "open `textStyle` fields: size, positionY, positionX, align left|center|right, font, fill, stroke, "
-            + "strokeWidth, highlight, lineHeight, tracking, uppercase, background {color, opacity, padding, radius}, "
+            + "strokeWidth, highlight, lineHeight, tracking, uppercase, background {color, opacity, padding, radius} "
+            + "(× font size, not px: radius 0.2), "
             + "shadow {color, opacity, blur, dx, dy}, accentBars [{side left|right|top|bottom, color, opacity, "
             + "thickness, gap (× font size), length (share of the side), radius}], emphasis {line (from the top, "
             + "negative from the bottom), fill, scale, plate {color, opacity, padding, radius}} or false (one line larger "
