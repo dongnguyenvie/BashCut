@@ -25,6 +25,8 @@ public enum PlanCut {
         public var section: String?
         public var speed: Double
         public var volumeDb: Double?
+        /// Whether the row gave `speed` (1 included), which then wins over a speed or ramp set by hand.
+        public var speedGiven = false
         /// The speech coverage role its items are tagged with (speech, broll, underVO); speech by default for a
         /// clip picked by quote or words.
         public var role: String?
@@ -351,6 +353,7 @@ public enum PlanCut {
         return Clip(
             id: id, media: media, quote: quote, words: words, from: from, to: to, seconds: seconds,
             section: row["section"]?.string, speed: speed, volumeDb: row["volumeDb"]?.double,
+            speedGiven: row["speed"].map { $0 != .null } ?? false,
             role: role ?? (quote != nil || words != nil ? "speech" : nil), cover: cover,
             transform: try decodeTransform(row, entry: "Clip \(id)"), picture: try decodePicture(row, entry: "Clip \(id)"),
             overlays: overlays)

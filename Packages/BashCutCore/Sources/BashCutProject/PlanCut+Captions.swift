@@ -6,7 +6,7 @@ import Foundation
 /// both on the cues it makes. A later apply that would generate the same cues keeps the ones on the timeline (hand
 /// grouped or not); one that would generate different cues replaces them all, and never stacks a second set (#628).
 /// Cues `captions group` made carry how they were grouped (`captionGroup`); their replacements are grouped the same
-/// way (B3).
+/// way (B3). Words a built clip played with no caption shown over them (cues deleted by hand) get none again.
 extension PlanCut {
     /// The field holding the digest of the captions an apply generated.
     public static let captionsTag = "planCaptions"
@@ -50,8 +50,60 @@ extension PlanCut {
         for item in added {
             try scratch.add([.setProperties(item: item.id, patch: [captionsTag: .string(digest)])])
         }
-        try regroup(Set(added.map(\.id)), like: old, heardIn: was, in: &scratch)
+        // The old cues as they were heard before the apply (a speed set while rebuilding retimes the scratch copies).
+        let wasOld = was.tracks.flatMap(\.items).filter { $0.fields[tag] == .string("captions") }
+        let shown = try dropUnshown(Set(added.map(\.id)), heardIn: was, in: &scratch)
+        try regroup(shown, like: wasOld, heardIn: was, in: &scratch)
         planner = scratch
+    }
+
+    /// Leaves out of the rebuilt cues `ids` the words a built clip played in `was` with no caption of that media over
+    /// them: cues deleted by hand (chatter, a false start) stay deleted. Only media `was` showed captions of count, so
+    /// a media captioned for the first time gets all its captions. Returns the cues left.
+    static func dropUnshown(_ ids: Set<String>, heardIn was: Project, in planner: inout LayerPlanner) throws -> Set<String> {
+        let shown = was.tracks.filter { $0.role == TrackRole.captions }.flatMap(\.items).filter { $0["captionMedia"] != nil }
+        var unshown: [(media: String, start: Double, end: Double)] = []
+        for media in Set(shown.compactMap { $0["captionMedia"]?.string }).sorted() {
+            let covered = shown.filter { $0["captionMedia"]?.string == media }.map { ($0.at, $0.end) }
+            for (clip, asset) in was.audibleClips(media) where clip.fields[tag] != nil {
+                let sourceFPS = asset.fps.value > 0 ? asset.fps.value : was.fps.value
+                let seconds = { (frame: Int) in
+                    Double(clip.sourceIn) / sourceFPS + clip.sourceSeconds(afterFrames: frame - clip.at, fps: was.fps)
+                }
+                var cursor = clip.at
+                for (at, end) in covered.sorted(by: { $0.0 < $1.0 }) where end > cursor && at < clip.end {
+                    if at > cursor { unshown.append((media, seconds(cursor), seconds(at))) }
+                    cursor = max(cursor, end)
+                }
+                if cursor < clip.end { unshown.append((media, seconds(cursor), seconds(clip.end))) }
+            }
+        }
+        guard !unshown.isEmpty, let track = planner.project.tracks.first(where: { $0.role == TrackRole.captions }) else {
+            return ids
+        }
+        let sources = TimelineTranscript.SourceMap(planner.project)
+        var left = ids
+        for cue in track.items.filter({ ids.contains($0.id) }).sorted(by: { $0.at < $1.at }) {
+            let words = TimelineTranscript.words(of: cue, sources: sources)
+            let kept = words.filter { word in
+                guard let media = word.mediaID, let source = word.source else { return true }
+                let middle = (source.start + source.end) / 2
+                return !unshown.contains { $0.media == media && $0.start <= middle && middle < $0.end }
+            }
+            guard kept.count < words.count else { continue }
+            left.remove(cue.id)
+            guard !kept.isEmpty else {
+                try planner.add([.delete(item: cue.id, ripple: false)])
+                continue
+            }
+            let spans = kept.map { ReviewSync.WordSpan(at: $0.at, end: $0.end, text: $0.text) }
+            let rest = try CaptionGrouping.operation(
+                planner.project, words: spans, groups: [Array(spans.indices)], author: .agent,
+                mark: cue[CaptionGrouping.field], replacing: [cue.id])
+            try planner.add([rest.operation])
+            left.formUnion(rest.cues.map(\.id))
+        }
+        return left
     }
 
     /// Groups the rebuilt cues `ids` the way `captions group` grouped the old ones: by the same rule (breaking at the

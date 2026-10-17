@@ -124,6 +124,47 @@ struct AudioLaneTests {
         return (energy, counts)
     }
 
+    /// AVFoundation's audio mix output stopped answering when a clip it time-scales joined the cut before it on one
+    /// lane: an export froze at 17.3 s once two clips went from -60 dB to the -96 dB of their neighbours, since equal
+    /// gains let the cuts share a lane. Here a one-frame cut is followed at the same gain by AAC sound at 1.5×.
+    @Test("A sped-up clip right after a cut at the same gain gets its own lane and exports", arguments: [-96.0, 0])
+    func scaledAfterTouchingCut(gainDb: Double) async throws {
+        let root = try TestFixtures.temporaryDirectory("scaled-join")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try TestFixtures.writeTone(to: root.appendingPathComponent("tone.m4a"), seconds: 12, channels: 2, aac: true)
+        try TestFixtures.writeTone(to: root.appendingPathComponent("lead.caf"), seconds: 2, channels: 2)
+        let fps = FrameRate(30, 1)
+        let media = [
+            Media(fields: ["id": .string("tone"), "kind": .string("audio"), "path": .string("tone.m4a"),
+                           "fps": FrameRate().json, "frames": .integer(359)]),
+            Media(fields: ["id": .string("lead"), "kind": .string("audio"), "path": .string("lead.caf"),
+                           "fps": fps.json, "frames": .integer(60)]),
+        ]
+        var lead = Item(id: "lead", media: "lead", at: 0, duration: 1)
+        lead["volumeDb"] = .number(gainDb)
+        var fast = Item(id: "fast", media: "tone", at: 1, duration: 99, sourceIn: 14)
+        fast["speed"] = .number(1.5)
+        fast["volumeDb"] = .number(gainDb)
+        let project = try Project(name: "Scaled join", fps: fps).applying(.group(label: "Fixture", author: .user, ops:
+            media.map { .addMedia($0) } + [.insert(track: "a3", item: lead), .insert(track: "a3", item: fast)])).project
+        let snapshot = try await AVFoundationRenderEngine(source: OriginalMediaSource())
+            .build(project, root: root, purpose: .export)
+        #expect(snapshot.audioMix.inputParameters.count == 2)
+        let file = root.appendingPathComponent("mix.caf")
+        let export = Task { try await Exporter().exportAudio(snapshot, to: file) }
+        let finished = try await withThrowingTaskGroup(of: Bool.self) { group in
+            group.addTask { _ = try await export.value; return true }
+            group.addTask { try await Task.sleep(for: .seconds(20)); return false }
+            let first = try await group.next() ?? false
+            group.cancelAll()
+            export.cancel()
+            return first
+        }
+        try #require(finished, "The audio export stalled")
+        let seconds = Double(try AVAudioFile(forReading: file).length) / 48_000
+        #expect(abs(seconds - 100.0 / 30) < 0.05)
+    }
+
     @Test("Sequential audio cuts share a lane")
     @MainActor func sequential() async throws {
         let project = try await project((0..<240).map { Item(id: "a-\($0)", media: "audio", at: $0, duration: 1) })
