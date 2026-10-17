@@ -44,6 +44,23 @@ struct TextLayoutTests {
         #expect(layout.maxX > size.width * 0.9 - 2 && layout.maxX < size.width * 0.95)
     }
 
+    @Test("A plate radius given in pixels draws a pill, never an ellipse")
+    func plateRadiusCapped() throws {
+        let size = CGSize(width: 1080, height: 1920)
+        var item = Item(id: "pill", at: 0, duration: 30)
+        item["text"] = .string("Bãi cát khung nhà thép")
+        item["textPreset"] = .string("my-own-look")
+        item["textStyle"] = .object([
+            "positionY": .number(0.5),
+            "background": .object(["color": .string("#000000"), "opacity": .number(1), "radius": .number(20)]),
+        ])
+        let raster = try #require(TextRenderer.raster(item, size: size, fullCanvas: true))
+        let rows = try #require(inkRows(raster.bitmap))
+        // A pill's top edge is flat between its round ends; an ellipse touches the top at one point.
+        let top = try #require(rows.first), widest = rows.map(\.count).max() ?? 0
+        #expect(Double(top.count) > Double(widest) - Double(rows.count) * 1.2)
+    }
+
     @Test("Accent bars sit beside the block, replace the preset's bars, and the layout includes them (C1)")
     func accentBars() throws {
         let size = CGSize(width: 1920, height: 1080)
@@ -148,6 +165,26 @@ struct TextLayoutTests {
             if pixels[index + 2] > 200 && pixels[index] < 50 { blue += 1 }
         }
         return (red, blue)
+    }
+
+    /// The filled columns of each row holding ink, top row first.
+    private func inkRows(_ image: CGImage) -> [ClosedRange<Int>]? {
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
+        return (0..<height).compactMap { row in
+            let filled = (0..<width).filter { pixels[(row * width + $0) * 4 + 3] > 128 }
+            guard let first = filled.first, let last = filled.last else { return nil }
+            return first...last
+        }
     }
 
     private func inkBounds(_ image: CGImage) -> CGRect? {

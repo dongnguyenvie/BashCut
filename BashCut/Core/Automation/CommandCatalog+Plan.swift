@@ -230,7 +230,8 @@ extension CommandCatalog {
             + "Compressed]Bold|Heavy|Black; fonts list --covers), size (share of the short side), fill, stroke, "
             + "strokeWidth (points, 0–50), positionX (0 left … 1 right), positionY (baseline height from the "
             + "bottom: 0.1 low, 0.86 high), align, uppercase, lineHeight, tracking, background {color, opacity, "
-            + "padding, radius}, shadow {color, opacity, blur, dx, dy}; other keys are item properties. Over bright "
+            + "padding, radius (× font size, not pixels: 0.2 rounds the corners)}, shadow {color, opacity, blur, "
+            + "dx, dy}; other keys are item properties. Over bright "
             + "or busy footage give a stroke or a background. A font missing letters of the content language is an error."
         return [
             CommandSpec(
@@ -242,7 +243,8 @@ extension CommandCatalog {
                     + "review.minTextSize); problems {id, severity error|warning|info, entry, detail, facts} (quote not found, "
                     + "unknown media, source played twice, same media and size back to back, media against the canvas "
                     + "shape, entry-invalid for each entry it cannot read (all of them at once), transition-no-cut and "
-                    + "transition-too-long, stroke-units, unknown-field for a field nothing reads, unknown-fact for a facts key that "
+                    + "transition-too-long, stroke-units, plate-units, unknown-field for a field nothing reads, "
+                    + "unknown-fact for a facts key that "
                     + "is neither a project fact nor a claim, "
                     + "review-profile-unset with facts.unsetLimits: every review limit the "
                     + "built edit needs and nobody set); and the review of the edit as it would be (the "
