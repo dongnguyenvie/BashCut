@@ -233,9 +233,12 @@ public actor CompositionBuilder {
                         let gain = AudioGainPlanner.points(
                             for: item, on: track, speech: speechRanges, mixGainDb: project.mixGainDb,
                             minGapFrames: MusicDucking.minGapFrames(track, fps: project.fps.value))
-                        let lane = try audioLanes.take(for: item, sourceTrack: track.id, gain: gain, composition: composition)
+                        let offline = ramp != nil ? item : Self.offlineAudioItem(item)
+                        let lane = try audioLanes.take(
+                            for: item, sourceTrack: track.id, gain: gain, scaled: offline == nil && item.speed != 1,
+                            composition: composition)
                         let target = lane.track
-                        if let timed = ramp != nil ? item : Self.offlineAudioItem(item) {
+                        if let timed = offline {
                             let url = try await rampAudio.render(
                                 asset: asset, item: timed, mediaFPS: media.fps, fps: project.fps, root: root)
                             let rendered = try await assets.load(url)

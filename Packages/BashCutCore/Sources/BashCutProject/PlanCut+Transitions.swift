@@ -66,9 +66,12 @@ extension PlanCut {
         var edges: [String: [String: JSONValue]] = [:]
         /// Picture fields (`pictureKeys`) set by hand on built items, by item ID.
         var pictures: [String: [String: JSONValue]] = [:]
+        /// Sound, speed and the music bed's span set by hand.
+        var hand: HandEdits
 
         init(_ project: Project) {
             let built = project.tracks.flatMap(\.items).filter { $0.fields[tag] != nil }
+            hand = HandEdits(built)
             let ids = Set(built.map(\.id))
             transitions = project.transitions.filter {
                 (ids.contains($0.toItemID) || ids.contains($0.fromItemID)) && !$0.id.hasPrefix(transitionPrefix)
