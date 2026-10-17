@@ -14,7 +14,8 @@ extension PlanCut {
 
     /// The operations that replace what an earlier apply built with `clips`, `spec.titles` and `spec.music`;
     /// `planner.project` is the edit as it would be, `kept` the items the apply leaves alone. Cut transitions and
-    /// In/Out set by hand on built items come back on the rebuilt ones unless the list sets them (#623).
+    /// In/Out set by hand on built items come back on the rebuilt ones unless the list sets them (#623), and so do
+    /// their sound, speed and the music bed's span (`HandEdits`).
     /// `textPresets`: the library text presets (templates) titles name by ID, beyond the renderer's own presets;
     /// `transcripts`: the stored transcripts captions are made from, by media ID.
     public static func build(
@@ -30,9 +31,12 @@ extension PlanCut {
                 "Main holds \(main.items.count) item(s) plan apply did not build "
                     + "(\(main.items.prefix(5).map(\.id).joined(separator: ", "))): delete them first, or edit them with timeline apply")
         }
-        var placements = try placeClips(clips, main: main.id, in: &planner)
+        var placements = try placeClips(clips, main: main.id, kept: handSet.hand, in: &planner)
         let lines = try placeLines(spec.voiceover, takes: takes, in: &planner)
         placements += lines
+        // Sound set by hand comes back before the captions, which leave out what is muted.
+        var restored = Set<String>()
+        try restoreAudio(handSet.hand, done: &restored, in: &planner)
         let total = max(placements.map(\.end).max() ?? 0, lineEnd(spec.voiceover, placements: lines, fps: planner.project.fps.value))
         let sources = CaptionSources(transcripts: transcripts, takes: takes, textPresets: textPresets)
         try rebuildCaptions(spec, clips: clips, sources: sources, was: project, in: &planner)
@@ -49,13 +53,16 @@ extension PlanCut {
             spec.titles, anchors: placements, sections: sections, textPresets: textPresets, in: &planner)
         placements += try placeGraphics(spec.graphics, anchors: placements, sections: sections, main: main.id, in: &planner)
         placements += try placeSounds(spec.sfx, anchors: placements, sections: sections, length: total, in: &planner)
-        if let music = spec.music, total > 0, let placed = try placeMusic(music, length: total, in: &planner) {
+        if let music = spec.music, total > 0,
+            let placed = try placeMusic(music, length: total, kept: handSet.hand, in: &planner)
+        {
             placements.append(placed)
             let track = try planner.project.requireTrack(role: TrackRole.music)
             try planner.add([.setTrackProperties(track: track.id, patch: musicTrackPatch(music, track: track, fps: planner.project.fps.value))])
         }
         try applyEdges(spec, kept: handSet, in: &planner)
         try restorePictures(spec, kept: handSet, in: &planner)
+        try restoreAudio(handSet.hand, done: &restored, in: &planner)
         let others = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == nil }.map(\.id)
         return (planner, placements, others)
     }
@@ -83,7 +90,9 @@ extension PlanCut {
     }
 
     /// Lays the clips on Main one after another, then their section markers.
-    static func placeClips(_ clips: [Resolved], main: String, in planner: inout LayerPlanner) throws -> [Placement] {
+    static func placeClips(
+        _ clips: [Resolved], main: String, kept: HandEdits, in planner: inout LayerPlanner
+    ) throws -> [Placement] {
         let fps = planner.project.fps.value
         let labels = Dictionary(plannedSections(planner.project).map { ($0.id, $0.label) }, uniquingKeysWith: { first, _ in first })
         var placements: [Placement] = []
@@ -106,10 +115,10 @@ extension PlanCut {
             let start = media.isImage ? resolved.from : Double(sourceIn) / media.fps.value
             let slot = Slot(
                 at: cursor, span: max(1, Int(((resolved.to - start) * fps - 1e-6).rounded(.up))),
-                sourceIn: sourceIn, patch: patch)
+                sourceIn: sourceIn, patch: patch, main: main)
             let end = clip.cover.isEmpty
-                ? try placeOwn(clip, media: media, slot: slot, main: main, in: &planner)
-                : try placeCovered(clip, media: media, slot: slot, main: main, in: &planner)
+                ? try placeOwn(clip, media: media, slot: slot, kept: kept, in: &planner)
+                : try placeCovered(clip, media: media, slot: slot, in: &planner)
             try placeOverlays(clip, media: media, slot: slot, end: end, in: &planner)
             placements.append(Placement(id: clip.id, at: cursor, end: end))
             cursor = end
@@ -118,21 +127,22 @@ extension PlanCut {
         return placements
     }
 
-    /// Where a clip goes: its first frame, length, source in-point and the tag fields its items carry.
+    /// Where a clip goes: its first frame, length, source in-point, the tag fields its items carry and Main's ID.
     struct Slot {
         var at: Int
         var span: Int
         var sourceIn: Int
         var patch: [String: JSONValue]
+        var main: String
     }
 
     /// A clip with its own picture and linked sound; returns where it ends (speed changes its length).
-    static func placeOwn(_ clip: Clip, media: Media, slot: Slot, main: String, in planner: inout LayerPlanner) throws -> Int {
+    static func placeOwn(_ clip: Clip, media: Media, slot: Slot, kept: HandEdits, in planner: inout LayerPlanner) throws -> Int {
         let id = "plan-" + clip.id
-        try planner.placeMedia(media, on: main, at: slot.at, duration: slot.span, itemID: id, sourceIn: slot.sourceIn)
-        if clip.speed != 1 { try planner.add([.setSpeed(item: id, speed: clip.speed, keepDuration: false)]) }
+        try planner.placeMedia(media, on: slot.main, at: slot.at, duration: slot.span, itemID: id, sourceIn: slot.sourceIn)
+        try placeSpeed(clip, id: id, kept: kept, in: &planner)
         var patch = slot.patch
-        if let volume = clip.volumeDb { patch["volumeDb"] = .number(volume) }
+        if let volume = clip.volumeDb { patch = recordingAudio(patch.merging(["volumeDb": .number(volume)]) { $1 }) }
         var picture = patch.merging(pictureFields(clip.picture)) { $1 }
         if !clip.transform.isEmpty { picture["transform"] = .object(clip.transform) }
         try planner.add([.setProperties(item: id, patch: picture)])
@@ -143,12 +153,15 @@ extension PlanCut {
 
     /// A covered clip: its sound on the dialogue layer, its covers on Main one after another (muted), the last one
     /// filling what is left. Returns where it ends.
-    static func placeCovered(_ clip: Clip, media: Media, slot: Slot, main: String, in planner: inout LayerPlanner) throws -> Int {
+    static func placeCovered(_ clip: Clip, media: Media, slot: Slot, in planner: inout LayerPlanner) throws -> Int {
         let fps = planner.project.fps.value
         let end = slot.at + slot.span
         var sound = Item(id: "plan-\(clip.id)-sound", media: media.id, at: slot.at, duration: slot.span, sourceIn: slot.sourceIn)
         for (key, value) in slot.patch { sound[key] = value }
-        if let volume = clip.volumeDb { sound["volumeDb"] = .number(volume) }
+        if let volume = clip.volumeDb {
+            sound["volumeDb"] = .number(volume)
+            sound[audioTag] = .object(["volumeDb": .number(volume)])
+        }
         try planner.place(sound, on: planner.project.requireTrack(role: TrackRole.dialogue, kind: "audio").id)
         var cursor = slot.at
         for (index, shot) in clip.cover.enumerated() where cursor < end {
@@ -162,11 +175,17 @@ extension PlanCut {
             item["tag"] = .object(["role": .string("broll")])
             if !shot.transform.isEmpty { item["transform"] = .object(shot.transform) }
             for (key, value) in pictureFields(shot.picture) { item[key] = value }
-            if picture.hasAudio == true { item["muted"] = .bool(true) }
-            try planner.place(item, on: main)
+            if picture.hasAudio == true { mute(&item) }
+            try planner.place(item, on: slot.main)
             cursor += length
         }
         return end
+    }
+
+    /// Mutes a picture's own sound, recorded as the build's (`planAudio`) so a later apply keeps it unmuted by hand.
+    static func mute(_ item: inout Item) {
+        item["muted"] = .bool(true)
+        item[audioTag] = .object(["muted": .bool(true)])
     }
 
     /// The picture fields a row sets, and `planPicture` naming them, so a later apply tells them from hand edits.
@@ -196,7 +215,7 @@ extension PlanCut {
             for (key, value) in slot.patch where key != "tag" { item[key] = value }
             if !overlay.transform.isEmpty { item["transform"] = .object(overlay.transform) }
             for (key, value) in pictureFields(overlay.picture) { item[key] = value }
-            if media.hasAudio == true { item["muted"] = .bool(true) }
+            if media.hasAudio == true { mute(&item) }
             try planner.place(item, on: track)
         }
     }
@@ -280,7 +299,7 @@ extension PlanCut {
             try planner.placeMedia(media, on: track.id, at: start, duration: duration, itemID: id, sourceIn: 0)
             var patch: [String: JSONValue] = [tag: .string(sound.id)]
             if let volume = sound.volumeDb { patch["volumeDb"] = .number(volume) }
-            try planner.add([.setProperties(item: id, patch: patch)])
+            try planner.add([.setProperties(item: id, patch: recordingAudio(patch))])
             placements.append(Placement(id: sound.id, at: start, end: start + duration))
         }
         return placements
@@ -298,23 +317,32 @@ extension PlanCut {
         ]
     }
 
-    /// The music bed from frame 0, as long as the clips (or what the file has left).
-    static func placeMusic(_ music: Music, length total: Int, in planner: inout LayerPlanner) throws -> Placement? {
+    /// The music bed from frame 0, as long as the clips (or what the file has left); a bed trimmed or extended by
+    /// hand keeps its span while the list plays the same music from the same point.
+    static func placeMusic(
+        _ music: Music, length total: Int, kept: HandEdits = HandEdits([]), in planner: inout LayerPlanner
+    ) throws -> Placement? {
         guard let media = planner.project.media.first(where: { $0.id == music.media }) else { return nil }
         let track = try planner.project.requireTrack(role: TrackRole.music)
-        let available = Int(((media.durationSeconds - music.from) * planner.project.fps.value).rounded(.down))
+        let fps = planner.project.fps.value
+        let available = Int(((media.durationSeconds - music.from) * fps).rounded(.down))
         let duration = min(total, max(1, available))
+        let sourceIn = Int((music.from * media.fps.value).rounded(.down))
+        let span = musicSpan(music, media: media, length: duration, kept: kept, fps: fps)
         let id = "plan-music"
-        try planner.placeMedia(
-            media, on: track.id, at: 0, duration: duration, itemID: id, sourceIn: Int((music.from * media.fps.value).rounded(.down)))
+        try planner.placeMedia(media, on: track.id, at: span.at, duration: span.duration, itemID: id, sourceIn: span.sourceIn)
         var patch: [String: JSONValue] = [tag: .string("music")]
         if let volume = music.volumeDb {
             patch["volumeDb"] = .number(volume)
         } else if !music.ducks {
             patch["volumeDb"] = .number(Music.fallbackVolumeDb)
         }
-        try planner.add([.setProperties(item: id, patch: patch)])
-        return Placement(id: "music", at: 0, end: duration)
+        // The span the build gives the bed, so the next apply knows a hand trim from it.
+        patch[musicTag] = .object([
+            "at": .integer(0), "dur": .integer(duration), "in": .integer(sourceIn), "media": .string(media.id),
+        ])
+        try planner.add([.setProperties(item: id, patch: recordingAudio(patch))])
+        return Placement(id: "music", at: span.at, end: span.at + span.duration)
     }
 }
 
@@ -357,7 +385,10 @@ extension PlanCut {
             item[tag] = .string(line.id)
             if let section = line.section { item[sectionTag] = .string(section) }
             if !take.voice.isEmpty { item["voice"] = .object(take.voice) }
-            if let volume = line.volumeDb { item["volumeDb"] = .number(volume) }
+            if let volume = line.volumeDb {
+                item["volumeDb"] = .number(volume)
+                item[audioTag] = .object(["volumeDb": .number(volume)])
+            }
             try planner.place(item, on: track.id)
             placements.append(Placement(id: line.id, at: cursor, end: cursor + length))
             cursor += length + Int((line.pause * fps).rounded())
@@ -431,7 +462,7 @@ extension PlanCut {
             var item = Item(id: "plan-" + graphic.id, media: media.id, at: span.at, duration: length, sourceIn: sourceIn)
             item[tag] = .string(graphic.id)
             item["tag"] = .object(["role": .string("graphic")])
-            if media.hasAudio == true { item["muted"] = .bool(true) }
+            if media.hasAudio == true { mute(&item) }
             try planner.place(item, on: graphic.main ? main : try overlayTrack(in: &planner))
             let asked = span.end - span.at
             placements.append(Placement(id: graphic.id, at: span.at, end: span.at + length, asked: asked > length ? asked : nil))
