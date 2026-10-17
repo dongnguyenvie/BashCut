@@ -144,7 +144,8 @@ public actor CompositionBuilder {
                         throw ProjectError.invalid("No video track in \(media.path)")
                     }
                     let target = try visualLanes.take(
-                        layer: track.id, start: item.at, end: item.end, composition: composition)
+                        layer: track.id, start: item.at, end: item.end, decoder: asset.decoderKey,
+                        composition: composition)
                     let available = isStill ? nil : asset.videoRange
                     if freezeFrame == nil, !isStill, let ramp {
                         try ramp.insert(from: source, into: target, available: available, frame: media.fps.time(1))
@@ -200,7 +201,8 @@ public actor CompositionBuilder {
                                     item: item, cutAtStart: incoming != nil, cutAtEnd: transitionFrom[item.id] != nil))))
                     if let transition = transitionFrom[item.id] {
                         let hold = try visualLanes.take(
-                            layer: track.id, start: item.end, end: item.end + transition.duration, composition: composition)
+                            layer: track.id, start: item.end, end: item.end + transition.duration,
+                            decoder: asset.decoderKey, composition: composition)
                         let consumed = max(
                             1, Int((Double(item.duration) / project.fps.value * media.fps.value
                                 * item.speed).rounded(.down)))

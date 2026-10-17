@@ -31,10 +31,14 @@ actor AssetCache {
         let audio = try await asset.loadTracks(withMediaType: .audio).first
         let videoRange: CMTimeRange? = if let video { try await MediaFrames.pictureRange(video) } else { nil }
         let undecodableCodec = if let video { try await VideoDecoders.undecodableCodec(video) } else { String?.none }
+        let decoderKey = if let video {
+            VideoCompositionLanes.decoderKey(try await video.load(.formatDescriptions).first)
+        } else { "" }
         let loaded = LoadedAsset(
             asset: asset, signature: signature, video: video, audio: audio,
             videoRange: videoRange,
             undecodableCodec: undecodableCodec,
+            decoderKey: decoderKey,
             naturalSize: try await video?.load(.naturalSize) ?? .zero,
             preferredTransform: try await video?.load(.preferredTransform) ?? .identity)
         loads += 1
@@ -65,6 +69,8 @@ struct LoadedAsset: @unchecked Sendable {
     let videoRange: CMTimeRange?
     /// The video codec when this Mac cannot decode it (`VideoDecoders.undecodableCodec`).
     let undecodableCodec: String?
+    /// How the video track's pictures decode (`VideoCompositionLanes.decoderKey`); clips share a lane only when equal.
+    let decoderKey: String
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform
 }
