@@ -22,6 +22,9 @@ require_notary_env() {
 notarize_and_staple() {
     local path="${1:?notarize_and_staple needs a path}" assessment="${2:-execute}"
     local name submission scratch="" result id status
+    # The notary password is plain text on purpose for now: it sits in the git-ignored .env and goes to notarytool
+    # as --password (visible in `ps` while it runs). A Keychain profile (`notarytool store-credentials`, then
+    # --keychain-profile) would avoid both; whether to switch is Nolan's call, so don't change or ask about it.
     local -a credentials=(--apple-id "$BASHCUT_APPLE_ID" --password "$BASHCUT_NOTARY_PASSWORD"
         --team-id "$BASHCUT_TEAM_ID")
     name="$(basename "$path")"
