@@ -11,6 +11,8 @@
 
 <p align="center">
   <a href="https://bashcut.birchapps.com">Website</a> ·
+  <a href="https://bashcut.birchapps.com/quickstart">Quick start</a> ·
+  <a href="https://bashcut.birchapps.com/demo">Demo videos</a> ·
   <a href="https://github.com/dongnguyenvie/BashCut/releases/latest">Download</a> ·
   <a href="https://testflight.apple.com/join/XwsNZxre">TestFlight beta</a> ·
   <a href="docs/README.md">Docs</a> ·
@@ -30,6 +32,40 @@
   <img alt="BashCut demo: Codex terminal, layered timeline, captions, transitions, color and plugins" src=".github/assets/app.gif" width="800">
 </p>
 
+## Demo videos
+
+Sixteen videos in fourteen genres, each cut by an agent in BashCut from one prompt. Most come with a screen
+recording of the agent at work, the prompt, the timeline and the sources and licences:
+**[bashcut.birchapps.com/demo](https://bashcut.birchapps.com/demo)**.
+
+| Landscape 16:9 | Vertical 9:16 |
+|---|---|
+| [A 30-second BashCut ad](https://bashcut.birchapps.com/demo/promo) | [Vertical news: a NASA bulletin](https://bashcut.birchapps.com/demo/nasa) |
+| [Travel vlog: sea, river, city](https://bashcut.birchapps.com/demo/travel) | [Beat-cut montage](https://bashcut.birchapps.com/demo/montage) |
+| [Explainer: why video is 29.97 fps](https://bashcut.birchapps.com/demo/explainer) | [Podcast to vertical short](https://bashcut.birchapps.com/demo/podcast) |
+| [History short: the Battle of Bạch Đằng, 938](https://bashcut.birchapps.com/demo/bachdang) | [Daily vlog: an afternoon walk](https://bashcut.birchapps.com/demo/daily) |
+| [Show apartment tour](https://bashcut.birchapps.com/demo/realestate) | [Vietsub a foreign drama clip](https://bashcut.birchapps.com/demo/vietsub) |
+| [Tutorial: add captions in a minute](https://bashcut.birchapps.com/demo/tutorial) | [Remove logos and watermarks, before / after](https://bashcut.birchapps.com/demo/logo) |
+
+## Quick start
+
+From zero to your first agent edit in about five minutes. The full guide, with screenshots and prompts to copy, is
+at **[bashcut.birchapps.com/quickstart](https://bashcut.birchapps.com/quickstart)**.
+
+1. **Install** (macOS 14+ and Homebrew): `brew install --cask dongnguyenvie/tap/bashcut`. Other ways are under
+   [Install](#install).
+2. **Connect your agent.** Inside BashCut nothing is needed: the Claude and Codex tabs in the agent dock already
+   have the skills. For Claude Code or Codex in your own terminal, run `bashcut agent setup claude` or
+   `bashcut agent setup codex`, or add the kit as a Claude Code plugin:
+   `/plugin marketplace add dongnguyenvie/bashcut-agent-kit`, then `/plugin install bc@bashcut-agent-kit`.
+3. **Install the recommended plugins.** Type `/bc:setup` once in a Claude or Codex tab: the agent installs
+   captions (Whisper), Vietnamese voice, silence markers and the AI Editor, and checks they work. Or do it by hand
+   in **Plugins › Browse**. API keys go in the plugin's Options, never in the chat.
+4. **Make a project**, import your clips and open the Claude tab in the agent dock.
+5. **Say what you want**, for example *"Edit these clips into a 60-second vertical vlog. Show me the plan before
+   you cut."*, or press **Brief** in the agent dock and pick one of 25 templates.
+6. **Review, undo, export.** Every change is in History. Ask for a review pass, undo what you dislike, then export.
+
 ## About
 
 BashCut is a native macOS video editor built on AVFoundation, with a Claude Code / Codex terminal docked beside the
@@ -37,9 +73,8 @@ timeline. Preview and export share one composition engine, so what you see is wh
 plain JSON next to your footage: agents and scripts read and edit them through the same atomic, undoable edit
 operations the UI uses.
 
-BashCut is under active development: the M0 foundation is accepted on real footage and most of the editor and
-agent features (M1–M3, M5) are in place. See [implementation status](docs/status/implementation.md) for what is
-verified and what is left.
+BashCut is under active development. See the [CHANGELOG](CHANGELOG.md) for what changed
+and [implementation status](docs/status/implementation.md) for what is verified and what is left.
 
 ## Use the AI you already pay for
 
@@ -70,13 +105,19 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
   presets, also as the In and Out of captions, titles, stickers and overlays
 - **Still images** and stickers (emoji or image) on the timeline
 - **Change the canvas** of an open project (9:16, 16:9, 1:1…) without rebuilding it
+- **Reframe and clean up**: subject-aware reframe for a vertical cut, blur fill for off-aspect photos and clips,
+  blur, mosaic (`pixelate`) and soft edges (`feather`) on a clip, background removal for images
+- **Multi-selection**: shared Inspector edits, block moves, copy and paste across projects
+- J/K/L playback, full-screen preview, and timeline clips coloured by what they are
 
 ### Captions and text
 
 - Transcribe speech into captions with a local Whisper plugin, import and export SubRip
 - **Word-by-word captions**: highlight, karaoke and reveal styles
 - Text presets for hook titles, place labels, keyword stickers and chapter cards, keeping their style when edited;
-  Vietnamese and English throughout
+  Vietnamese and English throughout; two fonts in one title, cover titles that read at phone size, brand kits
+- **Vietsub** through the Translate Captions plugin: translate every caption and keep its timing and look, cover
+  subtitles burned into the footage, and blur channel logos and watermarks
 
 ### Color
 
@@ -100,6 +141,8 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
 - One library for music and SFX, text styles, stickers, effect recipes, transition presets and looks: built-in
   items, your own (this project or every project), and packs that plugins ship
 - Search, tags, packs, import and export of packs, usage stats, and **search or generate** new items through plugins
+  (stock photos, video, music and SFX from open sources; AI illustrations with one locked style)
+- **All assets search** (⇧⌘F): project media, selects and the whole library in one search, ignoring accents and đ
 
 ### Review and export
 
@@ -107,8 +150,12 @@ shows in Show Changes and can be undone. See [Automation](docs/guides/automation
   voiceover too close to real speech; full history; autosave with crash recovery; reload when files change on disk,
   with conflict handling
 - Preview proxies for heavy footage; export presets for TikTok, YouTube 1080p and 4K, a quick draft and ProRes,
-  queued in the background, with burned-in captions and an optional `.srt`; OTIO export. An agent's final export
-  waits for a passing draft audit and refuses graphics still rendered as drafts
+  queued in the background, with burned-in captions and an optional `.srt`; OTIO export. Several outputs (say a
+  TikTok and a YouTube cut) in one go. An agent's final export waits for a passing draft audit and refuses
+  graphics still rendered as drafts
+- **Batch pipelines**: the same steps over many files or projects (import, captions, translate, cover, export…),
+  each input in its own project. Build, save and run them in the Batch window or with `bashcut batch`; checks keys,
+  files and disk space before the run, retries from the failed step and resumes after a quit
 
 ### AI agents
 
@@ -157,8 +204,10 @@ Topic recipes (`bashcut.vlog:plan`, travel, food, explainer, hook script, publis
 
 ### Automation
 
-- The `bashcut` CLI and MCP server cover every UI action, dialog, shortcut and view: 240 commands, with dry runs,
+- The `bashcut` CLI and MCP server cover every UI action, dialog, shortcut and view: 248 commands, with dry runs,
   revision checks and one undoable edit per call ([command reference](docs/reference/commands.md))
+- **The edit as one list**: `plan check` validates a whole cut (clips, captions, titles, transitions, voiceover,
+  graphics and the mix) and `plan apply` builds it in one undoable step, keeping edits made by hand
 - `ui frame` renders any frame to a PNG, so an agent can look at its own work
 - Command palette (⇧⌘P), a full Mac menu bar and searchable Settings
 
@@ -256,7 +305,7 @@ Two other repositories are part of BashCut. Contributions are welcome in each:
 
 | Repository | What it holds | Contribute there |
 |---|---|---|
-| [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) | The plugin registry (`registry.json`) and its plugins: Whisper Captions, VieNeu TTS, Silence Markers, AI Editor and Antigravity | New plugins and fixes to existing ones. See [Writing plugins](docs/guides/plugins.md) |
+| [bashcut-plugins](https://github.com/dongnguyenvie/bashcut-plugins) | The plugin registry (`registry.json`) and its plugins: Whisper Captions, VieNeu TTS, Translate Captions, Silence Markers, HyperFrames Graphics, Image Generation, Online Resources, Vlog recipes, AI Editor and Antigravity | New plugins and fixes to existing ones. See [Writing plugins](docs/guides/plugins.md) |
 | [bashcut-agent-kit](https://github.com/dongnguyenvie/bashcut-agent-kit) | Editing skills for Claude Code and Codex (footage survey, beat cuts, audio mix, captions, colour, effects, voiceover…). BashCut ships them and loads them in its agent tabs | Editing know-how that agents should follow. See its README › Writing skills |
 
 Changes to the editor itself, its commands and the plugin API belong in this repository.
