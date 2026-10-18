@@ -10,7 +10,9 @@ extension CommandCatalog {
         + "(dB, like volumeDb; the only one on audio items, none on text); ease: \(eases) (default inOut). Keys "
         + "replace the item's static value for that property. Images with zoom-in, zoom-out or pan-* make a Ken Burns "
         + "move; presets are for pictures and text. focus frames a rectangle of a video clip (a panel of a screen "
-        + "recording) without working out zoom, pan and tilt by hand."
+        + "recording) without working out zoom, pan and tilt by hand, inside the band of the frame that stays visible: "
+        + "by default the part no opaque picture on a higher layer covers edge to edge (the bottom half under a camera "
+        + "across the top of a split layout), or within. The result gives within, the band used in canvas pixels."
 
     /// Caption import (generation is with the plugin capabilities).
     static let captionSpecs: [CommandSpec] = [
@@ -125,6 +127,10 @@ extension CommandCatalog {
                                  + "and keeps the other keys", cli: .option("focus")),
                 CommandParameter("focusTo", .string, "With focus: move to this rectangle by the item's last frame",
                                  cli: .option("focus-to")),
+                CommandParameter("within", .string, "With focus: where on the frame the rectangle lands: "
+                                 + MotionFocus.Within.summary + "; auto (default) is the band higher layers leave "
+                                 + "visible at the item's start (its end for focus-to), full the whole frame",
+                                 cli: .option("within")),
                 CommandParameter("ease", .string, "With focus-to: the move's ease (" + eases + ")", cli: .option("ease")),
                 baseRevision,
             ]),

@@ -32,6 +32,7 @@ extension PlanCut {
                     + "(\(main.items.prefix(5).map(\.id).joined(separator: ", "))): delete them first, or edit them with timeline apply")
         }
         var placements = try placeClips(clips, main: main.id, kept: handSet.hand, in: &planner)
+        try applyFocus(clips, in: &planner)
         let lines = try placeLines(spec.voiceover, takes: takes, in: &planner)
         placements += lines
         // Sound set by hand comes back before the captions, which leave out what is muted.
