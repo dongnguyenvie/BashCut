@@ -14,12 +14,17 @@ final class ExportSampleTransfer: @unchecked Sendable {
         /// Appends one sample and returns its timestamp; nil means EOF.
         let next: @Sendable () throws -> Double?
         let finish: @Sendable () -> Void
+        /// Named in the stall report (video, audio).
+        var name = "stream"
     }
 
     private final class Stream: @unchecked Sendable {
         let lane: Lane
         let queue: DispatchQueue
         var finished = false // Accessed only on queue.
+        // Transfer-lock-protected: the lane's latest sample time and whether it is inside a read.
+        var lastTime = -1.0
+        var reading = false
         init(_ lane: Lane, index: Int) {
             self.lane = lane
             queue = DispatchQueue(label: "app.bashcut.export.stream.\(index)")
@@ -91,7 +96,9 @@ final class ExportSampleTransfer: @unchecked Sendable {
             if let error = self.failure() { self.stop(error); return }
             let (since, time) = self.lock.withLock { (self.lastSample, self.lastTime) }
             let idle = Double(DispatchTime.now().uptimeNanoseconds - since.uptimeNanoseconds) / 1e9
-            if idle > self.stallLimit { self.stop(ExportStallError(timelineSeconds: time, idleSeconds: self.stallLimit)) }
+            if idle > self.stallLimit {
+                self.stop(ExportStallError(timelineSeconds: time, idleSeconds: self.stallLimit, lanes: self.laneReport()))
+            }
         }
         monitor = timer
         timer.resume()
@@ -100,15 +107,29 @@ final class ExportSampleTransfer: @unchecked Sendable {
         }
     }
 
+    /// Where each lane stands when the transfer stalls: blocked inside a read, or waiting for the writer to want more.
+    private func laneReport() -> String {
+        streams.map { stream in
+            let (time, reading) = lock.withLock { (stream.lastTime, stream.reading) }
+            let state = reading ? "blocked in read" : (stream.lane.ready() ? "idle" : "waiting for writer")
+            return "\(stream.lane.name) at \(String(format: "%.2f", time)) s \(state)"
+        }.joined(separator: "; ")
+    }
+
     private func drain(_ index: Int) {
         let stream = streams[index]
         guard !stream.finished else { return }
         do {
             while !shouldStop && stream.lane.ready() {
+                lock.withLock { stream.reading = true }
                 let time = try autoreleasepool { try stream.lane.next() }
                 lock.withLock {
+                    stream.reading = false
                     lastSample = .now()
-                    if let time, time.isFinite { lastTime = max(lastTime, time) }
+                    if let time, time.isFinite {
+                        lastTime = max(lastTime, time)
+                        stream.lastTime = time
+                    }
                 }
                 guard let time else {
                     stream.finish()
@@ -183,9 +204,12 @@ final class ExportSampleTransfer: @unchecked Sendable {
 struct ExportStallError: LocalizedError, Equatable {
     let timelineSeconds: Double
     let idleSeconds: Double
+    /// Each lane's latest sample and state (blocked in a read, waiting for the writer); empty when unknown.
+    var lanes = ""
 
     var errorDescription: String? {
         String(format: "Rendering stopped answering near %.2f s of the timeline: no frame or sound for %.0f s. "
             + "A clip there may be unreadable at its speed; check it with ui frame, or replace it.", timelineSeconds, idleSeconds)
+            + (lanes.isEmpty ? "" : " (\(lanes))")
     }
 }
