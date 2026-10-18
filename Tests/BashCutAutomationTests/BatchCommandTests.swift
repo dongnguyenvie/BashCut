@@ -34,7 +34,8 @@ struct BatchCommandTests {
         #expect(UnixRPCClient.readSeconds(RPCRequest(method: "batch.status", params: ["wait": .integer(20)])) == 30)
         #expect(CommandCatalog.spec(named: "batch.cancel")?.mode == .edit)
         let presets = try CommandLineParser.parse(["batch", "presets", file.path, "--name", "Draft"])
-        #expect(presets.params["name"] == .string("Draft") && presets.params["base"] == nil)
+        #expect(presets.params["name"] == .string("Draft"))
+        #expect(presets.params["base"] == .string(folder.standardizedFileURL.path))
         #expect(CommandCatalog.hiddenFromAgents.isSuperset(of: ["batch.cancel", "batch.presets"]))
         #expect(!CommandCatalog.hiddenFromAgents.contains("batch.run"))
     }

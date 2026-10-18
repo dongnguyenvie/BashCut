@@ -43,19 +43,12 @@ extension ProjectDocument {
             throw RPCFailure(-32003, "Batch \(active.id) is \(active.state.rawValue); wait for it or batch cancel it",
                              category: .busyRunning)
         }
-        var pipeline = try batchPipeline(arguments)
-        let base = arguments.optionalString("base").map { URL(fileURLWithPath: $0, isDirectory: true) }
-        if base == nil, let relative = pipeline.inputs.first(where: { !$0.path.hasPrefix("/") && !$0.path.hasPrefix("~") }) {
-            throw RPCFailure(-32602, "Input \(relative.path) is relative: give absolute paths or base")
-        }
-        if let projects = pipeline.projectsFolder, !projects.hasPrefix("/"), !projects.hasPrefix("~") {
-            guard let base else { throw RPCFailure(-32602, "projectsFolder \(projects) is relative: give an absolute path or base") }
-            pipeline.projectsFolder = base.appendingPathComponent(projects).standardizedFileURL.path
-        }
+        let pipeline: BatchPipeline
         let items: [BatchItemSource]
         do {
+            pipeline = try batchPipeline(arguments).resolvingPaths(against: Self.batchBase(arguments))
             try BatchRunner.check(pipeline) { [plugins] in plugins.action($0) != nil }
-            items = try pipeline.items(relativeTo: base)
+            items = try pipeline.items()
         } catch let error as ProjectError { throw RPCFailure(-32602, error.localizedDescription) }
         let leave = try batchLeaveCurrent(arguments)
         let id = batches.add(pipeline, items: items, awaitingApproval: !settings.agentActionsAutoApproved)
@@ -93,6 +86,11 @@ extension ProjectDocument {
             }
             return pipeline
         } catch let error as ProjectError { throw RPCFailure(-32602, error.localizedDescription) }
+    }
+
+    /// The folder relative pipeline paths resolve against: `base`, which the CLI sets to the pipeline file's folder.
+    private static func batchBase(_ arguments: CommandArguments) -> URL? {
+        arguments.optionalString("base").map { URL(fileURLWithPath: $0, isDirectory: true) }
     }
 
     /// The first item's way out of the open project, checked now so an unsaved project fails the request, not the batch.
@@ -160,6 +158,8 @@ extension ProjectDocument {
                 var pipeline = try BatchPipeline(json: given)
                 pipeline.name = arguments.optionalString("name") ?? pipeline.name
                 if !arguments.bool("keepInputs") { pipeline.inputs = [] }
+                // The batch window has no pipeline file to resolve against, so the preset keeps absolute paths.
+                pipeline = try pipeline.resolvingPaths(against: Self.batchBase(arguments))
                 try BatchRunner.check(Self.presetCheckCopy(pipeline)) { [plugins] in plugins.action($0) != nil }
                 let url = try store.save(pipeline)
                 return .object(["saved": .string(pipeline.name ?? ""), "path": .string(url.path)])

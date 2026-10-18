@@ -51,8 +51,9 @@ extension CommandCatalog {
         CommandSpec(
             "batch.presets", .edit,
             "Saved pipelines in the user store (Application Support/BashCut/Batch/Presets): list them; with pipeline "
-                + "save it (name from name, else the pipeline's; inputs are dropped unless keepInputs), with get return "
-                + "one, with remove delete one.",
+                + "save it (name from name, else the pipeline's; inputs are dropped unless keepInputs; a relative "
+                + "projectsFolder or input is saved absolute, resolved against base), with get return one, with remove "
+                + "delete one.",
             parameters: [
                 CommandParameter("pipeline", .object, "Pipeline to save (CLI: path to pipeline.json)",
                                  cli: .positionalJSONFile),
@@ -61,6 +62,9 @@ extension CommandCatalog {
                                  cli: .flag("keep-inputs")),
                 CommandParameter("get", .string, "Preset name to return", cli: .option("get")),
                 CommandParameter("remove", .string, "Preset name to delete", cli: .option("remove")),
+                CommandParameter("base", .string, "Folder that relative paths (projectsFolder, kept inputs) resolve "
+                                 + "against before saving; the CLI sets it to the pipeline file's folder", isPath: true,
+                                 cli: .option("base")),
             ]),
     ]
 }
