@@ -198,6 +198,8 @@ extension CommandCatalog {
         trackKind, textPreset or media (all given must match), or list "items":["ID",…],
         framing: setProperties {"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}}; bars of a fit
         picture: {"backdrop":{"kind":"blur"}} (or "color" with "color"),
+        {"op":"rippleDeleteRange","from":90,"to":180} cuts a span out of every layer and closes it (a restart):
+        clips split or trimmed, captions lose its words, later items and sections move, music beds lose their tail,
         {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
         {"op":"setSpeed","item":"ID","speed":2}; the clip and its linked sound get 2x and half the length, later
         clips on their layers move up; add "keepDuration":true to keep the length (prefer this over a speed patch),
@@ -253,7 +255,7 @@ extension CommandCatalog {
         this Mac cannot decode the video (AV1, VP9): do not judge its black picture; BashCut converts it itself (media
         import answers proxy.status converting with a job: transcribe meanwhile, wait with jobs status, then read
         frames; unsupported because ffmpeg is missing → install ffmpeg, then media proxy MEDIA);
-        audit_missing/recipe_unread/graphics_draft → run remediation.command. recentFailures.repeated ≥ 2: stop repeating it, try
+        audit_missing/recipe_unread/graphics_draft/stage_pending → run remediation.command. recentFailures.repeated ≥ 2: stop repeating it, try
         another way or skip that step, and report it.
         Scope: an edit outside the attached items fails with -32004; never retry or work around it. held: true → the
         user is asked: wait for scope.last.outcome (applied → re-read; rejected → ask; failed stale → re-read, resend if
@@ -262,6 +264,7 @@ extension CommandCatalog {
         effect, transition, look, sound or sticker. Read a plugin's skill (skills get ID) before using its feature.
         Record stages: run append stage --stage S --status done --evidence "a;b" (skipped: --reason); run checklist and
         context get › workflow.next name the next stage and skill. An agent's final export needs a passing draft audit
-        of the current timeline (or the user's G5 approval); G2 needs a strategy audit and the plan's recipe read.
+        of the current timeline (or the user's G5 approval) and the plan's required stages done or skipped; G2 needs a
+        strategy audit and the plan's recipe read.
         """
 }

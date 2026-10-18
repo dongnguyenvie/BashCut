@@ -117,6 +117,9 @@ extension ProjectDocument {
             "round": .integer(reviewRounds.count), "checks": checks,
         ]
         if !hidden.isEmpty { result["acceptedHidden"] = .array(hidden.map(JSONValue.string)) }
+        // A pass is not the review stage while the plan's required stages are open: say which.
+        let pending = WorkflowChecklist.pendingRequiredStages(project, entries: runLog?.entries() ?? [])
+        if !pending.isEmpty { result["stagesPending"] = .array(pending) }
         if let range { result["range"] = .object(["from": .integer(range.lowerBound), "to": .integer(range.upperBound)]) }
         if let previous, let previous {
             var diff = ReviewRounds.diff(before: previous.issues, after: all).object

@@ -16,6 +16,9 @@ public indirect enum EditOperation: Codable, Sendable, Equatable {
     case setSpeed(item: String, speed: Double, keepDuration: Bool)  // see EditOperation+Speed.swift
     case setSpeedCurve(item: String, curve: SpeedCurve?, keepDuration: Bool)
     case setSource(item: String, media: String, sourceIn: Int, reversed: JSONValue?)
+    /// Cuts `[from, to)` out of every layer (or `tracks`) and closes it; see EditOperation+RippleRange.swift.
+    /// `continuous` lists the layers whose items keep their source running (nil: the music layers).
+    case rippleDeleteRange(from: Int, to: Int, tracks: [String]?, continuous: [String]?)
     case setProperties(item: String, patch: [String: JSONValue])
     case setLinkedAudio(video: String, audio: String?)
     case addMedia(Media)
@@ -91,15 +94,6 @@ extension Project {
             if let index = track.items.firstIndex(where: { $0.id == id }) { return (trackIndex, index) }
         }
         throw ProjectError.invalid("Unknown item: \(id)")
-    }
-    fileprivate func sourceOffset(_ frames: Int, item: Item) throws -> Int {
-        guard let asset = media.first(where: { $0.id == item.mediaID }) else { return 0 }
-        // A cut at a fractional source frame rounds down so the right half cannot overrun the source.
-        let offset = (item.sourceSeconds(afterFrames: frames, fps: fps) * asset.fps.value).rounded(.down)
-        guard offset.isFinite, offset > Double(Int.min), offset < Double(Int.max) else {
-            throw ProjectError.invalid("Source frame overflow")
-        }
-        return Int(offset)
     }
     // This exhaustive dispatcher delegates each operation's validation and mutation to a small helper.
     // swiftlint:disable:next cyclomatic_complexity
@@ -196,6 +190,8 @@ extension Project {
             try applySpeedCurve(id, curve: curve, keepDuration: keepDuration)
         case .setSource(let id, let media, let sourceIn, let reversed):
             try applySource(id, media: media, sourceIn: sourceIn, reversed: reversed)
+        case .rippleDeleteRange(let from, let to, let scope, let continuous):
+            try rippleDeleteRange(from: from, to: to, tracks: scope, continuous: continuous)
         }
     }
 

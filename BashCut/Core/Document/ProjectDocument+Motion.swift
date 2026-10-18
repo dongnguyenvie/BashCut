@@ -132,31 +132,29 @@ extension ProjectDocument {
     }
 
     /// Frames a rectangle of a video clip's picture with zoom, pan and tilt keys (moving to `target` by the last
-    /// frame when given), keeping the item's other keys.
+    /// frame when given) inside `within`'s band of the canvas, keeping the item's other keys. Returns the revision and
+    /// the band (canvas pixels) the first framing landed in.
     @discardableResult
     func applyFocus(
-        _ focus: String, to target: String? = nil, ease: ItemMotion.Ease = .easeInOut, item id: String? = nil,
-        author: Author = .user, baseRevision: Int? = nil
-    ) throws -> Int {
+        _ focus: String, to target: String? = nil, within: MotionFocus.Within = .auto,
+        ease: ItemMotion.Ease = .easeInOut, item id: String? = nil, author: Author = .user, baseRevision: Int? = nil
+    ) throws -> (revision: Int, band: MotionFocus.Region) {
         let (item, track) = try motionTargetAndTrack(id)
-        guard track.kind == TrackKind.video, let media = project.media.first(where: { $0.id == item.mediaID }),
-            let width = media.width, let height = media.height
-        else { throw ProjectError.invalid("focus frames a video clip or image whose media has a known size") }
-        func framing(_ text: String) throws -> MotionFocus.Framing {
-            try MotionFocus.framing(
-                MotionFocus.parse(text), source: (Double(width), Double(height)),
-                canvas: (Double(project.width), Double(project.height)), fill: project.fills(item))
+        guard track.kind == TrackKind.video else {
+            throw ProjectError.invalid("focus frames a video clip or image whose media has a known size")
         }
-        let start = try framing(focus)
-        let end = try target.map(framing)
         let last = max(1, item.duration - 1)
-        var motion = item.motion ?? ItemMotion(keys: [:])
-        for (property, value) in [("zoom", \MotionFocus.Framing.zoom), ("pan", \.pan), ("tilt", \.tilt)] {
-            var keys = [ItemMotion.Key(frame: 0, value: start[keyPath: value], ease: ease)]
-            if let end { keys.append(.init(frame: last, value: end[keyPath: value])) }
-            motion.keys[property] = keys
+        let start = try project.focusFraming(MotionFocus.parse(focus), item: item, track: track.id, within: within, at: 0)
+        var stops = [MotionFocus.Stop(depart: 0, arrive: 0, framing: start.framing)]
+        if let target {
+            let end = try project.focusFraming(
+                MotionFocus.parse(target), item: item, track: track.id, within: within, at: last)
+            stops.append(.init(depart: 0, arrive: last, framing: end.framing))
         }
-        return try setMotion(motion, item: item.id, label: "Focus", author: author, baseRevision: baseRevision)
+        var motion = item.motion ?? ItemMotion(keys: [:])
+        motion.keys.merge(MotionFocus.keys(stops, ease: ease)) { $1 }
+        let revision = try setMotion(motion, item: item.id, label: "Focus", author: author, baseRevision: baseRevision)
+        return (revision, start.band)
     }
 
     func registerMotionCommands() {
@@ -169,11 +167,20 @@ extension ProjectDocument {
                     guard let ease = ItemMotion.Ease(rawValue: text) else { throw RPCFailure(-32602, "Unknown ease \(text)") }
                     return ease
                 }
-                revision = try document.applyFocus(
-                    focus, to: arguments.optionalString("focusTo"), ease: ease ?? .easeInOut, item: id, author: author,
-                    baseRevision: base)
-            } else if arguments.optionalString("focusTo") != nil {
-                throw RPCFailure(-32602, "focus-to needs focus")
+                let within: MotionFocus.Within
+                do { within = try MotionFocus.Within(arguments.optionalString("within") ?? "auto") } catch {
+                    throw RPCFailure.from(error, fallbackCode: -32602)
+                }
+                let focused = try document.applyFocus(
+                    focus, to: arguments.optionalString("focusTo"), within: within, ease: ease ?? .easeInOut, item: id,
+                    author: author, baseRevision: base)
+                let item = try document.motionTarget(id)
+                return .object([
+                    "rev": .integer(focused.revision), "item": .string(item.id), "keyframes": item["keyframes"] ?? .null,
+                    "within": focused.band.json,
+                ])
+            } else if arguments.optionalString("focusTo") != nil || arguments.optionalString("within") != nil {
+                throw RPCFailure(-32602, "focus-to and within need focus")
             } else if let text = arguments.optionalString("keyframes") {
                 guard let json = try? JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) else {
                     throw RPCFailure(-32602, "keyframes must be a JSON object")

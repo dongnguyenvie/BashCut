@@ -59,7 +59,8 @@ user), `busy_running` (the same work is running), `file_conflict`, `not_availabl
 agents (never the user): `audit_missing` (a final export without a passing draft audit of the current timeline
 or the user's G5 approval, or G2 without a strategy audit), `recipe_unread` (G2 before the plan's recipe skill
 was read) and `graphics_draft` (a final export over graphics a plugin rendered as drafts, `data.graphics.draft`;
-`data.drafts` lists each media, its name and the items that use it), each with `remediation.command` such as
+`data.drafts` lists each media, its name and the items that use it) and `stage_pending` (review done, G5 or a
+final export while a stage the plan marks required before review is pending or started; `data.stages`), each with `remediation.command` such as
 `review packet --point draft` or `bin/graphic plan --final`. `context get` ›
 `recentFailures` lists your session's failures of the last 15 minutes and how many in a row repeat.
 
@@ -513,7 +514,9 @@ bashcut plan check --words --patch '{"voiceover": {"l1": {"pause": 0.8}}, "revie
 - **Operations.** `insert`, `delete`, `split`, `trim`, `roll`, `slip`, `move`, `reorder`, `setSpeed`, `setProperties`,
   `setLinkedAudio`, track operations (`addTrack`, `moveTrack`, `setTrackProperties`, `deleteTrack`),
   `setProjectProperties`, `setProviderPreference`, `setBeatGrid`, `upsertSection`, `deleteSection`,
-  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT`, `setMediaRights` (a media's `license` and
+  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT`, `rippleDeleteRange` (`from`, `to`, optional
+  `tracks` and `continuous`: cuts a span out of every layer and closes it, as `timeline cut-range` does),
+  `setMediaRights` (a media's `license` and
   `provenance`; null removes one), `setMediaData` (the agent's own fields on a media under `data`, such as take
   numbers and verdicts; each key replaces, null removes; core never reads them) and `setFormat` (the canvas size; the
   `project format` command and the toolbar's format menu use it). The agent instructions

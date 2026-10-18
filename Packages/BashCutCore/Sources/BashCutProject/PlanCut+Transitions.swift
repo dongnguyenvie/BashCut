@@ -150,6 +150,8 @@ extension PlanCut {
             for (index, overlay) in clip.overlays.enumerated() {
                 listed["plan-\(clip.id)-overlay\(index + 1)"] = Set(overlay.picture.keys)
             }
+            // A focus sets the keyframes.
+            for (id, _) in focusTargets(clip) { listed[id, default: []].insert("keyframes") }
         }
         let present = Set(planner.project.tracks.flatMap(\.items).map(\.id))
         for (id, fields) in kept.pictures.sorted(by: { $0.key < $1.key }) where present.contains(id) {

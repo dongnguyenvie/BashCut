@@ -12,6 +12,7 @@ extension PlanCut {
         public var seconds: Double?
         public var transform: [String: JSONValue] = [:]
         public var picture: [String: JSONValue] = [:]
+        public var focus: Focus?
     }
 
     static let overlayKeys: Set<String> = ["media", "from", "offset", "seconds"]
@@ -50,7 +51,8 @@ extension PlanCut {
         if let length = shot["seconds"]?.double, length <= 0 { throw ProjectError.invalid("Clip \(id): cover seconds above 0") }
         return Cover(
             media: media, from: from, seconds: shot["seconds"]?.double,
-            transform: try decodeTransform(shot, entry: "Clip \(id) cover"), picture: try decodePicture(shot, entry: "Clip \(id) cover"))
+            transform: try decodeTransform(shot, entry: "Clip \(id) cover"), picture: try decodePicture(shot, entry: "Clip \(id) cover"),
+            focus: try decodeFocus(shot, entry: "Clip \(id) cover"))
     }
 
     static func decodeOverlay(_ row: [String: JSONValue], clip id: String, media clipMedia: String) throws -> Overlay {
@@ -62,7 +64,8 @@ extension PlanCut {
         }
         return Overlay(
             media: media, from: from, offset: offset, seconds: seconds,
-            transform: try decodeTransform(row, entry: "Clip \(id) overlay"), picture: try decodePicture(row, entry: "Clip \(id) overlay"))
+            transform: try decodeTransform(row, entry: "Clip \(id) overlay"), picture: try decodePicture(row, entry: "Clip \(id) overlay"),
+            focus: try decodeFocus(row, entry: "Clip \(id) overlay"))
     }
 
     /// A clip row's overlays; a clip with overlays plays at 1×.

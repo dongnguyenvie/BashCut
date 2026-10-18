@@ -418,8 +418,9 @@ public enum MotionPreset {
 }
 
 /// Zoom, pan and tilt that frame one rectangle of a clip's picture (`clip motion --focus`): the rectangle, in the
-/// source picture's pixels as seen (origin top left), is scaled to fit the frame and centred, and the pan and tilt are
-/// kept so that no edge of the picture comes inside the frame where the picture covers it.
+/// source picture's pixels as seen (origin top left), is scaled to fit the visible band of the frame (the whole frame
+/// by default; the part a camera overlay leaves in a split layout) and centred in it, and the pan and tilt are kept
+/// so that no edge of the picture comes inside the band where the picture covers it.
 public enum MotionFocus {
     public struct Framing: Sendable, Equatable {
         public let zoom: Double
@@ -450,9 +451,10 @@ public enum MotionFocus {
     }
 
     /// The framing of `rect` for a `source`-sized picture on a `canvas`-sized frame, fitted or filled like the clip
-    /// (`fill`).
+    /// (`fill`), inside `band` (canvas pixels from the top left; the whole canvas when nil).
     public static func framing(
-        _ rect: Region, source: (width: Double, height: Double), canvas: (width: Double, height: Double), fill: Bool
+        _ rect: Region, source: (width: Double, height: Double), canvas: (width: Double, height: Double), fill: Bool,
+        within band: Region? = nil
     ) throws -> Framing {
         let sourceWidth = source.width, sourceHeight = source.height
         let canvasWidth = canvas.width, canvasHeight = canvas.height
@@ -462,18 +464,30 @@ public enum MotionFocus {
         let left = max(0, rect.x), top = max(0, rect.y)
         let right = min(sourceWidth, rect.x + rect.width), bottom = min(sourceHeight, rect.y + rect.height)
         guard right - left >= 1, bottom - top >= 1 else { throw ProjectError.invalid("focus lies outside the picture") }
+        let bandLeft = max(0, band?.x ?? 0), bandTop = max(0, band?.y ?? 0)
+        let bandRight = min(canvasWidth, band.map { $0.x + $0.width } ?? canvasWidth)
+        let bandBottom = min(canvasHeight, band.map { $0.y + $0.height } ?? canvasHeight)
+        guard bandRight - bandLeft >= 1, bandBottom - bandTop >= 1 else {
+            throw ProjectError.invalid("within lies outside the frame")
+        }
         let horizontal = canvasWidth / sourceWidth, vertical = canvasHeight / sourceHeight
         let base = fill ? max(horizontal, vertical) : min(horizontal, vertical)
         let zoomRange = ItemMotion.ranges["zoom"] ?? 0.01...100
         let zoom = min(zoomRange.upperBound, max(zoomRange.lowerBound,
-            min(canvasWidth / ((right - left) * base), canvasHeight / ((bottom - top) * base))))
+            min((bandRight - bandLeft) / ((right - left) * base), (bandBottom - bandTop) / ((bottom - top) * base))))
         let scale = base * zoom
-        // Centre of the rectangle to the centre of the frame (tilt is up, source y grows down).
-        var pan = (sourceWidth / 2 - (left + right) / 2) * scale
-        var tilt = ((top + bottom) / 2 - sourceHeight / 2) * scale
-        let spareX = (sourceWidth * scale - canvasWidth) / 2, spareY = (sourceHeight * scale - canvasHeight) / 2
-        if spareX >= 0 { pan = min(spareX, max(-spareX, pan)) }
-        if spareY >= 0 { tilt = min(spareY, max(-spareY, tilt)) }
+        // Centre of the rectangle to the centre of the band (tilt is up, source y grows down).
+        var pan = (sourceWidth / 2 - (left + right) / 2) * scale + ((bandLeft + bandRight) / 2 - canvasWidth / 2)
+        var tilt = ((top + bottom) / 2 - sourceHeight / 2) * scale - ((bandTop + bandBottom) / 2 - canvasHeight / 2)
+        // The picture spans its half size either side of the frame's centre moved by pan and tilt; where it is at least
+        // as large as the band, no edge of it may come inside the band.
+        let halfWidth = sourceWidth * scale / 2, halfHeight = sourceHeight * scale / 2
+        if 2 * halfWidth >= bandRight - bandLeft {
+            pan = min(bandLeft - canvasWidth / 2 + halfWidth, max(bandRight - canvasWidth / 2 - halfWidth, pan))
+        }
+        if 2 * halfHeight >= bandBottom - bandTop {
+            tilt = min(canvasHeight / 2 + halfHeight - bandBottom, max(canvasHeight / 2 - halfHeight - bandTop, tilt))
+        }
         func rounded(_ value: Double, _ places: Double) -> Double { (value * places).rounded() / places }
         return Framing(zoom: rounded(zoom, 1000), pan: rounded(pan, 10), tilt: rounded(tilt, 10))
     }
