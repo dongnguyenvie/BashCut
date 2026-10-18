@@ -126,7 +126,8 @@ struct AudioLaneTests {
 
     /// AVFoundation's audio mix output stopped answering when a clip it time-scales joined the cut before it on one
     /// lane: an export froze at 17.3 s once two clips went from -60 dB to the -96 dB of their neighbours, since equal
-    /// gains let the cuts share a lane. Here a one-frame cut is followed at the same gain by AAC sound at 1.5×.
+    /// gains let the cuts share a lane. Here a one-frame cut is followed at the same gain by AAC sound at 1.5×. An
+    /// export renders that sound offline (`HighSpeedAudioTests`), so the preview build is the one that still scales it.
     @Test("A sped-up clip right after a cut at the same gain gets its own lane and exports", arguments: [-96.0, 0])
     func scaledAfterTouchingCut(gainDb: Double) async throws {
         let root = try TestFixtures.temporaryDirectory("scaled-join")
@@ -148,7 +149,7 @@ struct AudioLaneTests {
         let project = try Project(name: "Scaled join", fps: fps).applying(.group(label: "Fixture", author: .user, ops:
             media.map { .addMedia($0) } + [.insert(track: "a3", item: lead), .insert(track: "a3", item: fast)])).project
         let snapshot = try await AVFoundationRenderEngine(source: OriginalMediaSource())
-            .build(project, root: root, purpose: .export)
+            .build(project, root: root, purpose: .preview)
         #expect(snapshot.audioMix.inputParameters.count == 2)
         let file = root.appendingPathComponent("mix.caf")
         let export = Task { try await Exporter().exportAudio(snapshot, to: file) }

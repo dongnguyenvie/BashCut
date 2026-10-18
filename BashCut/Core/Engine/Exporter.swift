@@ -161,7 +161,7 @@ public actor Exporter {
                 return sample.presentationTimeStamp.seconds
             }, finish: {
                 if writer.status == .writing { input.markAsFinished() }
-            })
+            }, name: input.mediaType == .video ? "video" : "audio")
         }
         let transfer = ExportSampleTransfer(lanes: lanes, duration: end.seconds, progress: progress, failure: {
             if reader.status == .failed {

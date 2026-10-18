@@ -33,6 +33,33 @@ struct HighSpeedAudioTests {
         #expect(abs(Double(length) / 48_000 - 0.9) < 0.05)
     }
 
+    /// Twelve 2–4× clips the composition scaled itself froze the audio mix output near 144 s of a 180 s export, and
+    /// dropping the ones there moved the freeze to the next scaled clip.
+    @Test("An export renders 2–4× sound offline; preview still scales it", arguments: [2.0, 3.0, 4.0])
+    func moderateSpeedExport(speed: Double) async throws {
+        let root = try TestFixtures.temporaryDirectory("moderate-speed-audio")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try TestFixtures.writeTone(to: root.appendingPathComponent("tone.m4a"), seconds: 20, channels: 2, aac: true)
+        let media = Media(fields: ["id": .string("m"), "kind": .string("audio"), "path": .string("tone.m4a"),
+                                   "fps": FrameRate().json, "frames": .integer(600)])
+        let project = try Project(name: "Sped up").applying(.group(label: "Fixture", author: .user, ops: [
+            .addMedia(media), .insert(track: "a3", item: Item(id: "a", media: "m", at: 0, duration: 240)),
+            .setSpeed(item: "a", speed: speed, keepDuration: false),
+        ])).project
+        let engine = AVFoundationRenderEngine(source: OriginalMediaSource())
+        let ramps = ProjectCache.url(.rampAudio, projectRoot: root).standardizedFileURL
+        let export = try await engine.build(project, root: root, purpose: .export)
+        let exported = try #require(export.composition.tracks(withMediaType: .audio).first?.segments.first?.sourceURL)
+        #expect(exported.deletingLastPathComponent().standardizedFileURL == ramps)
+        let preview = try await engine.build(project, root: root, purpose: .preview)
+        let previewed = try #require(preview.composition.tracks(withMediaType: .audio).first?.segments.first?.sourceURL)
+        #expect(previewed.deletingLastPathComponent().standardizedFileURL != ramps)
+        let file = root.appendingPathComponent("mix.caf")
+        try await Self.within(.seconds(30)) { _ = try await Exporter().exportAudio(export, to: file) }
+        let length = try AVAudioFile(forReading: file).length
+        #expect(abs(Double(length) / 48_000 - 8 / speed) < 0.05)
+    }
+
     @Test("Cancelling a render stuck in AVFoundation's mixer ends the job without crashing")
     func cancelStuckRender() async throws {
         let root = try TestFixtures.temporaryDirectory("stuck-mixer")

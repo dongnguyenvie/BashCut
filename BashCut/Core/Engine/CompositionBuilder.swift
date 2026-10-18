@@ -235,7 +235,7 @@ public actor CompositionBuilder {
                         let gain = AudioGainPlanner.points(
                             for: item, on: track, speech: speechRanges, mixGainDb: project.mixGainDb,
                             minGapFrames: MusicDucking.minGapFrames(track, fps: project.fps.value))
-                        let offline = ramp != nil ? item : Self.offlineAudioItem(item)
+                        let offline = ramp != nil ? item : Self.offlineAudioItem(item, purpose: purpose)
                         let lane = try audioLanes.take(
                             for: item, sourceTrack: track.id, gain: gain, scaled: offline == nil && item.speed != 1,
                             composition: composition)
@@ -322,14 +322,17 @@ public actor CompositionBuilder {
             undecodable: undecodable, renderFailures: failures)
     }
 
-    /// The fastest constant speed whose sound the composition scales itself. Above it AVFoundation's offline audio
-    /// mixer deadlocks inside `copyNextSampleBuffer` (from about 8× on a 10 s source span), which hung every export
-    /// and mix measurement of a 16× time-lapse; faster sound is rendered offline like a ramp instead.
+    /// The fastest constant speed whose sound the preview composition scales itself. Above it AVFoundation's offline
+    /// audio mixer deadlocks inside `copyNextSampleBuffer` (from about 8× on a 10 s source span), which hung every
+    /// export and mix measurement of a 16× time-lapse; faster sound is rendered offline like a ramp instead.
     static let maximumScaledAudioSpeed = 4.0
 
-    /// `item` with a flat speed curve at its speed, for the ramp renderer, when its sound is too fast to scale.
-    static func offlineAudioItem(_ item: Item) -> Item? {
-        guard item.speed > maximumScaledAudioSpeed,
+    /// `item` with a flat speed curve at its speed, for the ramp renderer, when its sound is too fast to scale. An
+    /// export renders every sped-up or slowed sound offline: twelve 2–4× clips (scaled by the composition) froze the
+    /// audio mix output near 144–148 s of a 180 s timeline on every export and mix measurement, and dropping the two
+    /// 2× clips there only moved the freeze to the next scaled clips. Preview keeps scaling up to 4× (no render wait).
+    static func offlineAudioItem(_ item: Item, purpose: RenderPurpose = .preview) -> Item? {
+        guard item.speed != 1, purpose == .export || item.speed > maximumScaledAudioSpeed,
             let curve = try? SpeedCurve([.init(t: 0, speed: item.speed), .init(t: 1, speed: item.speed)])
         else { return nil }
         var timed = item

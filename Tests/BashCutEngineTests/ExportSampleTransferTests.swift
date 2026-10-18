@@ -140,7 +140,9 @@ struct ExportSampleTransferTests {
         stream.gate = gate
         let transfer = ExportSampleTransfer(lanes: [stream.lane], duration: 20, progress: { _ in }, failure: { nil },
                                             release: { released.add() }, abandonAfter: .milliseconds(50), stallLimit: 0.3)
-        await #expect(throws: ExportStallError(timelineSeconds: 2, idleSeconds: 0.3)) { try await transfer.run() }
+        await #expect(throws: ExportStallError(timelineSeconds: 2, idleSeconds: 0.3, lanes: "stream at 2.00 s blocked in read")) {
+            try await transfer.run()
+        }
         #expect(released.value == 0)
         gate.signal()
         try await wait { released.value == 1 }
