@@ -29,12 +29,14 @@ extension TextRenderer {
 
     /// Lays out `texts` (reading order) bottom-up, placed by the style's align and positionX: the bottom baseline
     /// sits at `baseline` of the height and each line above sits `lineSpacing` × the mean of the two lines' font
-    /// sizes higher, so a larger emphasis line gets room above and below it.
+    /// sizes higher, so a larger emphasis line gets room above and below it. The gap never drops below the ink the
+    /// two lines reach toward each other (stacked tone marks, a dot below, the outline, the emphasis plate) plus a
+    /// small clearance, so no preset or line height draws one line into the next.
     static func stack(
         _ look: CaptionStyle, texts: [NSAttributedString], fonts: [CTFont], canvas: CGSize
     ) -> [CaptionLineLayout] {
         var y = canvas.height * look.baseline
-        var below: CGFloat?
+        var below: (points: CGFloat, top: CGFloat)?
         // A plate behind the emphasis line needs its padding clear of the lines next to it.
         let emphasis = look.emphasis(lineCount: texts.count)
         let plated = emphasis?.plate == nil ? nil : emphasis.map { texts.count - 1 - $0.line }
@@ -42,14 +44,16 @@ extension TextRenderer {
         let lines = zip(texts, fonts).reversed().enumerated().map { index, entry in
             let (text, font) = entry
             let points = CTFontGetSize(font)
-            if let below {
-                y += look.lineSpacing * (below + points) / 2
-                if let plated, index == plated || index - 1 == plated {
-                    y += platePadding * max(below, points)
-                }
-            }
-            below = points
             let line = CTLineCreateWithAttributedString(text)
+            let ink = inkExtent(line, points: points, stroke: look.stroke, plate: index == plated ? platePadding : nil)
+            if let below {
+                var gap = look.lineSpacing * (below.points + points) / 2
+                if let plated, index == plated || index - 1 == plated {
+                    gap += platePadding * max(below.points, points)
+                }
+                y += max(gap, below.top + ink.bottom + inkClearance * (below.points + points) / 2)
+            }
+            below = (points, ink.top)
             let width = CTLineGetTypographicBounds(line, nil, nil, nil)
             return CaptionLineLayout(line: line, width: width, position: CGPoint(x: look.x(width: width, canvas: canvas), y: y))
         }
@@ -66,6 +70,26 @@ extension TextRenderer {
         return lines.map {
             CaptionLineLayout(line: $0.line, width: $0.width, position: CGPoint(x: $0.position.x, y: $0.position.y + shift))
         }
+    }
+
+    /// The least space between one line's ink and the next, in font sizes.
+    static let inkClearance: CGFloat = 0.06
+
+    /// How far a line's ink reaches above and below its baseline: the glyph outlines (so stacked marks count), widened
+    /// by the outer half of the stroke, or the emphasis plate (`plate` padding in font sizes) where it reaches further.
+    static func inkExtent(_ line: CTLine, points: CGFloat, stroke: Double, plate: CGFloat?) -> (top: CGFloat, bottom: CGFloat) {
+        var ascent: CGFloat = 0, descent: CGFloat = 0
+        CTLineGetTypographicBounds(line, &ascent, &descent, nil)
+        let glyphs = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+        let outline = abs(stroke) * points / 200
+        var top = (glyphs.isNull ? ascent : glyphs.maxY) + outline
+        var bottom = (glyphs.isNull ? descent : -glyphs.minY) + outline
+        if let plate {
+            // The plate `decorations` draws: the glyph top to 0.4 of the descent, padded.
+            top = max(top, (glyphs.isNull ? ascent : glyphs.maxY) + plate * points)
+            bottom = max(bottom, descent * 0.4 + plate * points)
+        }
+        return (top, bottom)
     }
 
     /// Plain (uncoloured) line strings for measuring: each line's font and tracking.
@@ -122,9 +146,14 @@ extension TextRenderer {
             let points = lineHeight / look.lineSpacing
             let minX = lines.map(\.position.x).min() ?? 0
             let maxX = lines.map { $0.position.x + $0.width }.max() ?? 0
-            let top = (lines.last?.position.y ?? first.position.y) + lineHeight * 0.8
-            var box = CGRect(x: minX, y: first.position.y - lineHeight * 0.28, width: maxX - minX,
-                             height: top - first.position.y + lineHeight * 0.28)
+            // Reach the top line's marks and the bottom line's descenders, which a larger emphasis line or stacked
+            // tone marks carry past the line height.
+            let last = lines.last ?? first
+            let topInk = inkExtent(last.line, points: CTFontGetSize(last.font), stroke: look.stroke, plate: nil).top
+            let bottomInk = inkExtent(first.line, points: CTFontGetSize(first.font), stroke: look.stroke, plate: nil).bottom
+            let top = last.position.y + max(lineHeight * 0.8, topInk)
+            let bottom = first.position.y - max(lineHeight * 0.28, bottomInk)
+            var box = CGRect(x: minX, y: bottom, width: maxX - minX, height: top - bottom)
             var result: [CaptionDecoration] = []
             if let background = look.background {
                 let padding = CGFloat(background["padding"]?.double ?? 0.3) * points
@@ -142,7 +171,7 @@ extension TextRenderer {
         case .placeCard:
             let width = min(canvas.width * 0.8, (lines.map(\.width).max() ?? 0) + 52)
             let rect = CGRect(x: canvas.width * 0.075, y: first.position.y - 18, width: width,
-                              height: lineHeight * CGFloat(lines.count) + 30)
+                              height: (lines.last?.position.y ?? first.position.y) - first.position.y + lineHeight + 30)
             return [CaptionDecoration(rect: rect, color: CGColor(gray: 0.03, alpha: 0.86), radius: 14),
                     CaptionDecoration(rect: CGRect(x: rect.minX, y: rect.minY, width: 8, height: rect.height), color: color("#FACC15"))]
         case .chapterCard:
