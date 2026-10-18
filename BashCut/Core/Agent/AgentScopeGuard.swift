@@ -163,6 +163,11 @@ public enum AgentScopeGuard {
             case .split(let id, _, let newID):
                 touch(id)
                 allowed.formUnion([newID, newID + "-linked"])
+            case .rippleDeleteRange(let from, let to, let scope, _):
+                // What the cut removes or trims is checked; what only moves left is a ripple shift, as for trims.
+                for track in project.tracks where scope?.contains(track.id) ?? true {
+                    for item in track.items where item.at < to && item.end > from { touch(item.id) }
+                }
             case .roll(let id, let edge, _):
                 touch(id)
                 if let neighbour = neighbour(of: id, at: edge) { touch(neighbour) }

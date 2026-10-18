@@ -198,6 +198,8 @@ extension CommandCatalog {
         trackKind, textPreset or media (all given must match), or list "items":["ID",…],
         framing: setProperties {"reframePreset":"close","transform":{"zoom":1.3,"pan":0,"tilt":0}}; bars of a fit
         picture: {"backdrop":{"kind":"blur"}} (or "color" with "color"),
+        {"op":"rippleDeleteRange","from":90,"to":180} cuts a span out of every layer and closes it (a restart):
+        clips split or trimmed, captions lose its words, later items and sections move, music beds lose their tail,
         {"op":"setLinkedAudio","video":"VIDEO_ID","audio":"AUDIO_ID"}; omit audio to unlink,
         {"op":"setSpeed","item":"ID","speed":2}; the clip and its linked sound get 2x and half the length, later
         clips on their layers move up; add "keepDuration":true to keep the length (prefer this over a speed patch),
