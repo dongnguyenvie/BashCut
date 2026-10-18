@@ -41,6 +41,8 @@ public enum PlanCut {
         public var picture: [String: JSONValue] = [:]
         /// Pictures over the clip on an overlay layer that move with it (picture-in-picture).
         public var overlays: [Overlay] = []
+        /// Its own picture framed by source rectangles instead of zoom, pan and tilt (`PlanCut+Focus`).
+        public var focus: Focus?
     }
 
     /// A picture laid over a clip's sound: source seconds `from` of `media`, for `seconds` (the last: the rest).
@@ -50,6 +52,7 @@ public enum PlanCut {
         public var seconds: Double?
         public var transform: [String: JSONValue] = [:]
         public var picture: [String: JSONValue] = [:]
+        public var focus: Focus?
     }
 
     public struct Title: Sendable {
@@ -238,7 +241,7 @@ public enum PlanCut {
                     + known.sorted().joined(separator: ", "),
                 facts: ["fields": .array(keys.map(JSONValue.string))]))
         }
-        let picture = Set(transformKeys.keys).union(pictureKeys)
+        let picture = Set(transformKeys.keys).union(pictureKeys).union(focusFields)
         for (index, value) in clips.enumerated() {
             let row = value.object
             let entry = index < ids.count ? ids[index] : "c\(index + 1)"
@@ -356,7 +359,7 @@ public enum PlanCut {
             speedGiven: row["speed"].map { $0 != .null } ?? false,
             role: role ?? (quote != nil || words != nil ? "speech" : nil), cover: cover,
             transform: try decodeTransform(row, entry: "Clip \(id)"), picture: try decodePicture(row, entry: "Clip \(id)"),
-            overlays: overlays)
+            overlays: overlays, focus: try decodeFocus(row, entry: "Clip \(id)"))
     }
 
     static func decodeTitle(_ row: [String: JSONValue], id: String, entries: [String], sections: Set<String>) throws -> Title {

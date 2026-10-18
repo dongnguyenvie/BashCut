@@ -282,7 +282,7 @@ extension ProjectDocument {
             if let review { after["review"] = .object(review) }
             let facts = PlanCut.facts(spec, clips: clips, placements: built.placements, on: after)
             problems += facts.problems + planFontProblems(after) + planStyleProblems(after)
-                + PlanCut.transitionProblems(spec, on: after)
+                + PlanCut.transitionProblems(spec, on: after) + PlanCut.focusProblems(spec, on: after)
             let fps = after.fps.value
             result["duration"] = .number((Double(after.duration) / fps * 100).rounded() / 100)
             result["clips"] = .array(facts.clips)
