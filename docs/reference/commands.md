@@ -1553,9 +1553,9 @@ Cancel a batch (default: the running one) and the job of its running step; items
 - Mode: edit · Runs: immediately · MCP: `bashcut_batch_cancel`
 - `batch`: string. Batch ID
 
-### `bashcut batch presets [<pipeline.json>] [--name <name>] [--keep-inputs] [--get <get>] [--remove <remove>]`
+### `bashcut batch presets [<pipeline.json>] [--name <name>] [--keep-inputs] [--get <get>] [--remove <remove>] [--base <base>]`
 
-Saved pipelines in the user store (Application Support/BashCut/Batch/Presets): list them; with pipeline save it (name from name, else the pipeline's; inputs are dropped unless keepInputs), with get return one, with remove delete one.
+Saved pipelines in the user store (Application Support/BashCut/Batch/Presets): list them; with pipeline save it (name from name, else the pipeline's; inputs are dropped unless keepInputs; a relative projectsFolder or input is saved absolute, resolved against base), with get return one, with remove delete one.
 
 - Mode: edit · Runs: immediately · MCP: `bashcut_batch_presets`
 - `pipeline`: object. Pipeline to save (CLI: path to pipeline.json)
@@ -1563,6 +1563,7 @@ Saved pipelines in the user store (Application Support/BashCut/Batch/Presets): l
 - `keepInputs`: boolean, default false. Save the pipeline's inputs too
 - `get`: string. Preset name to return
 - `remove`: string. Preset name to delete
+- `base`: string, path. Folder that relative paths (projectsFolder, kept inputs) resolve against before saving; the CLI sets it to the pipeline file's folder
 
 ## music
 

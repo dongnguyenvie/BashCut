@@ -1124,7 +1124,9 @@ bashcut batch run --preset "Captions draft" --inputs ~/Movies/shoot,~/Movies/old
   the batches. `batch status --all` lists them.
 - **Presets** are pipelines saved in the user store, `~/Library/Application Support/BashCut/Batch/Presets/<name>.json`.
   `batch presets` lists them; `batch presets FILE [--name N] [--keep-inputs]` saves one (inputs are dropped unless
-  kept); `--get N` returns one and `--remove N` deletes it. `batch run --preset N --inputs A,B` runs one on new inputs.
+  kept; a relative `projectsFolder` or kept input is saved absolute, resolved against the file's folder or `--base`,
+  so the preset runs the same from the batch window); `--get N` returns one and `--remove N` deletes it.
+  `batch run --preset N --inputs A,B` runs one on new inputs.
 - **The app must stay open.** Batches run inside the running BashCut, through the same command handlers as the CLI;
   there are no headless runs without the app. `batch run`, `batch cancel` and `batch presets` are not held by the
   read-after-switch rule, so the agent that started a batch can still cancel it while its items open.

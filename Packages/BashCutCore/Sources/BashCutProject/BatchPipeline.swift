@@ -109,7 +109,30 @@ public struct BatchPipeline: Codable, Sendable, Equatable {
         if let bad = template.outputs.first(where: { $0.trimmingCharacters(in: .whitespaces).isEmpty }) {
             throw ProjectError.invalid(BatchMessages.text(BatchMessages.emptyOutput, bad))
         }
+        // Left relative, a path would resolve against the app's working folder (`/`): the batch window has no base.
+        if let relative = ([projectsFolder].compactMap { $0 } + inputs.map(\.path)).first(where: Self.isRelative) {
+            throw ProjectError.invalid(BatchMessages.text(BatchMessages.relativePath, relative))
+        }
     }
+
+    /// The pipeline with its relative input paths and `projectsFolder` made absolute against `base` (a pipeline
+    /// file's folder), so it runs the same from the batch window or a preset; without `base` a relative path is refused.
+    public func resolvingPaths(against base: URL?) throws -> BatchPipeline {
+        var resolved = self
+        func absolute(_ path: String, _ refusal: String) throws -> String {
+            guard Self.isRelative(path) else { return path }
+            guard let base else { throw ProjectError.invalid(BatchMessages.text(refusal, path)) }
+            return base.appendingPathComponent(path).standardizedFileURL.path
+        }
+        for index in resolved.inputs.indices {
+            resolved.inputs[index].path = try absolute(resolved.inputs[index].path, BatchMessages.inputRelative)
+        }
+        resolved.projectsFolder = try projectsFolder.map { try absolute($0, BatchMessages.projectsFolderRelative) }
+        return resolved
+    }
+
+    /// Neither absolute nor from the home folder (`~`).
+    static func isRelative(_ path: String) -> Bool { !path.hasPrefix("/") && !path.hasPrefix("~") }
 
     /// The export file name (no extension) of item `index` (0-based) for `preset`: `outputName` with its tokens
     /// filled; characters a file name cannot hold become dashes.

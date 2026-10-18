@@ -135,6 +135,30 @@ struct BatchPipelineTests {
         #expect(BatchPresetStore.slug("Phụ đề Việt — đợt 2") == "phu-de-viet-dot-2")
     }
 
+    @Test("Relative paths resolve against the pipeline file's folder; without one they are refused")
+    func relativePaths() throws {
+        let base = URL(fileURLWithPath: "/Users/me/batches", isDirectory: true)
+        var pipeline = BatchPipeline(inputs: [BatchInput(path: "clips/a.mp4"), BatchInput(path: "/b.mp4"),
+                                              BatchInput(path: "~/c.mp4")],
+                                     steps: [BatchStep("project.save")], projectsFolder: "../projects")
+        let resolved = try pipeline.resolvingPaths(against: base)
+        #expect(resolved.inputs.map(\.path) == ["/Users/me/batches/clips/a.mp4", "/b.mp4", "~/c.mp4"])
+        #expect(resolved.projectsFolder == "/Users/me/projects")
+        try resolved.validate()
+        // A preset saved before paths were resolved: the batch window has no folder to resolve "projects" against.
+        let message = { (pipeline: BatchPipeline) -> String? in
+            do { try pipeline.validate() } catch { return error.localizedDescription }
+            return nil
+        }
+        #expect(message(pipeline)?.hasPrefix("../projects is a relative path") == true)
+        #expect(throws: ProjectError.self) { try pipeline.resolvingPaths(against: nil) }
+        pipeline.projectsFolder = "~/Movies/Batch"
+        #expect(message(pipeline)?.hasPrefix("clips/a.mp4 is a relative path") == true)
+        pipeline.inputs = []
+        let saved = try pipeline.resolvingPaths(against: nil)
+        #expect(saved.projectsFolder == "~/Movies/Batch")
+    }
+
     @Test("A run's status counts items and reports the concurrency it used")
     func status() {
         let source = BatchItemSource(name: "a", url: URL(fileURLWithPath: "/a.mp4"), kind: .file)

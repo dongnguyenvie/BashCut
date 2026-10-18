@@ -15,6 +15,10 @@ public enum BatchMessages {
     public static let emptyOutput = "template outputs has an empty preset \"%@\""
     public static let unknownOutput = "template outputs: unknown export preset %@; use %@"
     public static let inputMissing = "Input %@ does not exist"
+    public static let inputRelative = "Input %@ is relative: give absolute paths or base"
+    public static let projectsFolderRelative = "projectsFolder %@ is relative: give an absolute path or base"
+    public static let relativePath =
+        "%@ is a relative path with no folder to resolve it against: choose it again, or save the preset again from its pipeline file"
     public static let inputNotFolder = "Input %@ is not a folder"
     public static let inputFolder = "Input %@ is a folder"
     public static let noProject = "No project at %@"
@@ -40,9 +44,9 @@ public enum BatchMessages {
     /// Every message, most specific first: the generic `stepFailed` comes after the step messages it would swallow.
     public static let all: [String] = [
         noInputs, noSteps, presetNameLetters, presetName, presetSteps, outputNameApart, outputNameToken, concurrency,
-        emptyOutput, unknownOutput, inputMissing, inputNotFolder, inputFolder, noProject, noMedia, noPresetSaved,
-        noPreset, exportNeedsPresets, exportUnknownPreset, unknownAction, approvalExport, approval, opensProjects,
-        stepFailed, stoppedAfterFailure, openFailed, projectChanged, noProjectOpened, jobDropped, jobFailed,
+        emptyOutput, unknownOutput, inputMissing, inputRelative, projectsFolderRelative, relativePath, inputNotFolder,
+        inputFolder, noProject, noMedia, noPresetSaved, noPreset, exportNeedsPresets, exportUnknownPreset, unknownAction,
+        approvalExport, approval, opensProjects, stepFailed, stoppedAfterFailure, openFailed, projectChanged, noProjectOpened, jobDropped, jobFailed,
     ]
 
     /// `key` with its `%@` filled by `parts` in order.
