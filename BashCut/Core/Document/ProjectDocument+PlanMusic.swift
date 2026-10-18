@@ -26,9 +26,16 @@ extension ProjectDocument {
     /// The fixed bed for a `plan.cut` music without `volumeDb` or ducking: the built edit's speech and its music bed
     /// at 0 dB are rendered and measured, and the bed is set `underVoiceDb` under the voice. Without a voice, or when
     /// a measurement fails, the bed keeps the fallback level and the report says why.
-    func planMusicBed(_ music: PlanCut.Music?, built: Project) async -> (operations: [EditOperation], report: JSONValue?) {
+    /// A level set by hand on the bed (`handLevel`) stays while the list asks for the same bed, unmeasured.
+    func planMusicBed(
+        _ music: PlanCut.Music?, built: Project, handLevel: Bool = false
+    ) async -> (operations: [EditOperation], report: JSONValue?) {
         guard let music else { return ([], nil) }
         guard music.measuresLevel else { return ([], Self.planMusicSummary(music)) }
+        if handLevel {
+            let level = built.tracks.flatMap(\.items).first { $0.id == "plan-music" }?["volumeDb"] ?? .null
+            return ([], .object(["ducking": .bool(false), "volumeDb": level, "measured": .bool(false), "keptHandLevel": .bool(true)]))
+        }
         let under = music.underVoiceDb ?? PlanCut.Music.defaultUnderVoiceDb
         var report: [String: JSONValue] = [
             "ducking": .bool(false), "underVoiceDb": .number(under), "volumeDb": .number(PlanCut.Music.fallbackVolumeDb),
@@ -66,7 +73,9 @@ extension ProjectDocument {
             let volume = MusicDucking.bedVolumeDb(voiceLUFS: voice, musicLUFS: bed, underVoiceDb: under)
             report["volumeDb"] = .number(volume)
             report["measured"] = .bool(true)
-            return ([.setProperties(item: bedID, patch: ["volumeDb": .number(volume)])], .object(report))
+            // The measured level is recorded apart, so a later apply tells a level set by hand from it.
+            let patch: [String: JSONValue] = ["volumeDb": .number(volume), PlanCut.measuredTag: .number(volume)]
+            return ([.setProperties(item: bedID, patch: patch)], .object(report))
         } catch is PlanMusicTimeout {
             report["reason"] = .string(
                 "measuring took over \(Int(Self.planMusicMeasureSeconds)) s; the bed keeps the fallback level, "

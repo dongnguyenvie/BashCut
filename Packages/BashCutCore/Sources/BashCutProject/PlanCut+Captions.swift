@@ -21,15 +21,16 @@ extension PlanCut {
     /// Replaces the captions an earlier apply built (and any cues grouped from them) with the list's, or keeps them
     /// when the list would generate the same cues again. Refuses to lay captions over speech captions it did not
     /// build, rather than stacking two sets. `was` is the project before the apply, where the old cues were heard.
+    @discardableResult
     static func rebuildCaptions(
         _ spec: Spec, clips: [Resolved], sources: CaptionSources, was: Project, in planner: inout LayerPlanner
-    ) throws {
+    ) throws -> [String: Int] {
         let old = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == .string("captions") }
         var scratch = planner
         for item in old { try scratch.add([.delete(item: item.id, ripple: false)]) }
         guard let captions = spec.captions else {
             planner = scratch
-            return
+            return [:]
         }
         let before = Set(scratch.project.tracks.flatMap(\.items).map(\.id))
         try placeCaptions(
@@ -38,7 +39,7 @@ extension PlanCut {
             captions, lines: spec.voiceover, takes: sources.takes, textPresets: sources.textPresets, in: &scratch)
         let added = scratch.project.tracks.flatMap(\.items).filter { !before.contains($0.id) }
         let digest = captionsDigest(added)
-        if !old.isEmpty, old.allSatisfy({ $0.fields[captionsTag] == .string(digest) }) { return }
+        if !old.isEmpty, old.allSatisfy({ $0.fields[captionsTag] == .string(digest) }) { return [:] }
         let foreign = scratch.project.tracks.flatMap(\.items).filter { item in
             item.fields[tag] == nil && item["captionMedia"] != nil && added.contains { $0.at < item.end && $0.end > item.at }
         }
@@ -53,17 +54,45 @@ extension PlanCut {
         // The old cues as they were heard before the apply (a speed set while rebuilding retimes the scratch copies).
         let wasOld = was.tracks.flatMap(\.items).filter { $0.fields[tag] == .string("captions") }
         let shown = try dropUnshown(Set(added.map(\.id)), heardIn: was, in: &scratch)
-        try regroup(shown, like: wasOld, heardIn: was, in: &scratch)
+        try regroup(shown.left, like: wasOld, heardIn: was, in: &scratch)
         planner = scratch
+        return shown.dropped
+    }
+
+    /// The media whose built clips `was` played without captions count as deleted by hand (see `dropUnshown`).
+    static func captionedMedia(_ was: Project, shown: [Item]) -> Set<String> {
+        let built = was.tracks.flatMap(\.items).filter { $0.fields[tag] != nil && $0.fields[tag] != .string("captions") }
+        let marked = built.contains { $0[captionedTag] != nil }
+        let captioned = marked ? built.filter { $0[captionedTag] == .bool(true) }
+            : shown.contains { $0.fields[tag] == .string("captions") } ? built : []
+        return Set(shown.compactMap { $0["captionMedia"]?.string }).union(captioned.compactMap(\.mediaID))
+    }
+
+    /// Marks the built clips whose media has a transcript the captions are made from (`planCaptioned`), so a later
+    /// apply tells captions deleted by hand from a media transcribed since.
+    static func markCaptioned(_ spec: Spec, transcripts: [String: SourceTranscript], in planner: inout LayerPlanner) throws {
+        guard spec.captions != nil else { return }
+        for item in planner.project.tracks.flatMap(\.items) {
+            guard let entry = item.fields[tag]?.string, entry != "captions", let media = item.mediaID else { continue }
+            let captioned = transcripts[media] != nil
+            if item[captionedTag] != .bool(captioned) {
+                try planner.add([.setProperties(item: item.id, patch: [captionedTag: .bool(captioned)])])
+            }
+        }
     }
 
     /// Leaves out of the rebuilt cues `ids` the words a built clip played in `was` with no caption of that media over
-    /// them: cues deleted by hand (chatter, a false start) stay deleted. Only media `was` showed captions of count, so
-    /// a media captioned for the first time gets all its captions. Returns the cues left.
-    static func dropUnshown(_ ids: Set<String>, heardIn was: Project, in planner: inout LayerPlanner) throws -> Set<String> {
+    /// them: cues deleted by hand (chatter, a false start, every cue of a screen recording under the voice) stay
+    /// deleted. Count the media `was` showed captions of and the media of clips an apply captioned (`planCaptioned`),
+    /// so a media captioned for the first time (transcribed since) gets all its captions; for an edit built before
+    /// that mark, every built clip's media once the plan had built captions. Returns the cues left, and the words left
+    /// out by media.
+    static func dropUnshown(
+        _ ids: Set<String>, heardIn was: Project, in planner: inout LayerPlanner
+    ) throws -> (left: Set<String>, dropped: [String: Int]) {
         let shown = was.tracks.filter { $0.role == TrackRole.captions }.flatMap(\.items).filter { $0["captionMedia"] != nil }
         var unshown: [(media: String, start: Double, end: Double)] = []
-        for media in Set(shown.compactMap { $0["captionMedia"]?.string }).sorted() {
+        for media in captionedMedia(was, shown: shown).sorted() {
             let covered = shown.filter { $0["captionMedia"]?.string == media }.map { ($0.at, $0.end) }
             for (clip, asset) in was.audibleClips(media) where clip.fields[tag] != nil {
                 let sourceFPS = asset.fps.value > 0 ? asset.fps.value : was.fps.value
@@ -79,10 +108,11 @@ extension PlanCut {
             }
         }
         guard !unshown.isEmpty, let track = planner.project.tracks.first(where: { $0.role == TrackRole.captions }) else {
-            return ids
+            return (ids, [:])
         }
         let sources = TimelineTranscript.SourceMap(planner.project)
         var left = ids
+        var dropped: [String: Int] = [:]
         for cue in track.items.filter({ ids.contains($0.id) }).sorted(by: { $0.at < $1.at }) {
             let words = TimelineTranscript.words(of: cue, sources: sources)
             let kept = words.filter { word in
@@ -91,6 +121,8 @@ extension PlanCut {
                 return !unshown.contains { $0.media == media && $0.start <= middle && middle < $0.end }
             }
             guard kept.count < words.count else { continue }
+            let gone = words.filter { word in !kept.contains { $0.at == word.at && $0.text == word.text } }
+            dropped.merge(Dictionary(grouping: gone) { $0.mediaID ?? "" }.mapValues(\.count)) { $0 + $1 }
             left.remove(cue.id)
             guard !kept.isEmpty else {
                 try planner.add([.delete(item: cue.id, ripple: false)])
@@ -103,7 +135,7 @@ extension PlanCut {
             try planner.add([rest.operation])
             left.formUnion(rest.cues.map(\.id))
         }
-        return left
+        return (left, dropped)
     }
 
     /// Groups the rebuilt cues `ids` the way `captions group` grouped the old ones: by the same rule (breaking at the
@@ -183,7 +215,14 @@ extension PlanCut {
                 transcript.phrases, replace: false, provenance: transcript.provider, media: media,
                 words: transcript.words, wordStyle: captions.wordStyle)
             try planner.add([operation])
-            let added = planner.project.tracks.flatMap(\.items).filter { !before.contains($0.id) }
+            var added = planner.project.tracks.flatMap(\.items).filter { !before.contains($0.id) }
+            // The importer captions every clip of the media; a clip placed by hand (a camera picture-in-picture
+            // under the voice) is not the plan's, so its cues go.
+            let built = planner.project.audibleClips(media).map(\.item).filter { $0.fields[tag] != nil }
+            for item in added where !built.contains(where: { $0.at < item.end && $0.end > item.at }) {
+                try planner.add([.delete(item: item.id, ripple: false)])
+            }
+            added = added.filter { item in built.contains { $0.at < item.end && $0.end > item.at } }
             for item in added {
                 var patch = try look(
                     for: item, (captions.preset, captions.style, captions.textStyle), textPresets: textPresets,

@@ -64,9 +64,7 @@ extension PlanCut {
     struct HandSet {
         var transitions: [TimelineTransition] = []
         var edges: [String: [String: JSONValue]] = [:]
-        /// Picture fields (`pictureKeys`) set by hand on built items, by item ID.
-        var pictures: [String: [String: JSONValue]] = [:]
-        /// Sound, speed and the music bed's span set by hand.
+        /// Speed and the music bed's span set by hand.
         var hand: HandEdits
 
         init(_ project: Project) {
@@ -80,11 +78,6 @@ extension PlanCut {
                 for field in ItemTransition.fields {
                     guard let value = item[field], value != .null, value.object[tag] == nil else { continue }
                     edges[item.id, default: [:]][field] = value
-                }
-                let listed = Set(item[pictureTag]?.array.compactMap(\.string) ?? [])
-                for field in pictureKeys where !listed.contains(field) {
-                    guard let value = item[field], value != .null else { continue }
-                    pictures[item.id, default: [:]][field] = value
                 }
             }
         }
@@ -137,26 +130,6 @@ extension PlanCut {
                 }
                 try planner.add([.setProperties(item: item.id, patch: [field: value])])
             }
-        }
-    }
-
-    /// Picture fields set by hand on built items (`clip backdrop`, `clip keyframe`, a reframe…) come back on the
-    /// rebuilt items with the same ID, unless the list sets or clears that field (B3).
-    static func restorePictures(_ spec: Spec, kept: HandSet, in planner: inout LayerPlanner) throws {
-        var listed: [String: Set<String>] = [:]
-        for clip in spec.clips {
-            listed["plan-" + clip.id] = Set(clip.picture.keys)
-            for (index, shot) in clip.cover.enumerated() { listed["plan-\(clip.id)-cover\(index + 1)"] = Set(shot.picture.keys) }
-            for (index, overlay) in clip.overlays.enumerated() {
-                listed["plan-\(clip.id)-overlay\(index + 1)"] = Set(overlay.picture.keys)
-            }
-            // A focus sets the keyframes.
-            for (id, _) in focusTargets(clip) { listed[id, default: []].insert("keyframes") }
-        }
-        let present = Set(planner.project.tracks.flatMap(\.items).map(\.id))
-        for (id, fields) in kept.pictures.sorted(by: { $0.key < $1.key }) where present.contains(id) {
-            let patch = fields.filter { listed[id]?.contains($0.key) != true }
-            if !patch.isEmpty { try planner.add([.setProperties(item: id, patch: patch)]) }
         }
     }
 

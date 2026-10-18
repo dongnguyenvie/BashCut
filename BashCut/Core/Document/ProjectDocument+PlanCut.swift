@@ -24,7 +24,7 @@ extension ProjectDocument {
                 ]))
             }
             var operations = built.planner.operations
-            let bed = await document.planMusicBed(spec.music, built: built.planner.project)
+            let bed = await document.planMusicBed(spec.music, built: built.planner.project, handLevel: built.hand.keepsMusicLevel)
             operations += bed.operations
             var properties: [String: JSONValue] = [:]
             let given = [arguments["cut"], arguments["patch"]].contains { $0 != nil && $0 != .null }
@@ -240,7 +240,7 @@ extension ProjectDocument {
     }
 
     struct PlanCutCheck {
-        var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
+        var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String], hand: PlanCut.HandReport)?
         var problems: [PlanCut.Problem]
         var json: JSONValue
         var errors: [PlanCut.Problem] { problems.filter { $0.severity == "error" } }
@@ -266,7 +266,7 @@ extension ProjectDocument {
         let (textPresets, presetProblems) = planTextPresets(spec)
         var problems = resolveProblems + presetProblems + planFactProblems(spec)
         var result: [String: JSONValue] = ["baseRev": .integer(project.revision)]
-        var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String])?
+        var built: (planner: LayerPlanner, placements: [PlanCut.Placement], kept: [String], hand: PlanCut.HandReport)?
         // With an entry left out, the build would report what its absence causes; its own error says enough.
         if spec.invalid.isEmpty {
             do {
@@ -311,6 +311,8 @@ extension ProjectDocument {
                 ])
             })
             if !built.kept.isEmpty { result["otherItems"] = .integer(built.kept.count) }
+            // What the apply keeps of the edits made by hand since the last one, and what it gives back to the list.
+            result["handEdits"] = built.hand.isEmpty ? nil : built.hand.json
             result["music"] = spec.music.map(Self.planMusicSummary)
             // The review of the edit as it would be; picture, loudness and plugin checks belong to a rendered revision.
             var context = reviewContext()

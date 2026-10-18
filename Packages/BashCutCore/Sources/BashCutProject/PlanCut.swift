@@ -157,6 +157,8 @@ public enum PlanCut {
         public var factReferences: [(entry: String, keys: [String])] = []
         /// Entries that could not be read, one error each, all at once (the entries are left out).
         public var invalid: [Problem] = []
+        /// Each entry's row by ID (`music` for the bed), so a later apply tells a row changed since plan.cut.
+        public var rows: [String: JSONValue] = [:]
     }
 
     static let roles = ["speech", "broll", "underVO"]
@@ -309,20 +311,6 @@ public enum PlanCut {
         var text = style["textStyle"]?.object ?? [:]
         for (key, value) in style where keys.contains(key) { text[key] = value }
         return (style.filter { !keys.contains($0.key) && $0.key != "textStyle" }, text)
-    }
-
-    /// Entry IDs: given or numbered, unique across clips and titles.
-    struct IDs {
-        var seen = Set<String>()
-
-        mutating func take(_ raw: String?, _ prefix: String, _ index: Int) throws -> String {
-            let id = raw ?? "\(prefix)\(index + 1)"
-            guard !id.isEmpty, id.count <= 64, id.allSatisfy({ $0.isLetter || $0.isNumber || "-_.".contains($0) }) else {
-                throw ProjectError.invalid("\(prefix) ID \(id): use 1–64 letters, digits, '-', '_' or '.'")
-            }
-            guard seen.insert(id).inserted else { throw ProjectError.invalid("Duplicate plan.cut ID \(id)") }
-            return id
-        }
     }
 
     static func decodeClip(_ row: [String: JSONValue], id: String) throws -> Clip {
@@ -495,6 +483,7 @@ extension PlanCut {
             ])
         } ?? []
         spec.invalid = invalid
+        spec.rows = entryRows(value)
         return spec
     }
 }

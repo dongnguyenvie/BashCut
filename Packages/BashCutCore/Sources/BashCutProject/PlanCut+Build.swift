@@ -21,9 +21,10 @@ extension PlanCut {
     public static func build(
         _ spec: Spec, clips: [Resolved], on project: Project, textPresets: [String: LibraryTextPreset] = [:],
         transcripts: [String: SourceTranscript] = [:], takes: [String: LineTake] = [:]
-    ) throws -> (planner: LayerPlanner, placements: [Placement], kept: [String]) {
+    ) throws -> (planner: LayerPlanner, placements: [Placement], kept: [String], hand: HandReport) {
         var planner = LayerPlanner(project)
         let handSet = HandSet(project)
+        var keep = Keep(project, spec: spec)
         try removeBuilt(clips: clips, lines: spec.voiceover, from: project, in: &planner)
         let main = try planner.project.requireTrack(role: TrackRole.main)
         guard main.items.isEmpty else {
@@ -31,16 +32,18 @@ extension PlanCut {
                 "Main holds \(main.items.count) item(s) plan apply did not build "
                     + "(\(main.items.prefix(5).map(\.id).joined(separator: ", "))): delete them first, or edit them with timeline apply")
         }
-        var placements = try placeClips(clips, main: main.id, kept: handSet.hand, in: &planner)
-        try applyFocus(clips, in: &planner)
-        let lines = try placeLines(spec.voiceover, takes: takes, in: &planner)
+        var placements = try placeClips(clips, main: main.id, kept: handSet.hand, keep: &keep, in: &planner)
+        var lines = try placeLines(spec.voiceover, takes: takes, in: &planner)
+        // Lines moved by hand (a ripple cut before them) stay where they are; anchors and sections follow them.
+        let moved = try keepTiming(spec.voiceover.map(\.id), followsClips: false, keep: &keep, in: &planner)
+        lines = lines.map { line in moved[line.id].map { Placement(id: line.id, at: $0.at, end: $0.end) } ?? line }
         placements += lines
-        // Sound set by hand comes back before the captions, which leave out what is muted.
-        var restored = Set<String>()
-        try restoreAudio(handSet.hand, done: &restored, in: &planner)
+        // What was set by hand comes back before the captions, which leave out what is muted.
+        try keepFields(Set(clips.map(\.clip.id) + spec.voiceover.map(\.id)), keep: &keep, in: &planner)
         let total = max(placements.map(\.end).max() ?? 0, lineEnd(spec.voiceover, placements: lines, fps: planner.project.fps.value))
         let sources = CaptionSources(transcripts: transcripts, takes: takes, textPresets: textPresets)
-        try rebuildCaptions(spec, clips: clips, sources: sources, was: project, in: &planner)
+        keep.report.keepDeleted(try rebuildCaptions(spec, clips: clips, sources: sources, was: project, in: &planner))
+        try markCaptioned(spec, transcripts: transcripts, in: &planner)
         var sections: [String: Placement] = [:]
         let sectioned = clips.map { ($0.clip.id, $0.clip.section) } + spec.voiceover.map { ($0.id, $0.section) }
         for (id, section) in sectioned {
@@ -61,11 +64,12 @@ extension PlanCut {
             let track = try planner.project.requireTrack(role: TrackRole.music)
             try planner.add([.setTrackProperties(track: track.id, patch: musicTrackPatch(music, track: track, fps: planner.project.fps.value))])
         }
+        let anchored = spec.titles.map(\.id) + spec.graphics.map(\.id) + spec.sfx.map(\.id)
+        try keepTiming(anchored, followsClips: false, keep: &keep, in: &planner)
+        try keepFields(keep: &keep, in: &planner)
         try applyEdges(spec, kept: handSet, in: &planner)
-        try restorePictures(spec, kept: handSet, in: &planner)
-        try restoreAudio(handSet.hand, done: &restored, in: &planner)
         let others = planner.project.tracks.flatMap(\.items).filter { $0.fields[tag] == nil }.map(\.id)
-        return (planner, placements, others)
+        return (planner, placements, others, keep.report)
     }
 
     /// Deletes the transitions on the cuts an earlier apply built, the section markers it set (markers must stay
@@ -92,7 +96,7 @@ extension PlanCut {
 
     /// Lays the clips on Main one after another, then their section markers.
     static func placeClips(
-        _ clips: [Resolved], main: String, kept: HandEdits, in planner: inout LayerPlanner
+        _ clips: [Resolved], main: String, kept: HandEdits, keep: inout Keep, in planner: inout LayerPlanner
     ) throws -> [Placement] {
         let fps = planner.project.fps.value
         let labels = Dictionary(plannedSections(planner.project).map { ($0.id, $0.label) }, uniquingKeysWith: { first, _ in first })
@@ -117,10 +121,14 @@ extension PlanCut {
             let slot = Slot(
                 at: cursor, span: max(1, Int(((resolved.to - start) * fps - 1e-6).rounded(.up))),
                 sourceIn: sourceIn, patch: patch, main: main)
-            let end = clip.cover.isEmpty
+            var end = clip.cover.isEmpty
                 ? try placeOwn(clip, media: media, slot: slot, kept: kept, in: &planner)
                 : try placeCovered(clip, media: media, slot: slot, in: &planner)
             try placeOverlays(clip, media: media, slot: slot, end: end, in: &planner)
+            // Its focus is the build's own framing, recorded with the rest before hand-cut pieces replace it.
+            try applyFocus([resolved], in: &planner)
+            // The pieces a ripple cut, split or trim left of the clip, while its row gives the same range.
+            if let kept = try keepTiming([clip.id], followsClips: true, keep: &keep, in: &planner)[clip.id] { end = kept.end }
             placements.append(Placement(id: clip.id, at: cursor, end: end))
             cursor = end
         }
@@ -341,6 +349,7 @@ extension PlanCut {
         // The span the build gives the bed, so the next apply knows a hand trim from it.
         patch[musicTag] = .object([
             "at": .integer(0), "dur": .integer(duration), "in": .integer(sourceIn), "media": .string(media.id),
+            "underVoiceDb": music.measuresLevel ? .number(music.underVoiceDb ?? Music.defaultUnderVoiceDb) : .null,
         ])
         try planner.add([.setProperties(item: id, patch: recordingAudio(patch))])
         return Placement(id: "music", at: span.at, end: span.at + span.duration)

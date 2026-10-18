@@ -93,11 +93,18 @@ public enum CaptionGrouping {
         let start = words[flat[0]].at, end = words[flat[flat.count - 1]].end
         let replaced = track.items.filter { $0.at < end && $0.end > start && replacing?.contains($0.id) != false }
             .sorted { $0.at < $1.at }
-        let style = replaced.first
         var cues: [Item] = []
-        for group in groups {
-            let at = words[group[0]].at, last = words[group[group.count - 1]].end
+        for (index, group) in groups.enumerated() {
+            let at = words[group[0]].at
+            // A cue ends where the next one starts: words of a sped-up clip round to frames that overlap by one.
+            let next = index + 1 < groups.count ? words[groups[index + 1][0]].at : Int.max
+            let last = next > at ? min(words[group[group.count - 1]].end, next) : words[group[group.count - 1]].end
             var item = Item(id: UUID().uuidString, at: at, duration: max(1, last - at))
+            // Each cue takes the look and media of the cue its first word was heard in, not the first one replaced:
+            // a group of one clip's words must not name another clip's media.
+            let heard = words[group[0]]
+            let middle = (heard.at + heard.end) / 2
+            let style = replaced.first { $0.at <= middle && middle < $0.end } ?? replaced.first
             item["text"] = .string(group.map { words[$0].text }.joined(separator: " "))
             // The plan marks go too, so plan apply still knows the cues as the captions it built (#628).
             for key in ["textPreset", "textStyle", "wordStyle", "captionMedia", PlanCut.tag, PlanCut.captionsTag]
