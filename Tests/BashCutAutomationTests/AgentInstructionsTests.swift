@@ -27,7 +27,8 @@ struct AgentInstructionsTests {
         // 39k since captions replace and music replace (P2-C3; captions style stays out: agents use patchItems).
         // 39.25k since batch retry (an agent resumes the Vietsub batch after a missing key or a quit).
         // 39.6k since timeline cut-range and rippleDeleteRange (a restart cut from every layer in one op, not 159).
-        #expect(text.count < 39_600)
+        // 39.7k since the stage_pending guard and plan.cut focus (merged together with cut-range for 0.0.35).
+        #expect(text.count < 39_700)
         for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
             #expect(text.contains(rule), "\(rule)")
         }
