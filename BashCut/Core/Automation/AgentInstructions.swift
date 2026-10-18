@@ -253,7 +253,7 @@ extension CommandCatalog {
         this Mac cannot decode the video (AV1, VP9): do not judge its black picture; BashCut converts it itself (media
         import answers proxy.status converting with a job: transcribe meanwhile, wait with jobs status, then read
         frames; unsupported because ffmpeg is missing → install ffmpeg, then media proxy MEDIA);
-        audit_missing/recipe_unread/graphics_draft → run remediation.command. recentFailures.repeated ≥ 2: stop repeating it, try
+        audit_missing/recipe_unread/graphics_draft/stage_pending → run remediation.command. recentFailures.repeated ≥ 2: stop repeating it, try
         another way or skip that step, and report it.
         Scope: an edit outside the attached items fails with -32004; never retry or work around it. held: true → the
         user is asked: wait for scope.last.outcome (applied → re-read; rejected → ask; failed stale → re-read, resend if
@@ -262,6 +262,7 @@ extension CommandCatalog {
         effect, transition, look, sound or sticker. Read a plugin's skill (skills get ID) before using its feature.
         Record stages: run append stage --stage S --status done --evidence "a;b" (skipped: --reason); run checklist and
         context get › workflow.next name the next stage and skill. An agent's final export needs a passing draft audit
-        of the current timeline (or the user's G5 approval); G2 needs a strategy audit and the plan's recipe read.
+        of the current timeline (or the user's G5 approval) and the plan's required stages done or skipped; G2 needs a
+        strategy audit and the plan's recipe read.
         """
 }

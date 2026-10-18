@@ -25,6 +25,8 @@ public enum RPCErrorCategory: String, Sendable, CaseIterable {
     case recipeUnread = "recipe_unread"
     /// A final export over graphics a plugin rendered as drafts (`data.graphics.draft`, #634).
     case graphicsDraft = "graphics_draft"
+    /// A workflow guard: review done, G5 or a final export while a stage the plan requires is still pending.
+    case stagePending = "stage_pending"
     case internalError = "internal"
 
     /// Whether the same request can succeed later without changing it.

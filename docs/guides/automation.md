@@ -59,7 +59,8 @@ user), `busy_running` (the same work is running), `file_conflict`, `not_availabl
 agents (never the user): `audit_missing` (a final export without a passing draft audit of the current timeline
 or the user's G5 approval, or G2 without a strategy audit), `recipe_unread` (G2 before the plan's recipe skill
 was read) and `graphics_draft` (a final export over graphics a plugin rendered as drafts, `data.graphics.draft`;
-`data.drafts` lists each media, its name and the items that use it), each with `remediation.command` such as
+`data.drafts` lists each media, its name and the items that use it) and `stage_pending` (review done, G5 or a
+final export while a stage the plan marks required before review is pending or started; `data.stages`), each with `remediation.command` such as
 `review packet --point draft` or `bin/graphic plan --final`. `context get` ›
 `recentFailures` lists your session's failures of the last 15 minutes and how many in a row repeat.
 

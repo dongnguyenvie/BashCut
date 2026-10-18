@@ -234,6 +234,7 @@ extension ProjectDocument {
         if let latest, latest["status"]?.string == "done",
             latest["rev"] == .integer(project.revision) || (latest["auto"] == .bool(true) && !["review", "export"].contains(stage))
         { return }
+        if stage == "review", WorkflowChecklist.stagesGuard(project, entries: entries) != nil { return }
         if stage == "rough-cut", settings.gateMode(.strategy) == .skip,
             WorkflowChecklist.strategyGuard(project, entries: entries) != nil
         { return }
@@ -280,14 +281,19 @@ extension ProjectDocument {
         return entry
     }
 
-    /// A stage entry: done without evidence is unverified, skipped needs a reason, and the rough cut while G2 is
-    /// skip meets the strategy guard.
+    /// A stage entry: done without evidence is unverified, skipped needs a reason, review done by an agent meets the
+    /// stages guard, and the rough cut while G2 is skip meets the strategy guard.
     private func completeStageEntry(_ entry: inout [String: JSONValue], author: Author) throws {
         guard let stage = entry["stage"]?.string else { throw RPCFailure(-32602, "A stage entry needs --stage") }
         entry["stage"] = .string(RunProgress.stageID(stage))
         if entry["status"] == .string("done"), entry["evidence"] == nil { entry["unverified"] = .bool(true) }
         if entry["status"] == .string("skipped"), (entry["reason"]?.string ?? "").isEmpty {
             throw RPCFailure(-32602, "A skipped stage needs --reason")
+        }
+        if author != .user, entry["stage"] == .string("review"), entry["status"] == .string("done"), let log = runLog,
+            let failure = WorkflowChecklist.stagesGuard(project, entries: log.entries())
+        {
+            throw Self.guardFailure(failure)
         }
         if WorkflowChecklist.stageNeedsStrategyGuard(
             stage: entry["stage"]?.string ?? "", status: entry["status"]?.string,
@@ -321,6 +327,11 @@ extension ProjectDocument {
             throw RPCFailure(-32602, "A gate is G1…G5, brief, strategy, roughCut, script, draft or a name of 1–40 letters, digits, ., - or _")
         }
         if gate == .strategy { try checkStrategyGuard(author: author) }
+        if gate == .draft, author != .user, let log = runLog,
+            let failure = WorkflowChecklist.stagesGuard(project, entries: log.entries())
+        {
+            throw Self.guardFailure(failure)
+        }
         settings.noteGate(gate)
         let root = fileURL?.deletingLastPathComponent()
         let attachments = (arguments.optionalString("attach") ?? "").split(separator: ",").map { part -> URL in

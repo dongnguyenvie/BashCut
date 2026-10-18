@@ -204,6 +204,48 @@ struct WorkflowChecklistTests {
         #expect(WorkflowChecklist.draftGuard(project, entries: [older]) != nil)
     }
 
+    @Test("Review, G5 and a final export wait for every stage the plan requires before review")
+    func stagesGuard() throws {
+        let project = try project(plan: .object([
+            "stages": .object([
+                "effects": .object(["required": .bool(true), "why": .string("zoom onto the panel in use")]),
+                "sound": .object(["required": .bool(true)]),
+                "colour": .object(["required": .bool(false)]),
+                "visuals": .object(["after": .string("voiceover"), "required": .bool(true)]),
+                "learn": .object(["required": .bool(true)]),
+            ]),
+        ]))
+        let pass = entry("audit", ["point": .string("draft"), "verdict": .string("pass"), "by": .string("critic"),
+                                   "timeline": .string(WorkflowChecklist.timelineFingerprint(project))])
+        let sound = entry("stage", ["stage": .string("sound")])
+        let failure = try #require(WorkflowChecklist.stagesGuard(project, entries: [sound, pass]))
+        #expect(failure.category == "stage_pending" && failure.command == "run checklist")
+        // In table order; learn comes after review and colour is n/a.
+        #expect(failure.details["stages"] == .array([
+            .object(["id": .string("visuals"), "status": .string("pending")]),
+            .object(["id": .string("sound"), "status": .string("started")]),
+            .object(["id": .string("effects"), "status": .string("pending")]),
+        ]))
+        #expect(failure.message.contains("effects (pending)"))
+        #expect(WorkflowChecklist.draftGuard(project, entries: [sound, pass])?.category == "stage_pending")
+
+        // Done or skipped with a reason closes a stage; an earlier run's entries do not count.
+        let closed = [
+            entry("stage", run: 1, ["stage": .string("visuals"), "status": .string("done")]),
+            entry("stage", run: 2, ["stage": .string("visuals"), "status": .string("done")]),
+            entry("stage", run: 2, ["stage": .string("sound"), "status": .string("done"), "evidence": .array([.string("mix")])]),
+            entry("stage", run: 2, ["stage": .string("effects"), "status": .string("skipped"), "reason": .string("no zoom")]),
+        ]
+        #expect(WorkflowChecklist.pendingRequiredStages(project, entries: Array(closed.dropFirst())).isEmpty)
+        #expect(WorkflowChecklist.draftGuard(project, entries: Array(closed.dropFirst()) + [entry("audit", run: 2, pass)]) == nil)
+        let stale = WorkflowChecklist.pendingRequiredStages(project, entries: [closed[0], entry("start", run: 2)])
+        #expect(stale.count == 3)
+
+        // The user's G5 approval at this revision still overrides.
+        let approved = entry("gate", ["gate": .string("G5"), "event": .string("approved"), "rev": .integer(project.revision)])
+        #expect(WorkflowChecklist.draftGuard(project, entries: [pass, approved]) == nil)
+    }
+
     @Test("G2 needs the plan's recipe read and a strategy audit of any verdict")
     func strategyGuard() throws {
         let plain = try project()

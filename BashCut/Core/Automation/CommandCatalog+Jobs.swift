@@ -77,6 +77,10 @@ extension CommandCatalog {
         + "the result says renamedFrom); overwrite replaces the files on disk (moved to the Trash) instead. "
         + exportWithoutSummary
 
+    /// `export.start`'s stages guard, part of its summary.
+    static let exportStagesNote = "Every stage the plan marks required before review must be done or skipped with a "
+        + "reason: else stage_pending. "
+
     /// `export.start`'s graphics guard (#634), part of its summary.
     static let exportGraphicsDraftNote = "It also refuses graphics a plugin rendered as drafts (media "
         + "data.graphics.draft): else graphics_draft, listing them and the plugin's final render (bin/graphic plan "
