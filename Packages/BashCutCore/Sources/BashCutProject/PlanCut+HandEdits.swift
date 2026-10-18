@@ -1,10 +1,10 @@
 import Foundation
 
-/// Sound, speed and music edits made by hand on what an apply built, which a later apply puts back on the rebuilt
-/// items with the same ID: `volumeDb`, `muted` and fades (`clip volume`, a mute), a constant speed or a ramp on a
-/// clip (`clip speed`, `clip speed-curve`), and the span of a music bed trimmed or extended by hand. Each built item
-/// records what the build itself set (`planAudio`, `planSpeed`, `planMusic`), so a later apply tells a hand edit from
-/// the list's own value, and a value the list dropped is dropped from the item.
+/// Speed and music edits made by hand on what an apply built, which a later apply puts back on the rebuilt items with
+/// the same ID: a constant speed or a ramp on a clip (`clip speed`, `clip speed-curve`), and the span of a music bed
+/// trimmed or extended by hand. Built items record what the build itself set (`planAudio`, `planSpeed`,
+/// `planMusic`), so a later apply tells a hand edit from the list's own value; sound and picture fields are merged
+/// with the build's record (`planBuilt`, PlanCut+Keep).
 extension PlanCut {
     /// The sound fields the build set on an item, as `{field: value}`.
     static let audioTag = "planAudio"
@@ -14,10 +14,8 @@ extension PlanCut {
     static let musicTag = "planMusic"
     static let audioKeys = ["volumeDb", "muted", "fadeIn", "fadeOut"]
 
-    /// What was set by hand on built items' sound, speed and the music bed (part of `HandSet`).
+    /// What was set by hand on built items' speed and the music bed (part of `HandSet`).
     struct HandEdits {
-        /// Sound fields by item ID; `.null` is a field removed by hand.
-        var audio: [String: [String: JSONValue]] = [:]
         /// A ramp (or, without one, the constant speed) set by hand, by clip item ID.
         var speeds: [String: (speed: Double, curve: SpeedCurve?)] = [:]
         /// The bed as it was, when its span is not the one the build gave it.
@@ -25,11 +23,6 @@ extension PlanCut {
 
         init(_ built: [Item]) {
             for item in built where item.fields[tag] != .string("captions") {
-                let recorded = item[audioTag]?.object ?? [:]
-                // Items built before the build recorded its values count everything on them as by hand.
-                for key in audioKeys where (item[key] ?? .null) != (recorded[key] ?? .null) {
-                    audio[item.id, default: [:]][key] = item[key] ?? .null
-                }
                 let speed = item["speed"]?.double ?? 1
                 if let curve = item.speedCurve {
                     speeds[item.id] = (speed, curve)
@@ -61,21 +54,6 @@ extension PlanCut {
         } else if let hand = kept.speeds[id] {
             try planner.add([hand.curve.map { .setSpeedCurve(item: id, curve: $0, keepDuration: false) }
                 ?? .setSpeed(item: id, speed: hand.speed, keepDuration: false)])
-        }
-    }
-
-    /// Puts the sound fields set by hand back on the rebuilt items present now (skipping `done`), except a
-    /// `volumeDb` the list gives the entry and the music bed's level, which the list (or its measurement) sets.
-    static func restoreAudio(_ kept: HandEdits, done: inout Set<String>, in planner: inout LayerPlanner) throws {
-        let items = Dictionary(planner.project.tracks.flatMap(\.items).map { ($0.id, $0) }) { first, _ in first }
-        for (id, fields) in kept.audio.sorted(by: { $0.key < $1.key }) where !done.contains(id) {
-            guard let item = items[id], item.fields[tag] != nil else { continue }
-            done.insert(id)
-            let listed = item[audioTag]?.object ?? [:]
-            let patch = fields.filter { key, _ in
-                !(key == "volumeDb" && (listed[key] != nil || id == "plan-music"))
-            }
-            if !patch.isEmpty { try planner.add([.setProperties(item: id, patch: patch)]) }
         }
     }
 

@@ -103,6 +103,26 @@ struct SpeechToolsTests {
         #expect(throws: ProjectError.self) { _ = try CaptionGrouping.operation(project, words: words, groups: [[1, 0]], author: .agent) }
     }
 
+    @Test("Grouped cues never overlap and keep the media their words were heard in")
+    func groupingClampsOverlap() throws {
+        var project = Project(name: "Caps", fps: FrameRate(30, 1))
+        let captions = project.tracks.firstIndex { $0.role == TrackRole.captions }!
+        var first = Item(id: "first", at: 0, duration: 20)
+        first["text"] = .string("một")
+        first["captionMedia"] = .string("camera")
+        var second = Item(id: "second", at: 20, duration: 20)
+        second["text"] = .string("hai")
+        second["captionMedia"] = .string("screen")
+        project.tracks[captions].items = [first, second]
+        let words = [ReviewSync.WordSpan(at: 0, end: 21, text: "một"), ReviewSync.WordSpan(at: 20, end: 40, text: "hai")]
+        let planned = try CaptionGrouping.operation(project, words: words, groups: [[0], [1]], author: .agent)
+        let next = try project.applying(planned.operation).project
+        let items = try #require(next.tracks.first { $0.role == TrackRole.captions }).items.sorted { $0.at < $1.at }
+        #expect(items.map(\.end) == [20, 40] && items.map(\.at) == [0, 20])
+        // Each cue keeps the media of the cue its words were heard in.
+        #expect(items.map { $0["captionMedia"]?.string } == ["camera", "screen"])
+    }
+
     @Test("Numbers spell out the way they are said, in Vietnamese and English")
     func numberWords() {
         #expect(NumberWords.spelled("528", language: "vi") == ["năm", "trăm", "hai", "mươi", "tám"])

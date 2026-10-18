@@ -102,4 +102,18 @@ extension PlanCut {
         default: value
         }
     }
+
+    /// Entry IDs: given or numbered, unique across clips and titles.
+    struct IDs {
+        var seen = Set<String>()
+
+        mutating func take(_ raw: String?, _ prefix: String, _ index: Int) throws -> String {
+            let id = raw ?? "\(prefix)\(index + 1)"
+            guard !id.isEmpty, id.count <= 64, id.allSatisfy({ $0.isLetter || $0.isNumber || "-_.".contains($0) }) else {
+                throw ProjectError.invalid("\(prefix) ID \(id): use 1–64 letters, digits, '-', '_' or '.'")
+            }
+            guard seen.insert(id).inserted else { throw ProjectError.invalid("Duplicate plan.cut ID \(id)") }
+            return id
+        }
+    }
 }
