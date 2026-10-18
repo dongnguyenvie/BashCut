@@ -159,7 +159,7 @@ Resolve. The design is in [03-architecture.md](03-architecture.md) §7, and the 
 | A plugin dependency or ML venv is missing or broken | health probes mark only that provider degraded; Plugins shows its reviewed install plan; editing still works |
 | A plugin crashes, hangs or emits unsafe paths | one bounded child per request, timeout and cancellation, filtered environment, output-folder confinement |
 | Vietnamese fonts and emoji in captions | Core Text plus diacritics in golden tests |
-| A future Resolve export is blocked by a data decision | Resolve-ready rules ([02-project-format.md](02-project-format.md) §5) enforced in `.claude/rules/project-model.md` and reviewed on every schema change |
+| A future Resolve export is blocked by a data decision | Resolve-ready rules ([02-project-format.md](02-project-format.md) §5) reviewed on every schema change |
 
 ## Decisions (2026-10-02)
 
