@@ -18,14 +18,7 @@ bash-cut/
 ├── project.yml                    # XcodeGen; BashCut.xcodeproj is generated and not committed
 ├── .swiftlint.yml  .swift-format  .editorconfig  .gitignore
 │
-├── .claude/
-│   ├── rules/                     # path-scoped rules (`paths:` frontmatter)
-│   │   ├── engine.md              #   BashCut/Core/Engine/**
-│   │   ├── project-model.md       #   Packages/BashCutCore/Sources/BashCutProject/**
-│   │   └── dependencies.md        #   Package.swift, project.yml
-│   └── skills/
-│       └── verify/SKILL.md        # how to run scripts/verify.sh
-├── .agents/skills -> ../.claude/skills
+├── .claude/  .agents/            # local agent rules and skills, gitignored (not in the repository)
 │
 ├── Configs/
 │   ├── Base.xcconfig  Debug.xcconfig  Release.xcconfig
@@ -126,8 +119,6 @@ Generated and ignored: `.build/`, `build/` (app bundle, `build/logs/`, Xcode der
 
 These appear in earlier drafts of this spec and are not in the repository yet:
 
-- More path-scoped rules in `.claude/rules/` (automation security, process tools, UI lifecycle, tests) and a
-  `release` skill.
 - `Fixtures/workspace-mini/` (fake workspace with trimmed real `edl.json`) and `Fixtures/projects/` (sample and
   broken project files).
 - A UI test target and a dedicated performance test target. Today `scripts/verify.sh perf` runs the engine tests

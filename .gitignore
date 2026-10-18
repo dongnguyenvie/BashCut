@@ -12,3 +12,7 @@ memos/
 
 # Local-only notes and scripts (release steps, signing, reusable how-tos); never committed.
 .local
+
+# Local agent files (Claude Code rules, skills, agents; Codex skills link)
+.claude/
+.agents/
