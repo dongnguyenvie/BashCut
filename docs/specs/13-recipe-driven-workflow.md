@@ -180,6 +180,12 @@ Only these guards, all for agent authors; the user in the app is never blocked:
    timeline fingerprint counts an item showing a plugin graphic by the graphic's recorded inputs (without `draft`,
    `fps`, `frames`), its in-point in project frames and "to the end" for a played-through length, not by the media.
 
+4. `run append stage --stage review --status done`, `checkpoint request G5` and guard 1: every stage the plan
+   marks `required: true` that comes before review must be `done` or `skipped` (with its reason) in the current run.
+   Error `stage_pending` with `data.stages` (`{id, status}`) and `remediation.command: "run checklist"`. A passing
+   `review run` is not logged as the review stage meanwhile; its result lists them in `stagesPending`. A recipe's
+   required effects stage left pending let a tutorial's review pass with one fixed zoom on every screen.
+
 Everything else (skipped stages, missing evidence) lands in `run checklist` › `open` and the hand-off report.
 
 ## 8. Intake: ask once

@@ -262,14 +262,16 @@ public enum WorkflowChecklist {
         public var details: [String: JSONValue] = [:]
     }
 
-    /// Before an agent's final export: the latest draft audit passed and the timeline has not changed since, or the
-    /// user approved G5 at the current revision. A self-run audit counts (decision 3).
+    /// Before an agent's final export: every stage the plan requires before review closed (`stagesGuard`), the
+    /// latest draft audit passed and the timeline has not changed since, or the user approved G5 at the current
+    /// revision. A self-run audit counts (decision 3).
     public static func draftGuard(_ project: Project, entries: [[String: JSONValue]]) -> GuardFailure? {
         let approved = entries.contains { entry in
             entry["kind"]?.string == "gate" && entry["gate"]?.string == "G5" && entry["event"]?.string == "approved"
                 && entry["rev"]?.int == project.revision
         }
         if approved { return nil }
+        if let failure = stagesGuard(project, entries: entries) { return failure }
         let command = "review packet --point draft"
         guard let audit = entries.last(where: { $0["kind"]?.string == "audit" && $0["point"]?.string == "draft" }) else {
             return GuardFailure(
@@ -291,6 +293,37 @@ public enum WorkflowChecklist {
                     + "current draft again", command: command)
         }
         return nil
+    }
+
+    /// The stages the plan marks `required: true` that come before review and are still `pending` or `started` in the
+    /// current run, as `{id, status}`. A recipe's effects or sound stage left pending let a review pass.
+    public static func pendingRequiredStages(_ project: Project, entries all: [[String: JSONValue]]) -> [JSONValue] {
+        let entries = currentRun(all)
+        let planStages = project["plan"]?.object["stages"]?.object ?? [:]
+        let table = stageTable(planStages)
+        let reviewIndex = table.firstIndex { $0.id == "review" } ?? table.count
+        return table.prefix(reviewIndex).compactMap { stage in
+            guard planStages[stage.id]?.object["required"] == .bool(true) else { return nil }
+            let entry = entries.last { $0["kind"]?.string == "stage" && $0["stage"]?.string == stage.id }
+            let status = entry.map { $0["status"]?.string ?? "started" } ?? "pending"
+            guard ["pending", "started"].contains(status) else { return nil }
+            return .object(["id": .string(stage.id), "status": .string(status)])
+        }
+    }
+
+    /// Before review is recorded done, G5 and a final export: no stage the plan requires before review still pending
+    /// or started. Doing the stage, or logging it skipped with a reason, clears it.
+    public static func stagesGuard(_ project: Project, entries: [[String: JSONValue]]) -> GuardFailure? {
+        let open = pendingRequiredStages(project, entries: entries)
+        guard let first = open.first?.object["id"]?.string else { return nil }
+        let list = open.compactMap { row in
+            row.object["id"]?.string.map { "\($0) (\(row.object["status"]?.string ?? "pending"))" }
+        }
+        return GuardFailure(
+            category: "stage_pending",
+            message: "The plan requires stages that are not done: \(list.joined(separator: ", ")). Do them, or log one "
+                + "skipped with the reason (run append stage --stage \(first) --status skipped --reason …), before review "
+                + "passes", command: "run checklist", details: ["stages": .array(open)])
     }
 
     /// Whether a `run append stage` entry must pass the strategy guard: only marking the rough cut done while G2 is

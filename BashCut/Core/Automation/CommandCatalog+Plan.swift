@@ -64,7 +64,8 @@ extension CommandCatalog {
                 + "user is told and the run goes on; with skip nothing is shown. The answer is bound to the current "
                 + "revision and written to the run log; only the user can answer. G2 needs a strategy audit (run append "
                 + "audit --point strategy) and, when plan.recipe is set, its skill read: else audit_missing or "
-                + "recipe_unread.",
+                + "recipe_unread. G5 by an agent needs every stage the plan marks required before review done or "
+                + "skipped with a reason: else stage_pending (data.stages).",
             parameters: [
                 CommandParameter("gate", .string, "G1…G5, brief, strategy, roughCut, script, draft, or any name (1–40 "
                                  + "letters, digits, ., -, _) for a stop of your own", required: true,
@@ -99,12 +100,13 @@ extension CommandCatalog {
                 + "and end are the usual ones; gate is reserved for checkpoints) with the fields given and any data "
                 + "object. The revision, author and time are added. stage: --status done needs --evidence (else it is "
                 + "stored unverified), skipped needs --reason; marking the rough-cut stage done while G2 is skip needs what "
-                + "G2 needs (progress reports are never gated). "
+                + "G2 needs (progress reports are never gated); marking review done needs every stage the plan marks "
+                + "required before review done or skipped: else stage_pending. "
                 + "skill: a skill you read (stored verified: false unless the kit hook writes it with --verified-by "
                 + "hook; skills get records plugin and kit skill reads itself). audit: an auditor's verdict at a point "
                 + "(strategy after the story, draft before export, process at the end), bound to the current timeline. "
                 + "BashCut writes these stages itself (auto: true): rough-cut and captions on plan apply, review on a "
-                + "review run that passes, export when an export lands. The run panel the user watches shows the "
+                + "review run that passes while no required stage is open, export when an export lands. The run panel the user watches shows the "
                 + "latest stage entry as the current stage (status started, the default) with its text, progress and "
                 + "eta: one short call as each stage starts, such as run append stage --stage cut --text \"Cutting 12 "
                 + "shots\" --eta 120 (cut, color and audio mean rough-cut, colour and sound).",
