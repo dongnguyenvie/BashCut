@@ -25,7 +25,8 @@ struct AgentInstructionsTests {
         // 38.4k since plan check --save (#631: agents scripted by-ID patches into whole lists before graphics).
         // 38.75k since batch run and batch status (P2-C1; cancelling and presets stay out).
         // 39k since captions replace and music replace (P2-C3; captions style stays out: agents use patchItems).
-        #expect(text.count < 39_000)
+        // 39.25k since batch retry (an agent resumes the Vietsub batch after a missing key or a quit).
+        #expect(text.count < 39_250)
         for rule in ["-32004", "held: true", "capability_missing", "agentPermissions", "Library first", "audit_missing"] {
             #expect(text.contains(rule), "\(rule)")
         }

@@ -9,6 +9,25 @@ extension ProjectDocument {
         batchWindow.open(firstStep: firstStep)
     }
 
+    /// At launch: a batch BashCut quit (or stopped) during comes back interrupted; offer to resume its items.
+    func offerBatchResume() {
+        guard batches.active == nil, let run = batches.runs.last, run.state == .interrupted, !run.retryableItems.isEmpty,
+            ModalCenter.shared.current == nil
+        else { return }
+        let done = run.count(.completed)
+        let answer = ModalCenter.shared.alert(
+            "batch-resume", title: String(localized: "A batch was interrupted"),
+            message: String(format: String(localized: "%@: %lld of %lld items done, %lld left. Resume it now?"),
+                            run.pipeline.name ?? run.id, done, run.items.count, run.retryableItems.count),
+            buttons: [ModalOption("resume", String(localized: "Resume")), ModalOption("show", String(localized: "Show Batch")),
+                      ModalOption("later", String(localized: "Later"))],
+            style: .informational)
+        guard answer != "later" else { return }
+        batchWindow.runID = run.id
+        batchWindow.open()
+        if answer == "resume" { batchWindow.retry() }
+    }
+
     /// The window as a dialog (`ui dialog`, `ui respond --dialog sheet:batch`): the pipeline in the message, and Add
     /// inputs, Add step (`add-step:<action>`), Remove and Move for each step, Load for each saved preset, Save preset,
     /// Run, Cancel, and Open/Reveal for each finished item of the queue.

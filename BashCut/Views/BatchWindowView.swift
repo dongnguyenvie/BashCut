@@ -68,7 +68,7 @@ struct BatchWindowView: View {
                 Button(model.items.count == 1 ? String(localized: "Run 1 item")
                        : String(format: String(localized: "Run %lld items"), model.items.count), action: model.start)
                     .buttonStyle(.borderedProminent)
-                    .disabled(model.items.isEmpty || model.pipeline.steps.isEmpty)
+                    .disabled(model.items.isEmpty || model.pipeline.steps.isEmpty || model.checking)
                     .accessibilityIdentifier("batch-run")
             }
         }

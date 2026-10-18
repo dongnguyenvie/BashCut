@@ -57,7 +57,9 @@ private final class TestBatchHost: BatchHost {
 
     func isPluginAction(_ id: String) -> Bool { false }
 
-    func startBatchExport(preset: String, name: String, options: [String: JSONValue]) throws -> (job: String, file: URL) {
+    func startBatchExport(preset: String, name: String, options: [String: JSONValue], replacing: Bool) throws
+        -> (job: String, file: URL)
+    {
         guard let project = history?.project, let root = url?.deletingLastPathComponent(),
             let preset = ExportPreset(argument: preset)
         else { throw ProjectError.invalid("No project or preset") }
@@ -330,5 +332,84 @@ struct BatchRunnerTests {
         let status = runner.run(denied)?.json(full: false).object
         #expect(status?["counts"]?.object["skipped"] == .integer(1))
         #expect(status?["concurrency"]?.object["used"] == .integer(1))
+    }
+
+    @Test("Retry runs only the failed item, in the project it made, from the step that failed")
+    func retryFromFailedStep() async throws {
+        let root = try TestFixtures.temporaryDirectory("batch-retry")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let projects = root.appendingPathComponent("projects", isDirectory: true)
+        let clips = try await clips(in: root)
+        let host = TestBatchHost(projects: projects)
+        host.failingCaptions = [clips[1].lastPathComponent]
+        let runner = BatchRunner()
+        let pipeline = pipeline(inputs: clips.map { BatchInput(path: $0.path) }, projects: projects)
+        let id = runner.add(pipeline, items: try pipeline.items(), awaitingApproval: false)
+        runner.start(id, host: host, author: .agent)
+        let first = try await waitUntilFinished(runner, id)
+        #expect(first.items.map(\.state) == [.completed, .failed, .completed])
+        #expect(first.retryableItems == [1])
+        let made = try #require(first.items[1].project)
+        let importJob = first.items[1].steps[0].job
+
+        host.failingCaptions = []
+        #expect(runner.retry(id, host: host, author: .agent))
+        let second = try await waitUntilFinished(runner, id)
+        #expect(second.state == .completed)
+        #expect(second.items.map(\.state) == [.completed, .completed, .completed])
+        #expect(second.retryableItems.isEmpty)
+        #expect(second.items[1].project == made, "the retry reopens the project it made")
+        #expect(second.items[1].steps.map(\.state) == [.completed, .completed, .completed])
+        #expect(second.items[1].steps[0].job == importJob, "the import that completed does not run again")
+        #expect(second.items[0].steps == first.items[0].steps, "items that completed are left alone")
+        let saved = try Project.decode(Data(contentsOf: made))
+        #expect(saved.media.count == 1)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: projects.path).sorted() == ["clip-1", "clip-2", "clip-3"])
+        #expect(!runner.retry(id, host: host, author: .agent), "nothing left to retry")
+    }
+
+    @Test("Runs are saved; one that was running comes back interrupted, and retry goes on from where it stopped")
+    func savedRunsComeBackInterrupted() async throws {
+        let root = try TestFixtures.temporaryDirectory("batch-store")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let projects = root.appendingPathComponent("projects", isDirectory: true)
+        let clips = try await clips(in: root)
+        let store = BatchRunStore(file: root.appendingPathComponent("Runs.json"))
+        let host = TestBatchHost(projects: projects)
+        host.captionsDelay = .seconds(30)
+        let runner = BatchRunner(store: store)
+        let pipeline = pipeline(inputs: clips.map { BatchInput(path: $0.path) }, projects: projects)
+        let id = runner.add(pipeline, items: try pipeline.items(), awaitingApproval: false)
+        runner.start(id, host: host, author: .agent)
+        let deadline = ContinuousClock.now + .seconds(30)
+        while runner.run(id)?.items[0].steps[1].job == nil, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        // As a quit does: saved at once, interrupted.
+        runner.interrupt(jobs: host.jobs)
+        #expect(runner.run(id)?.state == .interrupted)
+        // The app quits here; the test waits for the stopped run to let go of the host before the next one uses it.
+        let stopped = ContinuousClock.now + .seconds(30)
+        while host.finished.isEmpty, ContinuousClock.now < stopped { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(host.finished.map(\.state) == [.interrupted])
+
+        let restored = BatchRunner(store: store)
+        let run = try #require(restored.run(id))
+        #expect(run.state == .interrupted)
+        #expect(run.pipeline == pipeline)
+        #expect(run.items[0].steps.allSatisfy { $0.state == .waiting }, "the unsaved steps of the item run again")
+        #expect(run.items[0].project != nil)
+        #expect(run.items[1...].allSatisfy { $0.state == .waiting })
+        #expect(run.retryableItems == [0, 1, 2])
+
+        host.captionsDelay = .milliseconds(20)
+        #expect(restored.retry(id, host: host, author: .agent))
+        let resumed = try await waitUntilFinished(restored, id)
+        #expect(resumed.state == .completed)
+        #expect(resumed.items.map(\.state) == [.completed, .completed, .completed], "\(resumed.items.map(\.error))")
+        #expect(resumed.items[0].project == run.items[0].project)
+        let saved = try Project.decode(Data(contentsOf: try #require(resumed.items[0].project)))
+        #expect(saved.media.count == 1, "the interrupted import was not saved, so it is not there twice")
+        #expect(BatchRunStore(file: store.file).load().first?.state == .completed)
     }
 }

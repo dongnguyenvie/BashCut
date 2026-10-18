@@ -19,16 +19,25 @@ import Observation
     func invoke(_ method: String, _ params: [String: JSONValue]) async throws -> JSONValue
     /// Whether `id` is an installed plugin action (`plugins actions`).
     func isPluginAction(_ id: String) -> Bool
-    /// Queues one export of the open project for an approved batch: its job and the file it writes.
-    func startBatchExport(preset: String, name: String, options: [String: JSONValue]) throws -> (job: String, file: URL)
+    /// Queues one export of the open project for an approved batch: its job and the file it writes. `replacing`
+    /// writes over a file of that name (an item run again replaces its own earlier export).
+    func startBatchExport(preset: String, name: String, options: [String: JSONValue], replacing: Bool) throws
+        -> (job: String, file: URL)
     /// The run ended (completed, failed or cancelled).
     func runFinished(_ run: BatchRunStatus)
+    /// An item of the run ended, for progress outside the batch window (the Dock).
+    func itemFinished(_ run: BatchRunStatus)
+}
+
+extension BatchHost {
+    public func itemFinished(_ run: BatchRunStatus) {}
 }
 
 /// Runs batch pipelines (P2-C1): each item becomes a project (decision D4), opened in the editor, and every step runs
 /// through the command handlers the CLI uses, as a job in the job center. Items run one at a time, because each step
-/// acts on the one open project. The runs survive project switches (which drop the job list); `batch status` reads
-/// them from here and the batch window (P2-C2) observes `runs`.
+/// acts on the one open project. The runs survive project switches (which drop the job list) and, through `store`, a
+/// quit or crash (they come back interrupted, to retry); `batch status` reads them from here and the batch window
+/// (P2-C2) observes `runs`.
 @MainActor @Observable
 public final class BatchRunner {
     /// The step action that exports the item: each preset of `params.presets` (else the template's outputs), named by
@@ -47,8 +56,15 @@ public final class BatchRunner {
     @ObservationIgnored private var activeJob: String?
     /// The approval prompt each run waits on, so a refused prompt marks its run denied.
     @ObservationIgnored public var approvals: [String: UUID] = [:]
+    @ObservationIgnored private let store: BatchRunStore?
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+    /// Keeps the Mac awake while a run runs.
+    @ObservationIgnored private var activity: (any NSObjectProtocol)?
 
-    public init() {}
+    public init(store: BatchRunStore? = nil) {
+        self.store = store
+        runs = store?.load() ?? []
+    }
 
     public var active: BatchRunStatus? { runs.last { !$0.state.isFinished } }
     public func run(_ id: String) -> BatchRunStatus? { runs.last { $0.id == id } }
@@ -103,6 +119,7 @@ public final class BatchRunner {
             let dropped = Set(finished.prefix(finished.count - Self.historyLimit).map(\.id))
             runs.removeAll { dropped.contains($0.id) }
         }
+        scheduleSave()
         return id
     }
 
@@ -113,12 +130,45 @@ public final class BatchRunner {
             runs[index].state != .running
         else { return }
         runs[index].state = .running
+        runs[index].runningSince = Date()
         approvals[id] = nil
+        scheduleSave()
+        activity = activity ?? ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated, .idleSystemSleepDisabled], reason: "Running a batch")
         tasks[id] = Task { [weak self] in
             await self?.execute(id, host: host, author: author, leave: leave)
-            self?.tasks[id] = nil
-            if let run = self?.run(id) { host.runFinished(run) }
+            guard let self else { return }
+            tasks[id] = nil
+            if tasks.isEmpty, let activity {
+                ProcessInfo.processInfo.endActivity(activity)
+                self.activity = nil
+            }
+            flush()
+            if let run = run(id) { host.runFinished(run) }
         }
+    }
+
+    /// Runs the failed, cancelled, skipped or interrupted items of finished run `id` again (`items`: indices, default
+    /// all of them). Each goes on in the project it made, from the step that did not complete. False when there is
+    /// nothing to retry or another run is active.
+    @discardableResult
+    public func retry(
+        _ id: String, items: [Int]? = nil, host: any BatchHost, author: Author, leave: [String: JSONValue] = [:]
+    ) -> Bool {
+        guard active == nil, let index = runs.firstIndex(where: { $0.id == id }), runs[index].prepareRetry(items) else {
+            return false
+        }
+        start(id, host: host, author: author, leave: leave)
+        return true
+    }
+
+    /// Stops the running batch for a quit: it is marked interrupted and saved at once, so the next launch can resume it.
+    public func interrupt(jobs: JobCenter? = nil) {
+        guard let id = active?.id else { return }
+        tasks[id]?.cancel()
+        if let activeJob { jobs?.cancel(activeJob) }
+        update(id) { $0.markInterrupted() }
+        flush()
     }
 
     /// Drops a run that never started (its approval could not be queued).
@@ -126,6 +176,7 @@ public final class BatchRunner {
         guard run(id)?.state == .awaitingApproval || run(id)?.state == .waiting else { return }
         runs.removeAll { $0.id == id }
         approvals[id] = nil
+        scheduleSave()
     }
 
     /// The user refused the batch's approval.
@@ -175,10 +226,34 @@ public final class BatchRunner {
     private func update(_ id: String, _ change: (inout BatchRunStatus) -> Void) {
         guard let index = runs.firstIndex(where: { $0.id == id }) else { return }
         change(&runs[index])
+        scheduleSave()
     }
 
+    // MARK: Saving
+
+    /// Saves the runs shortly, folding the many changes of a step into one write.
+    private func scheduleSave() {
+        guard store != nil, saveTask == nil else { return }
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            self?.flush()
+        }
+    }
+
+    /// Saves the runs now.
+    public func flush() {
+        saveTask?.cancel()
+        saveTask = nil
+        guard let store else { return }
+        do { try store.save(runs) } catch { DebugLog.write("batch", "saving runs failed: \(error.localizedDescription)") }
+    }
+
+    /// Item changes after a quit marked the run interrupted are dropped: the stopping task must not undo that marking.
     private func updateItem(_ id: String, _ item: Int, _ change: (inout BatchItemStatus) -> Void) {
-        update(id) { change(&$0.items[item]) }
+        update(id) { run in
+            guard run.state != .interrupted else { return }
+            change(&run.items[item])
+        }
     }
 
     /// What every step of a run needs.
@@ -190,12 +265,15 @@ public final class BatchRunner {
     }
 
     private func execute(_ id: String, host: any BatchHost, author: Author, leave: [String: JSONValue]) async {
-        guard let pipeline = run(id)?.pipeline, let count = run(id)?.items.count else { return }
+        guard let pipeline = run(id)?.pipeline, let items = run(id)?.items else { return }
         let context = Context(id: id, pipeline: pipeline, host: host, author: author)
         var stopped = false
-        for item in 0..<count {
+        // A retry runs only the items it set waiting.
+        let pending = items.indices.filter { items[$0].state == .waiting }
+        for (position, item) in pending.enumerated() {
             if Task.isCancelled { break }
-            let succeeded = await runItem(item, in: context, leave: item == 0 ? leave : ["saveCurrent": .bool(true)])
+            let succeeded = await runItem(item, in: context, leave: position == 0 ? leave : ["saveCurrent": .bool(true)])
+            if let run = run(id) { host.itemFinished(run) }
             if !succeeded, !Task.isCancelled, pipeline.onFailure == .stop {
                 stopped = true
                 break
@@ -203,6 +281,8 @@ public final class BatchRunner {
         }
         let cancelled = Task.isCancelled
         update(id) { run in
+            // A quit marked it interrupted: what did not run stays waiting, for the retry.
+            guard run.state != .interrupted else { return }
             for index in run.items.indices where !run.items[index].state.isFinished {
                 run.items[index].state = cancelled ? .cancelled : .skipped
             }
@@ -212,26 +292,37 @@ public final class BatchRunner {
         }
     }
 
-    /// Opens the item's project, runs every step and saves it; false when a step (or opening) failed.
+    /// Opens the item's project, runs every step and saves it; false when a step (or opening) failed. An item that
+    /// already made its project (a retry) reopens it and runs only the steps that did not complete.
     private func runItem(_ item: Int, in context: Context, leave: [String: JSONValue]) async -> Bool {
         let (id, pipeline, host) = (context.id, context.pipeline, context.host)
-        guard let source = run(id)?.items[item].source else { return false }
-        updateItem(id, item) { $0.state = .running }
+        guard let status = run(id)?.items[item] else { return false }
+        let source = status.source
+        let made = status.project.flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
+        let done = Set(made == nil ? [] : status.steps.indices.filter { status.steps[$0].state == .completed })
+        updateItem(id, item) { status in
+            status.state = .running
+            status.startedAt = Date()
+            status.finishedAt = nil
+        }
         let project: URL
         do {
-            project = try await open(source, pipeline: pipeline, host: host, leave: leave)
+            let opening = made.map { BatchItemSource(name: source.name, url: $0, kind: .project) } ?? source
+            project = try await open(opening, pipeline: pipeline, host: host, leave: leave)
             updateItem(id, item) { $0.project = project }
         } catch {
             updateItem(id, item) { status in
                 status.state = Task.isCancelled ? .cancelled : .failed
                 status.error = BatchMessages.text(BatchMessages.openFailed, error.localizedDescription)
-                for step in status.steps.indices { status.steps[step].state = .skipped }
+                status.finishedAt = Date()
+                for step in status.steps.indices where !done.contains(step) { status.steps[step].state = .skipped }
             }
             return false
         }
         var variables = ["input": source.url.path, "name": source.name, "project": project.path]
         var failed = false
         for (index, step) in pipeline.steps.enumerated() {
+            if done.contains(index) { continue }
             if failed || Task.isCancelled {
                 updateItem(id, item) { $0.steps[index].state = Task.isCancelled ? .cancelled : .skipped }
                 continue
@@ -245,7 +336,8 @@ public final class BatchRunner {
                 guard host.openProjectFile?.standardizedFileURL == project.standardizedFileURL else {
                     throw RPCFailure(-32000, BatchMessages.projectChanged)
                 }
-                let outcome = try await perform(step, at: index, item: item, variables: variables, in: context)
+                let outcome = try await perform(
+                    step, at: index, item: item, variables: variables, retrying: made != nil, in: context)
                 if let media = Self.mediaID(in: outcome.result) { variables["media"] = media }
                 updateItem(id, item) { status in
                     status.steps[index].state = .completed
@@ -263,11 +355,13 @@ public final class BatchRunner {
                 }
             }
         }
-        // Kept even after a failed step, so the item can be opened to fix where it stopped.
-        _ = try? await host.invoke("project.save", [:])
+        // Kept even after a failed step, so the item can be opened to fix where it stopped; not after a quit stopped it
+        // (its steps run again on resume, on the project as it was last saved).
+        if run(id)?.state != .interrupted { _ = try? await host.invoke("project.save", [:]) }
         let cancelled = Task.isCancelled
         updateItem(id, item) { status in
             status.currentStep = nil
+            status.finishedAt = Date()
             status.state = cancelled ? .cancelled : failed ? .failed : .completed
         }
         return !failed && !cancelled
@@ -320,7 +414,7 @@ extension BatchRunner {
     /// Runs one step: the export step, a command (an immediate one wrapped in a `batch.step` job; a job command waited
     /// on) or a plugin action through `plugins.run`.
     func perform(
-        _ step: BatchStep, at index: Int, item: Int, variables: [String: String], in context: Context
+        _ step: BatchStep, at index: Int, item: Int, variables: [String: String], retrying: Bool = false, in context: Context
     ) async throws -> StepOutcome {
         let (id, pipeline, host, author) = (context.id, context.pipeline, context.host, context.author)
         let params = step.resolvedParams(variables)
@@ -330,7 +424,7 @@ extension BatchRunner {
             let options = params.filter { $0.key != "presets" }
             for preset in Self.presets(step, pipeline) {
                 let name = pipeline.outputFileName(item: variables["name"] ?? "item", index: item, preset: preset)
-                let started = try host.startBatchExport(preset: preset, name: name, options: options)
+                let started = try host.startBatchExport(preset: preset, name: name, options: options, replacing: retrying)
                 updateItem(id, item) { $0.steps[index].job = started.job }
                 let job = try await finished(started.job, host: host)
                 outputs.append(job.result.object["path"]?.string ?? started.file.path)

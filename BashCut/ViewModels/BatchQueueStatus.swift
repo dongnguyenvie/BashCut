@@ -54,14 +54,30 @@ struct BatchQueueStatus {
         case .skipped: String(localized: "Skipped")
         case .cancelled: String(localized: "Cancelled")
         case .denied: String(localized: "Denied")
+        case .interrupted: String(localized: "Interrupted")
         }
     }
 
-    /// A run's state and counts, as the queue's header shows them.
-    static func summary(_ run: BatchRunStatus) -> String {
+    /// A run's state, counts and time, as the queue's header shows them.
+    static func summary(_ run: BatchRunStatus, now: Date = Date()) -> String {
         let done = run.count(.completed), total = run.items.count
-        return Self.stateTitle(run.state) + " · " + String(format: String(localized: "%lld of %lld done"), done, total)
-            + (run.count(.failed) > 0 ? " · " + String(format: String(localized: "%lld failed"), run.count(.failed)) : "")
+        var parts = [Self.stateTitle(run.state), String(format: String(localized: "%lld of %lld done"), done, total)]
+        if run.count(.failed) > 0 { parts.append(String(format: String(localized: "%lld failed"), run.count(.failed))) }
+        let elapsed = run.elapsed(now: now)
+        if elapsed >= 1, let text = duration(elapsed) { parts.append(String(format: String(localized: "%@ elapsed"), text)) }
+        if let remaining = run.remaining(now: now), let text = duration(max(60, remaining)) {
+            parts.append(String(format: String(localized: "about %@ left"), text))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// `1 hr, 5 min`, `12 min`, `40 sec` (in the app's language).
+    static func duration(_ seconds: TimeInterval) -> String? {
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .short
+        formatter.allowedUnits = seconds >= 3600 ? [.hour, .minute] : seconds >= 60 ? [.minute] : [.second]
+        formatter.maximumUnitCount = 2
+        return formatter.string(from: seconds)
     }
 
     /// The issues the item's last review step found: `review run` gives a list, or `{issues, summary}`; long lists

@@ -15,6 +15,9 @@ extension ProjectDocument {
         handleAuthored("batch.run") { document, arguments, author in
             try await document.startBatch(arguments, author: author)
         }
+        handleAuthored("batch.retry") { document, arguments, author in
+            try await document.retryBatch(arguments, author: author)
+        }
         handle("batch.status") { document, arguments, _ in
             try await document.batchStatus(arguments)
         }
@@ -58,11 +61,14 @@ extension ProjectDocument {
             items = try pipeline.items(relativeTo: base)
         } catch let error as ProjectError { throw RPCFailure(-32602, error.localizedDescription) }
         let leave = try batchLeaveCurrent(arguments)
+        let warnings = await BatchPreflight.check(pipeline, items: items, document: self).map(\.message)
         let id = batches.add(pipeline, items: items, awaitingApproval: !settings.agentActionsAutoApproved)
+        var approvalArguments = Self.batchApprovalArguments(pipeline, items: items)
+        if !warnings.isEmpty { approvalArguments["warnings"] = warnings.joined(separator: " · ") }
         let approval: PrivilegedRequest
         do {
             approval = try queuePrivilegedApproval(
-                method: "batch.run", author: author, arguments: Self.batchApprovalArguments(pipeline, items: items)
+                method: "batch.run", author: author, arguments: approvalArguments
             ) { [weak self] in
                 guard let self else { throw RPCFailure(-32000, "Editor closed") }
                 batches.start(id, host: DocumentBatchHost(document: self, author: author), author: author, leave: leave)
@@ -77,7 +83,53 @@ extension ProjectDocument {
         }
         var result = batches.run(id)?.json(full: false).object ?? [:]
         result["approved"] = .bool(approval.autoApproved)
+        result["warnings"] = .array(warnings.map(JSONValue.string))
         return .object(result)
+    }
+
+    private func retryBatch(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
+        markDeniedBatches()
+        if let active = batches.active {
+            throw RPCFailure(-32003, "Batch \(active.id) is \(active.state.rawValue); wait for it or batch cancel it",
+                             category: .busyRunning)
+        }
+        guard let id = arguments.optionalString("batch") ?? batches.runs.last(where: { !$0.retryableItems.isEmpty })?.id
+        else { throw RPCFailure(-32602, "No batch has items to retry") }
+        guard let run = batches.run(id) else { throw RPCFailure(-32602, "No batch \(id)") }
+        let retryable = run.retryableItems
+        guard !retryable.isEmpty else { throw RPCFailure(-32602, "Batch \(id) has no failed, cancelled or interrupted items") }
+        var chosen = retryable
+        if let list = arguments.optionalString("items") {
+            let numbers = list.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            chosen = try numbers.map { text in
+                guard let number = Int(text), retryable.contains(number - 1) else {
+                    throw RPCFailure(-32602, "Item \(text) of batch \(id) cannot be retried; retryable: "
+                                     + retryable.map { String($0 + 1) }.joined(separator: ","))
+                }
+                return number - 1
+            }
+        }
+        do {
+            try BatchRunner.check(Self.presetCheckCopy(run.pipeline)) { [plugins] in plugins.action($0) != nil }
+        } catch let error as ProjectError { throw RPCFailure(-32602, error.localizedDescription) }
+        let leave = try batchLeaveCurrent(arguments)
+        let approval = try queuePrivilegedApproval(method: "batch.retry", author: author, arguments: [
+            "batch": run.pipeline.name.map { "\(id) (\($0))" } ?? id,
+            "items": "\(chosen.count): " + chosen.prefix(5).map { run.items[$0].source.name }.joined(separator: ", ")
+                + (chosen.count > 5 ? " +\(chosen.count - 5)" : ""),
+            "steps": run.pipeline.steps.enumerated().map { "\($0 + 1). \($1.label ?? $1.action)" }.joined(separator: " · "),
+        ]) { [weak self] in
+            guard let self else { throw RPCFailure(-32000, "Editor closed") }
+            guard batches.retry(id, items: chosen, host: DocumentBatchHost(document: self, author: author), author: author,
+                                leave: leave)
+            else { throw RPCFailure(-32003, "Another batch is running", category: .busyRunning) }
+        }
+        if !approval.autoApproved { message = String(localized: "Waiting for approval: batch.retry") }
+        return .object([
+            "batch": .string(id), "items": .array(chosen.map { .integer($0 + 1) }),
+            "approved": .bool(approval.autoApproved),
+            "state": .string(batches.run(id)?.state.rawValue ?? "unknown"),
+        ])
     }
 
     /// The pipeline from `pipeline` or a saved preset, with `inputs` replacing its inputs.
@@ -176,16 +228,18 @@ extension ProjectDocument {
     }
 
     /// A preset may be saved without inputs; it is checked as if it had one.
-    private static func presetCheckCopy(_ pipeline: BatchPipeline) -> BatchPipeline {
+    static func presetCheckCopy(_ pipeline: BatchPipeline) -> BatchPipeline {
         var copy = pipeline
         if copy.inputs.isEmpty { copy.inputs = [BatchInput(path: "/")] }
         return copy
     }
 
     /// One export of the open project for an approved batch. The graphics-draft guard applies; the draft-audit
-    /// guard does not, as the user approved the batch and each result is a project to open and fix (D4).
-    func startBatchExport(preset name: String, fileName: String, options: [String: JSONValue], author: Author) throws
-        -> (job: String, file: URL)
+    /// guard does not, as the user approved the batch and each result is a project to open and fix (D4). `replacing`
+    /// writes over a file of that name, as `export start --overwrite` does.
+    func startBatchExport(
+        preset name: String, fileName: String, options: [String: JSONValue], author: Author, replacing: Bool = false
+    ) throws -> (job: String, file: URL)
     {
         let preset = try Self.exportPreset(name)
         guard let root = fileURL?.deletingLastPathComponent() else { throw RPCFailure(-32602, "Save the project before exporting") }
@@ -195,7 +249,7 @@ extension ProjectDocument {
         let includeSubRip = options["includeSRT"]?.bool ?? false
         let available = ExportRequest.availableName(
             fileName, preset: preset, directory: directory, includeSubRip: includeSubRip,
-            reserved: exports.queue.reservedOutputs, ignoringFiles: false)
+            reserved: exports.queue.reservedOutputs, ignoringFiles: replacing)
         let job = try startExportAuthorized(
             name: available, preset: preset, directory: directory, includeSubRip: includeSubRip,
             normalizeAudio: options["normalizeAudio"]?.bool ?? false, author: author,
