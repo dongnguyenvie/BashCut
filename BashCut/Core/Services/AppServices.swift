@@ -1,4 +1,5 @@
 import BashCutEngine
+import BashCutProject
 import Foundation
 
 /// The composition root: services that live as long as the app, created once and handed to the
@@ -18,6 +19,7 @@ public final class AppServices {
 
     /// The running app: AVFoundation rendering, `UserDefaults.standard` and the shared socket and token file.
     public static func live() -> AppServices {
-        AppServices(engine: AVFoundationRenderEngine(), settings: SettingsModel(), automation: AutomationController())
+        AppServices(engine: AVFoundationRenderEngine(), settings: SettingsModel(), automation: AutomationController(
+            batchRuns: .user(applicationSupport: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0])))
     }
 }

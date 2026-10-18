@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 247 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 248 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -1527,9 +1527,19 @@ Run a pipeline over its inputs after the user approves the batch once in the app
 - `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
 - `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
 
+### `bashcut batch retry [<batch>] [--items <items>] [--save-current] [--discard-current]`
+
+Rerun a batch's failed or interrupted items from the step that did not complete. Default: the latest batch with failed, cancelled, skipped or interrupted items (a batch BashCut quit during comes back interrupted); each item goes on in the project it made, after the user approves once. Returns at once; follow it with batch status --wait.
+
+- Mode: privileged · Runs: after the user approves in the app · MCP: `bashcut_batch_retry`
+- `batch`: string. Batch ID
+- `items`: string. Comma-separated item numbers (from 1) to retry; default all of them
+- `saveCurrent`: boolean, default false. Save the open project first when it has unsaved changes
+- `discardCurrent`: boolean, default false. Drop unsaved changes of the open project
+
 ### `bashcut batch status [<batch>] [--all] [--wait <wait>]`
 
-Read a batch (default: the latest): state, concurrency {asked, used}, counts, and per item its input, kind, project, state, current step, outputs and steps (action, state, job, error, errorCategory, outputs, result). Without batch and with all, every kept batch in short form. With wait, holds until the batch or an item changes state or step, or it finishes (changed, timedOut).
+Read a batch (default: the latest): state, concurrency {asked, used}, counts, elapsedSeconds, remainingSeconds (an estimate while it runs), retryable, and per item its input, kind, project, state, current step, outputs and steps (action, state, job, error, errorCategory, outputs, result). Without batch and with all, every kept batch in short form. With wait, holds until the batch or an item changes state or step, or it finishes (changed, timedOut).
 
 - Mode: read · Runs: immediately · MCP: `bashcut_batch_status`
 - `batch`: string. Batch ID

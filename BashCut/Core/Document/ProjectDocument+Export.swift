@@ -152,8 +152,9 @@ extension ProjectDocument {
     /// Only the user's own export opens the report sheet. An agent's export shows the toast (its Report button opens
     /// the sheet) or, during a run, the run panel's result card (#448): the sheet's open animation runs a nested run
     /// loop that holds the main actor and the agent's next call with it (#350).
+    /// Not during a batch: each item's export would open the sheet again (the queue shows its files).
     private func opensReport(_ author: Author) -> Bool {
-        guard author == .user else {
+        guard author == .user, batches.active == nil else {
             runPanel.refresh()
             return false
         }
