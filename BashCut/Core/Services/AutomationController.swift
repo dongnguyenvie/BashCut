@@ -9,8 +9,9 @@ import OSLog
 @MainActor
 public final class AutomationController {
     public let registry: CommandRegistry
-    /// Batch pipeline runs (`batch run`); app-wide, so they outlive the project switches they make.
-    public let batches = BatchRunner()
+    /// Batch pipeline runs (`batch run`); app-wide, so they outlive the project switches they make, and saved to
+    /// `batchRuns` so they outlive a quit.
+    public let batches: BatchRunner
     /// Token written to `tokenFile` for agents outside the app; it outlives project switches, unlike
     /// in-app terminal tokens.
     public private(set) var externalAgentToken: String?
@@ -21,8 +22,10 @@ public final class AutomationController {
     public init(
         auditURL: URL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/BashCut/audit.jsonl"),
-        socket: String = AutomationPaths.socket, tokenFile: URL = AutomationPaths.tokenFile
+        socket: String = AutomationPaths.socket, tokenFile: URL = AutomationPaths.tokenFile,
+        batchRuns: BatchRunStore? = nil
     ) {
+        batches = BatchRunner(store: batchRuns)
         let audit = AuditStore(url: auditURL)
         registry = CommandRegistry { event in
             Task {

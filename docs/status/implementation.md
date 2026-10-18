@@ -370,6 +370,14 @@ not complete: several acceptance runs, bundled providers and the larger M4/M6 fe
   removes and moves steps, and loads presets (`load-preset:<name>`), so the window is driven through MCP/CLI alone;
   the batch's English messages (pipeline checks, runner failures) show in the app's language through
   `BatchMessage`. Verified by `BatchWindowAutomationTests` and live in a dev copy (VI UI).
+- Batch reliability for many items: checks before a run (`BatchPreflight`: plugin keys through `options.check`,
+  unreadable inputs, disk space; `batch run` returns them as `warnings`), `batch retry` and Retry / Retry Failed in
+  the queue (an item goes on in its project from the step that did not complete), runs saved to
+  `Application Support/BashCut/Batch/Runs.json` (`BatchRunStore`; a quit asks, saves the run interrupted and the next
+  launch offers Resume), elapsed and remaining time, a Dock badge, a notification at the end and no idle sleep.
+  Verified by `BatchRunProgressTests`, `BatchRunnerTests` (retry from the failed step; a saved run comes back
+  interrupted and resumes) and live in a dev copy: a broken input warned and skipped, retried after the fix in its own
+  project; a 12-item run quit at 4/12, resumed from the launch prompt to 12/12 with one file per item.
 
 ### Plugins
 

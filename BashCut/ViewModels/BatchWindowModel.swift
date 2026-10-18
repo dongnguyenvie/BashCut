@@ -25,6 +25,8 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
     private(set) var items: [BatchItemSource] = []
     private(set) var itemsError: String?
     private(set) var isOpen = false
+    /// True while the checks before a run (keys, files, disk) are going.
+    private(set) var checking = false
     @ObservationIgnored private var window: NSWindow?
     @ObservationIgnored private var delegate: BatchWindowDelegate?
 
@@ -186,8 +188,8 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
 
     // MARK: Running
 
-    /// Checks the pipeline and starts it: the click is the approval. An unsaved open project is saved or discarded
-    /// first, as the user chooses.
+    /// Checks the pipeline and starts it: the click is the approval. The checks before a run (keys, files, disk)
+    /// may ask first; an unsaved open project is saved or discarded first, as the user chooses.
     func start() {
         message = ""
         document.markDeniedBatches()
@@ -195,7 +197,7 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
             message = String(format: String(localized: "Batch %@ is still running"), active.id)
             return
         }
-        let items: [BatchItemSource]
+        var items: [BatchItemSource]
         do {
             try BatchRunner.check(pipeline) { [plugins = document.plugins] in plugins.action($0) != nil }
             items = try pipeline.items()
@@ -203,11 +205,92 @@ private final class BatchWindowDelegate: NSObject, NSWindowDelegate {
             message = BatchMessage.localized(RPCFailure.from(error).message)
             return
         }
-        guard let leave = leaveCurrent() else { return }
-        let id = document.batches.add(pipeline, items: items, awaitingApproval: false)
-        runID = id
-        document.batches.start(id, host: DocumentBatchHost(document: document, author: .user), author: .user, leave: leave)
-        DebugLog.write("batch", "\(id) started from the batch window: \(items.count) items, \(pipeline.steps.count) steps")
+        let pipeline = pipeline
+        afterPreflight(pipeline, items: items) { [self] skipped in
+            items = items.enumerated().filter { !skipped.contains($0.offset) }.map(\.element)
+            guard !items.isEmpty, let leave = leaveCurrent() else { return }
+            let id = document.batches.add(pipeline, items: items, awaitingApproval: false)
+            runID = id
+            document.batches.start(id, host: DocumentBatchHost(document: document, author: .user), author: .user, leave: leave)
+            DebugLog.write("batch", "\(id) started from the batch window: \(items.count) items, \(pipeline.steps.count) steps")
+        }
+    }
+
+    /// Runs the queue's failed, cancelled, skipped or interrupted items again (`indices`, default all of them), each
+    /// from the step that did not complete, in the project it made. The click is the approval.
+    func retry(_ indices: [Int]? = nil) {
+        message = ""
+        document.markDeniedBatches()
+        guard document.batches.active == nil, let run, !run.retryableItems.isEmpty else { return }
+        do {
+            try BatchRunner.check(ProjectDocument.presetCheckCopy(run.pipeline)) { [plugins = document.plugins] in
+                plugins.action($0) != nil
+            }
+        } catch {
+            message = BatchMessage.localized(RPCFailure.from(error).message)
+            return
+        }
+        let chosen = indices ?? run.retryableItems
+        afterPreflight(run.pipeline, items: chosen.map { run.items[$0].source }) { [self] skipped in
+            let remaining = chosen.enumerated().filter { !skipped.contains($0.offset) }.map(\.element)
+            guard !remaining.isEmpty, let leave = leaveCurrent() else { return }
+            runID = run.id
+            document.batches.retry(run.id, items: remaining, host: DocumentBatchHost(document: document, author: .user),
+                                   author: .user, leave: leave)
+            DebugLog.write("batch", "\(run.id) retried from the batch window: \(remaining.count) items")
+        }
+    }
+
+    /// Runs the checks before a run, then `proceed` with the indices of `items` to leave out ("Run without them" for
+    /// files that do not read), unless the user cancelled. Asks only when something was found. The alerts (this one
+    /// and the unsaved-project one in `proceed`) open from the run loop like a click, not from the checks' task: a
+    /// modal loop inside a task would hold the main queue, and with it the batch and every automation call.
+    private func afterPreflight(
+        _ pipeline: BatchPipeline, items: [BatchItemSource], proceed: @escaping @MainActor (Set<Int>) -> Void
+    ) {
+        checking = true
+        message = String(localized: "Checking keys, files and disk space…")
+        Task {
+            let issues = await BatchPreflight.check(pipeline, items: items, document: document)
+            checking = false
+            message = ""
+            RunLoop.main.perform(inModes: [.default]) {
+                MainActor.assumeIsolated {
+                    if let skipped = self.answerPreflight(issues, items: items) { proceed(skipped) }
+                }
+            }
+        }
+    }
+
+    /// Nil when the user cancelled, else the items to leave out.
+    private func answerPreflight(_ issues: [BatchPreflightIssue], items: [BatchItemSource]) -> Set<Int>? {
+        guard !issues.isEmpty else { return [] }
+        let unreadable = issues.compactMap { issue -> [Int]? in
+            if case .files(let indices) = issue.kind { return indices }
+            return nil
+        }.first ?? []
+        let needsKey = issues.contains { if case .key = $0.kind { true } else { false } }
+        var buttons: [ModalOption] = []
+        if !unreadable.isEmpty, unreadable.count < items.count {
+            buttons.append(ModalOption("without", String(format: String(localized: "Skip Them, Run %lld"),
+                                                         items.count - unreadable.count)))
+        }
+        buttons.append(ModalOption("run", String(localized: "Run Anyway")))
+        if needsKey { buttons.append(ModalOption("settings", String(localized: "Open Plugin Settings"))) }
+        buttons.append(ModalOption("cancel", String(localized: "Cancel")))
+        switch ModalCenter.shared.alert(
+            "batch-preflight", title: String(localized: "Check before the batch runs"),
+            message: issues.map { "• " + $0.localized }.joined(separator: "\n"), buttons: buttons)
+        {
+        case "without": return Set(unreadable)
+        case "run": return []
+        case "settings":
+            document.ui.settingsSection = "plugins"
+            document.ui.showSettings = true
+            NSApp.windows.first { $0.contentView is NSHostingView<EditorView> }?.makeKeyAndOrderFront(nil)
+            return nil
+        default: return nil
+        }
     }
 
     /// How the first item leaves the open project: nil when the user cancelled.

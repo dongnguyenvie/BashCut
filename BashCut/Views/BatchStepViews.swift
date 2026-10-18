@@ -160,18 +160,35 @@ private struct BatchParameterField: View {
     }
 }
 
-/// The queue: each item of the run with its step, progress and result, and Open to fix, Reveal or Cancel.
+/// The queue: the run's overall progress, time and Retry, then each item with its step, progress and result, and
+/// Open to fix, Reveal, Retry or Cancel.
 struct BatchQueueView: View {
     @Bindable var model: BatchWindowModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            HStack(spacing: 10) {
                 Text("Queue").font(.headline)
                 if let run = model.run {
-                    Text(verbatim: BatchQueueStatus.summary(run)).font(.caption).foregroundStyle(.secondary)
+                    // Ticks so the elapsed and remaining time move between item changes.
+                    SwiftUI.TimelineView(.periodic(from: .now, by: 5)) { context in
+                        Text(verbatim: BatchQueueStatus.summary(run, now: context.date))
+                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                    if !run.state.isFinished {
+                        ProgressView(value: run.fractionDone).frame(maxWidth: 180)
+                    }
                 }
                 Spacer()
+                if let run = model.run, !model.running, !run.retryableItems.isEmpty {
+                    let count = run.retryableItems.count
+                    Button(run.state == .interrupted
+                           ? String(format: String(localized: "Resume (%lld left)"), count)
+                           : String(format: String(localized: "Retry Failed (%lld)"), count)) { model.retry() }
+                        .disabled(model.checking)
+                        .help("Runs these items again from the step that did not complete, in the projects they made")
+                        .accessibilityIdentifier("batch-retry")
+                }
             }
             header
             ScrollView {
@@ -197,7 +214,7 @@ struct BatchQueueView: View {
             Text("Step").frame(width: 200, alignment: .leading)
             Text("Progress").frame(width: 150, alignment: .leading)
             Text("Result").frame(maxWidth: .infinity, alignment: .leading)
-            Spacer().frame(width: 190)
+            Spacer().frame(width: 250)
         }
         .font(.caption).foregroundStyle(.secondary)
     }
@@ -223,7 +240,11 @@ struct BatchQueueView: View {
             HStack(spacing: 6) {
                 if item.state == .running {
                     Button("Cancel", action: model.cancel)
-                } else if item.project != nil {
+                } else if !model.running, run.retryableItems.contains(index), item.state != .waiting {
+                    Button("Retry") { model.retry([index]) }.disabled(model.checking)
+                        .accessibilityIdentifier("batch-retry-\(index + 1)")
+                }
+                if item.state != .running, item.project != nil {
                     Button(status.attention ? String(localized: "Open to fix") : String(localized: "Open")) {
                         model.openItem(index)
                     }
@@ -232,7 +253,7 @@ struct BatchQueueView: View {
                     Button("Reveal") { model.revealItem(index) }
                 }
             }
-            .controlSize(.small).frame(width: 190, alignment: .trailing)
+            .controlSize(.small).frame(width: 250, alignment: .trailing)
         }
         .padding(.vertical, 5)
         .font(.callout)

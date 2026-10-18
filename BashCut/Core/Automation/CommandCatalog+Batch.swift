@@ -32,8 +32,21 @@ extension CommandCatalog {
             ] + leaveCurrent,
             execution: .approval),
         CommandSpec(
+            "batch.retry", .privileged,
+            "Rerun a batch's failed or interrupted items from the step that did not complete. Default: the latest "
+                + "batch with failed, cancelled, skipped or interrupted items (a batch BashCut quit during comes back "
+                + "interrupted); each item goes on in the project it made, after the user approves once. Returns at once; "
+                + "follow it with batch status --wait.",
+            parameters: [
+                CommandParameter("batch", .string, "Batch ID", cli: .positional),
+                CommandParameter("items", .string, "Comma-separated item numbers (from 1) to retry; default all of them",
+                                 cli: .option("items")),
+            ] + leaveCurrent,
+            execution: .approval),
+        CommandSpec(
             "batch.status", .read,
-            "Read a batch (default: the latest): state, concurrency {asked, used}, counts, and per item its input, kind, "
+            "Read a batch (default: the latest): state, concurrency {asked, used}, counts, elapsedSeconds, "
+                + "remainingSeconds (an estimate while it runs), retryable, and per item its input, kind, "
                 + "project, state, current step, outputs and steps (action, state, job, error, errorCategory, outputs, "
                 + "result). Without batch and with all, every kept batch in short form. With wait, holds until the "
                 + "batch or an item changes state or step, or it finishes (changed, timedOut).",

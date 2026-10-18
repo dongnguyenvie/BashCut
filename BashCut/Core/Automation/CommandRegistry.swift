@@ -61,8 +61,8 @@ struct FailedRequest {
     /// Commands that switch the project; their result shows the new project to the caller.
     static let projectSwitches: Set<String> = ["project.open", "project.create", "project.close", "edl.import"]
     /// Commands that never edit the open project, so the read-after-switch gate does not hold them: a batch switches
-    /// projects for every item, and its caller must still be able to cancel it or save presets.
-    static let switchIndependent: Set<String> = ["batch.run", "batch.cancel", "batch.presets"]
+    /// projects for every item, and its caller must still be able to cancel or retry it, or save presets.
+    static let switchIndependent: Set<String> = ["batch.run", "batch.retry", "batch.cancel", "batch.presets"]
     private let audit: @Sendable (AuditEvent) -> Void
     /// The last failed requests, newest last (P2-G2), so `context get` can show an agent what keeps failing.
     private var failures: [FailedRequest] = []

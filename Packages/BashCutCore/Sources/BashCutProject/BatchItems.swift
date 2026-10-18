@@ -2,8 +2,8 @@ import Foundation
 import UniformTypeIdentifiers
 
 /// One item of a batch: a media file that becomes a new project, or a project the steps run on (decision D4).
-public struct BatchItemSource: Sendable, Equatable {
-    public enum Kind: String, Sendable { case file, project }
+public struct BatchItemSource: Sendable, Equatable, Codable {
+    public enum Kind: String, Sendable, Codable { case file, project }
 
     public let name: String
     public let url: URL
@@ -85,17 +85,17 @@ extension BatchPipeline {
 }
 
 /// Where a batch, an item or a step stands. A batch ends `completed` (its items may have failed or been skipped
-/// under `onFailure: skip`), `failed` (stopped by `onFailure: stop`, or it could not start), `cancelled` or `denied`
-/// (the user refused its approval).
+/// under `onFailure: skip`), `failed` (stopped by `onFailure: stop`, or it could not start), `cancelled`, `denied`
+/// (the user refused its approval) or `interrupted` (BashCut quit or stopped while it ran; `batch retry` resumes it).
 public enum BatchState: String, Sendable, Codable {
     case awaitingApproval = "awaiting_approval"
-    case waiting, running, completed, failed, skipped, cancelled, denied
+    case waiting, running, completed, failed, skipped, cancelled, denied, interrupted
 
     public var isFinished: Bool { ![.awaitingApproval, .waiting, .running].contains(self) }
 }
 
 /// One step of one item.
-public struct BatchStepStatus: Sendable, Equatable {
+public struct BatchStepStatus: Sendable, Equatable, Codable {
     public let action: String
     public let label: String?
     public var state: BatchState = .waiting
@@ -123,7 +123,7 @@ public struct BatchStepStatus: Sendable, Equatable {
 }
 
 /// One item: its input, the project it became and each step's status.
-public struct BatchItemStatus: Sendable, Equatable {
+public struct BatchItemStatus: Sendable, Equatable, Codable {
     public let source: BatchItemSource
     public var state: BatchState = .waiting
     /// The project file the steps ran on, once it is open.
@@ -132,6 +132,9 @@ public struct BatchItemStatus: Sendable, Equatable {
     /// The step running now (0-based), or nil.
     public var currentStep: Int?
     public var error: String?
+    /// When the item's last run started and ended, for the batch's time estimate.
+    public var startedAt: Date?
+    public var finishedAt: Date?
 
     public init(source: BatchItemSource, steps: [BatchStep]) {
         self.source = source
@@ -151,12 +154,14 @@ public struct BatchItemStatus: Sendable, Equatable {
 }
 
 /// One batch run as `batch status` reports it.
-public struct BatchRunStatus: Sendable, Equatable {
+public struct BatchRunStatus: Sendable, Equatable, Codable {
     public let id: String
     public let pipeline: BatchPipeline
     public var state: BatchState
     public var items: [BatchItemStatus]
     public let createdAt: Date
+    /// When the run, or its latest retry, started running.
+    public var runningSince: Date?
     public var finishedAt: Date?
     /// Items run at once.
     public var concurrency: Int
@@ -173,8 +178,9 @@ public struct BatchRunStatus: Sendable, Equatable {
 
     public func count(_ state: BatchState) -> Int { items.filter { $0.state == state }.count }
 
-    /// With `full`, every item's steps; otherwise each item's state, current step and outputs.
-    public func json(full: Bool = true) -> JSONValue {
+    /// With `full`, every item's steps; otherwise each item's state, current step and outputs. `now` dates the
+    /// time estimate.
+    public func json(full: Bool = true, now: Date = Date()) -> JSONValue {
         let formatter = ISO8601DateFormatter()
         let items = items.map { item -> JSONValue in
             guard !full else { return item.json }
@@ -190,7 +196,11 @@ public struct BatchRunStatus: Sendable, Equatable {
                 "items": .integer(self.items.count), "completed": .integer(count(.completed)),
                 "failed": .integer(count(.failed)), "skipped": .integer(count(.skipped)),
                 "cancelled": .integer(count(.cancelled)), "waiting": .integer(count(.waiting)),
+                "interrupted": .integer(count(.interrupted)),
             ]),
+            "elapsedSeconds": .integer(Int(elapsed(now: now))),
+            "remainingSeconds": remaining(now: now).map { .integer(Int($0.rounded())) } ?? .null,
+            "retryable": .integer(retryableItems.count),
             "error": error.map(JSONValue.string) ?? .null, "items": .array(items),
             "startedAt": .string(formatter.string(from: createdAt)),
             "finishedAt": finishedAt.map { .string(formatter.string(from: $0)) } ?? .null,
