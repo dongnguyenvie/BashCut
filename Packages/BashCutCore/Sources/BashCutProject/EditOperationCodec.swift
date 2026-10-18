@@ -13,7 +13,7 @@ extension EditOperation {
         "setSpeedCurve", "setSource", "setLinkedAudio", "addMedia", "addTrack", "deleteTrack", "moveTrack",
         "setTrackProperties", "setProjectProperties", "setFormat", "setProviderPreference", "setBeatGrid",
         "setMediaDescription", "setMediaRights", "setMediaData", "upsertSection", "deleteSection", "upsertTransition",
-        "deleteTransition", "addColorLUT", "deleteColorLUT",
+        "deleteTransition", "addColorLUT", "deleteColorLUT", "rippleDeleteRange",
     ]
 
     // Decoding stays one exhaustive switch so malformed variants fail at one boundary.
@@ -57,6 +57,7 @@ extension EditOperation {
             self = .setSource(
                 item: try read.string("item"), media: try read.string("media"), sourceIn: try read.frame("sourceIn"),
                 reversed: fields["reversed"].flatMap { $0 == .null ? nil : $0 })
+        case "rippleDeleteRange": self = try read.rippleDeleteRange()
         case "setLinkedAudio": self = .setLinkedAudio(video: try read.string("video"), audio: fields["audio"]?.string)
         case "addMedia": self = .addMedia(Media(fields: try read.object("media")))
         case "addTrack":
@@ -159,6 +160,11 @@ extension EditOperation {
             return op("setSource", [
                 "item": .string(item), "media": .string(media), "sourceIn": .integer(sourceIn), "reversed": reversed ?? .null,
             ])
+        case .rippleDeleteRange(let from, let to, let tracks, let continuous):
+            var fields: [String: JSONValue] = ["from": .integer(from), "to": .integer(to)]
+            if let tracks { fields["tracks"] = .array(tracks.map(JSONValue.string)) }
+            if let continuous { fields["continuous"] = .array(continuous.map(JSONValue.string)) }
+            return op("rippleDeleteRange", fields)
         case .setLinkedAudio(let video, let audio):
             return op("setLinkedAudio", ["video": .string(video), "audio": audio.map(JSONValue.string) ?? .null])
         case .addMedia(let media): return op("addMedia", ["media": .object(media.fields)])
@@ -251,6 +257,19 @@ private struct OperationFields {
     func object(_ key: String) throws -> [String: JSONValue] {
         guard case .object(let value) = fields[key] else { throw ProjectError.invalid("Missing \(key) object") }
         return value
+    }
+    func rippleDeleteRange() throws -> EditOperation {
+        .rippleDeleteRange(from: try frame("from"), to: try frame("to"), tracks: try layers("tracks"),
+                           continuous: try layers("continuous"))
+    }
+    /// An optional list of layer IDs; null or missing is nil.
+    func layers(_ key: String) throws -> [String]? {
+        switch fields[key] {
+        case nil, .null?: return nil
+        case .array(let values)? where values.allSatisfy({ $0.string?.isEmpty == false }):
+            return values.compactMap(\.string)
+        default: throw ProjectError.invalid("\(key) must be an array of layer IDs")
+        }
     }
     func edge() throws -> Edge {
         guard let edge = Edge(rawValue: try string("edge")) else { throw ProjectError.invalid("Invalid edge") }

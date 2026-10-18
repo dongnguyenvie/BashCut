@@ -214,6 +214,9 @@ extension ProjectDocument {
             if !warnings.isEmpty { fields["warnings"] = .array(warnings) }
             return .object(fields)
         }
+        handleAuthored("timeline.cut-range") { document, arguments, author in
+            try await document.cutRange(arguments, author: author)
+        }
         handle("timeline.changes") { document, arguments, _ in
             TimelineChanges.json(
                 history: document.history, limit: try arguments.int("limit"), author: arguments.optionalString("author"),
@@ -225,6 +228,45 @@ extension ProjectDocument {
         handleAuthored("timeline.redo") { document, arguments, author in
             .object(["rev": .integer(try document.commitRedo(author: author, baseRevision: arguments.int("baseRev")))])
         }
+    }
+
+    /// `timeline.cut-range`: one `rippleDeleteRange` over every layer (or `tracks`), with timeline.apply's dry run.
+    private func cutRange(_ arguments: CommandArguments, author: Author) async throws -> JSONValue {
+        let from = try arguments.int("from"), to = try arguments.int("to")
+        guard to > from else { throw RPCFailure(-32602, "to must be after from") }
+        func layers(_ name: String) throws -> [String]? {
+            guard let text = arguments.optionalString(name) else { return nil }
+            if text == "none" { return [] }
+            return try text.split(separator: ",").map { part in
+                let id = project.resolveTrackReference(part.trimmingCharacters(in: .whitespaces))
+                guard project.tracks.contains(where: { $0.id == id }) else { throw RPCFailure(-32602, "Unknown layer \(part)") }
+                return id
+            }
+        }
+        let operation = EditOperation.rippleDeleteRange(
+            from: from, to: to, tracks: try layers("tracks"), continuous: try layers("continuous"))
+        let label = arguments.optionalString("label")
+            ?? "Cut \(Timecode.string(from, fps: project.fps))–\(Timecode.string(to, fps: project.fps))"
+        let baseRevision = try arguments.int("baseRev")
+        await loadReviewTranscripts()
+        if arguments.bool("dryRun") {
+            guard case .object(var fields) = try dryRunEdit(operation, author: author, baseRevision: baseRevision) else {
+                throw RPCFailure(-32603, "Dry run returned no object")
+            }
+            fields["op"] = operation.json
+            if let scope = agentScopePreview(operation, author: author) { fields["outsideScope"] = scope }
+            return .object(fields)
+        }
+        let previous = project.duration
+        let result = try commitEdit(
+            operation, label: label, author: author, baseRevision: baseRevision, note: try Self.editNote(arguments))
+        return .object([
+            "rev": .integer(result.revision), "changed": .bool(result.changed), "op": operation.json,
+            "duration": .integer(project.duration), "previousDuration": .integer(previous),
+            "cutsInsideWord": .array(TimelineReview.wordCutIssues(project, transcripts: reviewTranscripts).map { issue in
+                .object(["id": .string(issue.id), "frame": .integer(issue.frame), "detail": .string(issue.detail)])
+            }),
+        ])
     }
 
     /// `why` and `evidence` of an edit command (P2-G3), bounded so the history journal stays small.

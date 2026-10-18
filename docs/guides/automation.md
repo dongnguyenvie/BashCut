@@ -514,7 +514,9 @@ bashcut plan check --words --patch '{"voiceover": {"l1": {"pause": 0.8}}, "revie
 - **Operations.** `insert`, `delete`, `split`, `trim`, `roll`, `slip`, `move`, `reorder`, `setSpeed`, `setProperties`,
   `setLinkedAudio`, track operations (`addTrack`, `moveTrack`, `setTrackProperties`, `deleteTrack`),
   `setProjectProperties`, `setProviderPreference`, `setBeatGrid`, `upsertSection`, `deleteSection`,
-  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT`, `setMediaRights` (a media's `license` and
+  `upsertTransition`, `deleteTransition`, `addColorLUT`, `deleteColorLUT`, `rippleDeleteRange` (`from`, `to`, optional
+  `tracks` and `continuous`: cuts a span out of every layer and closes it, as `timeline cut-range` does),
+  `setMediaRights` (a media's `license` and
   `provenance`; null removes one), `setMediaData` (the agent's own fields on a media under `data`, such as take
   numbers and verdicts; each key replaces, null removes; core never reads them) and `setFormat` (the canvas size; the
   `project format` command and the toolbar's format menu use it). The agent instructions

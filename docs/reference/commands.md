@@ -2,7 +2,7 @@
 
 <!-- Generated from CommandCatalog by scripts/update-commands.sh. Do not edit by hand. -->
 
-Every automation command, 248 in all. Each is the same command on the CLI (`bashcut …`), as an
+Every automation command, 249 in all. Each is the same command on the CLI (`bashcut …`), as an
 MCP tool (`bashcut_<group>_<command>`, same parameter names as JSON-RPC) and over the socket. Modes and
 approval are explained in the [automation guide](../guides/automation.md#permission-modes).
 
@@ -150,6 +150,21 @@ Atomically apply validated timeline operations as one undoable edit; returns cha
 - `why`: string. Why this edit, in one sentence (up to 500 characters)
 - `evidence`: string. What it rests on, separated by ; (review issue IDs, transcript ranges, measurements; up to 20, 200 characters each)
 - `expectFingerprint`: string. The dry run's fingerprint; refuse other ops
+
+### `bashcut timeline cut-range --from <from> --to <to> [--tracks <tracks>] [--continuous <continuous>] [--label <label>] [--dry-run] [--why <why>] [--evidence <evidence>] --base-rev <baseRev>`
+
+Cut a span of time out of the whole timeline as one undoable edit (op rippleDeleteRange): on every layer (or tracks) items inside go, items over an edge are trimmed, a clip over the whole span is split with its parts joined, and captions lose the words inside; everything later moves left with the markers, sections and beat grid. Linked sound gets its picture's cut; a music bed keeps playing and loses its tail. Returns rev, duration and cutsInsideWord (clip edges left inside a transcribed word); dryRun returns what timeline.apply's dry run does.
+
+- Mode: edit · Runs: immediately · MCP: `bashcut_timeline_cut-range`
+- `from`: integer, required, ≥ 0. First timeline frame to remove
+- `to`: integer, required, ≥ 1. Timeline frame after the last one removed
+- `tracks`: string. Only these layers, comma-separated IDs or labels (V1, A2); linked partners' layers are cut too. Default: every layer
+- `continuous`: string. Layers whose items keep their source running and lose their tail instead of being split, comma-separated; none for no layer. Default: the music layers
+- `label`: string. Short description of the edit
+- `dryRun`: boolean, default false. Validate without editing; return the projected result
+- `why`: string. Why this edit, in one sentence (up to 500 characters)
+- `evidence`: string. What it rests on, separated by ;
+- `baseRev`: integer, required, ≥ 0. Current project revision (rev of context.get or of your last edit), or "last": the revision as of your session's last command, still stale when anyone else changed the project since
 
 ### `bashcut timeline changes [--limit <limit>] [--author <author>]`
 

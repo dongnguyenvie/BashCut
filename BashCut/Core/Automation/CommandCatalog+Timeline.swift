@@ -29,6 +29,34 @@ extension CommandCatalog {
                                  cli: .option("expect-fingerprint")),
             ]),
         CommandSpec(
+            "timeline.cut-range", .edit,
+            "Cut a span of time out of the whole timeline as one undoable edit (op rippleDeleteRange): on every "
+                + "layer (or tracks) items inside go, items over an edge are trimmed, a clip over the whole span is "
+                + "split with its parts joined, and captions lose the words inside; everything later moves left with "
+                + "the markers, sections and beat grid. Linked sound gets its picture's cut; a music bed keeps playing "
+                + "and loses its tail. Returns rev, duration and cutsInsideWord (clip edges left inside a transcribed "
+                + "word); dryRun returns what timeline.apply's dry run does.",
+            parameters: [
+                CommandParameter("from", .integer, "First timeline frame to remove", required: true, minimum: 0,
+                                 cli: .option("from")),
+                CommandParameter("to", .integer, "Timeline frame after the last one removed", required: true,
+                                 minimum: 1, cli: .option("to")),
+                CommandParameter("tracks", .string,
+                                 "Only these layers, comma-separated IDs or labels (V1, A2); linked partners' layers "
+                                     + "are cut too. Default: every layer", cli: .option("tracks")),
+                CommandParameter("continuous", .string,
+                                 "Layers whose items keep their source running and lose their tail instead of being "
+                                     + "split, comma-separated; none for no layer. Default: the music layers",
+                                 cli: .option("continuous")),
+                CommandParameter("label", .string, "Short description of the edit", cli: .option("label")),
+                CommandParameter("dryRun", .boolean, "Validate without editing; return the projected result",
+                                 default: .bool(false), cli: .flag("dry-run")),
+                CommandParameter("why", .string, "Why this edit, in one sentence (up to 500 characters)",
+                                 cli: .option("why")),
+                CommandParameter("evidence", .string, "What it rests on, separated by ;", cli: .option("evidence")),
+                baseRevision,
+            ]),
+        CommandSpec(
             "timeline.changes", .read,
             "Recent edits from the undo history, newest first: step, label, author, why, evidence, at, the rev each "
                 + "produced and changes {counts, text, truncated}; undone lists what redo would bring back. Edits made "

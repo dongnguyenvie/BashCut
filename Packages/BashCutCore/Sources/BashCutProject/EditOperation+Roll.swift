@@ -3,6 +3,17 @@ import Foundation
 /// `slip` and `roll`: trims that keep the clip's place (slip changes only the source start) or move a shared cut
 /// between two neighbours (roll).
 extension Project {
+    /// Source frames of `item`'s media played over its first `frames` timeline frames.
+    func sourceOffset(_ frames: Int, item: Item) throws -> Int {
+        guard let asset = media.first(where: { $0.id == item.mediaID }) else { return 0 }
+        // A cut at a fractional source frame rounds down so the right half cannot overrun the source.
+        let offset = (item.sourceSeconds(afterFrames: frames, fps: fps) * asset.fps.value).rounded(.down)
+        guard offset.isFinite, offset > Double(Int.min), offset < Double(Int.max) else {
+            throw ProjectError.invalid("Source frame overflow")
+        }
+        return Int(offset)
+    }
+
     mutating func slipItem(id: String, sourceIn: Int) throws {
         let (track, index) = try location(id)
         guard tracks[track].items[index].mediaID != nil, sourceIn >= 0, sourceIn <= 2_000_000_000 else {
